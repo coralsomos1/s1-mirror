@@ -35,6 +35,17 @@
   .dot.yellow { background:#e8b44a; }
   .dot.red { background:#e5484d; }
 
+  /* último código salvo na tela inicial */
+  .last-code {
+    display:none; margin-top:6px; padding:12px 20px; border-radius:12px;
+    background:#15151d; border:1px solid #2a2a36; text-align:center;
+    max-width:340px; width:100%;
+  }
+  .last-code.show { display:block; }
+  .last-code-label { font-size:11px; color:#6a6a7a; text-transform:uppercase; letter-spacing:1.5px; margin-bottom:6px; }
+  .last-code-value { font-size:26px; font-weight:700; color:#e8b44a; letter-spacing:8px; padding-left:8px; }
+  .last-code-hint { font-size:11px; color:#6a6a7a; margin-top:6px; }
+
   #code-screen { align-items:center; justify-content:center; padding:24px; gap:22px; }
   .label { font-size:13px; color:#8a8a99; text-transform:uppercase; letter-spacing:2px; }
   .code-display {
@@ -55,6 +66,26 @@
   .slide-big { font-size:clamp(44px,11vw,110px); font-weight:700; }
   .slide-big span { color:#e8b44a; }
 
+  /* barra superior do apresentador: código + conectados */
+  .presenter-bar {
+    display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+    padding:10px 16px; background:#0f0f16; border-bottom:1px solid #1e1e28;
+  }
+  .bar-code {
+    display:flex; align-items:center; gap:8px;
+    background:#15151d; border:1px solid #2a2a36; border-radius:10px;
+    padding:7px 12px;
+  }
+  .bar-code-label { font-size:10px; color:#6a6a7a; text-transform:uppercase; letter-spacing:1.2px; }
+  .bar-code-value { font-size:17px; font-weight:700; color:#e8b44a; letter-spacing:4px; }
+  .bar-viewers {
+    display:flex; align-items:center; gap:7px;
+    background:#15151d; border:1px solid #2a2a36; border-radius:10px;
+    padding:7px 12px; font-size:13px; color:#c9c9d4;
+  }
+  .bar-viewers-num { font-weight:700; color:#3ddc84; font-size:15px; }
+  .bar-spacer { flex:1; }
+
   .controls {
     display:flex; align-items:center; justify-content:center; gap:14px;
     padding:14px 18px calc(14px + env(safe-area-inset-bottom));
@@ -66,13 +97,27 @@
     font-weight:600; cursor:pointer; font-family:inherit;
   }
   .counter { font-size:15px; color:#8a8a99; min-width:64px; text-align:center; }
-  .viewers { font-size:13px; color:#6a6a7a; margin-left:auto; }
 
   .top-right { position:absolute; top:14px; right:14px; display:flex; gap:8px; z-index:20; }
   .icon-btn {
     width:44px; height:44px; border-radius:11px; background:rgba(28,28,38,.85);
     border:1px solid #2a2a36; color:#c9c9d4; font-size:17px; cursor:pointer;
     display:flex; align-items:center; justify-content:center;
+  }
+
+  /* barra superior do receptor */
+  .viewer-bar {
+    display:flex; align-items:center; gap:10px;
+    padding:10px 14px; background:#0f0f16; border-bottom:1px solid #1e1e28;
+  }
+  .viewer-bar-code {
+    font-size:12px; color:#6a6a7a; letter-spacing:1px;
+  }
+  .viewer-bar-code b { color:#e8b44a; letter-spacing:3px; font-size:14px; }
+  .exit-btn {
+    margin-left:auto; background:#1c1c26; border:1px solid #2a2a36; color:#c9c9d4;
+    padding:9px 16px; border-radius:10px; font-size:13px; font-weight:600;
+    cursor:pointer; font-family:inherit; min-height:40px;
   }
 
   #join { align-items:center; justify-content:center; padding:24px; gap:18px; }
@@ -83,6 +128,11 @@
     text-transform:uppercase; font-family:inherit; padding-left:12px;
   }
   .code-input:focus { outline:none; border-color:#e8b44a; }
+  .join-last {
+    display:none; font-size:13px; color:#8a8a99; text-align:center;
+  }
+  .join-last.show { display:block; }
+  .join-last b { color:#e8b44a; letter-spacing:3px; font-size:15px; }
 
   #waiting { align-items:center; justify-content:center; padding:24px; gap:20px; text-align:center; }
   .spinner {
@@ -134,7 +184,12 @@
   <div class="logo">S1 <span>Mirror</span></div>
   <div class="tagline">Somos Um</div>
   <button class="btn btn-primary" onclick="startPresenter()">Apresentar</button>
-  <button class="btn btn-secondary" onclick="showScreen('join')">Assistir</button>
+  <button class="btn btn-secondary" onclick="goToJoin()">Assistir</button>
+  <div class="last-code" id="homeLastCode">
+    <div class="last-code-label">Último código usado</div>
+    <div class="last-code-value" id="homeLastCodeValue">----</div>
+    <div class="last-code-hint">Toque em "Assistir" para entrar novamente</div>
+  </div>
   <div class="status-bar">
     <div class="dot" id="homeDot"></div>
     <span id="homeStatus">Inicializando...</span>
@@ -152,6 +207,7 @@
 <div class="screen" id="join">
   <div class="label">Digite o código</div>
   <input class="code-input" id="joinInput" maxlength="4" autocomplete="off" autocapitalize="characters" placeholder="----">
+  <div class="join-last" id="joinLast">Último código usado: <b id="joinLastValue">----</b></div>
   <button class="btn btn-primary" style="max-width:300px" onclick="joinSession()">Entrar</button>
   <button class="btn btn-ghost" style="max-width:300px" onclick="showScreen('home')">Voltar</button>
 </div>
@@ -164,7 +220,16 @@
 </div>
 
 <div class="screen" id="presenter">
-  <div class="top-right">
+  <div class="presenter-bar">
+    <div class="bar-code">
+      <span class="bar-code-label">Código</span>
+      <span class="bar-code-value" id="barCodeValue">----</span>
+    </div>
+    <div class="bar-viewers">
+      <span class="bar-viewers-num" id="barViewersNum">0</span>
+      <span id="barViewersLabel">conectados</span>
+    </div>
+    <div class="bar-spacer"></div>
     <button class="icon-btn" onclick="toggleDiag()">⚙</button>
     <button class="icon-btn" onclick="leaveSession()">✕</button>
   </div>
@@ -173,14 +238,14 @@
     <button class="ctrl-btn" onclick="prevSlide()">◀ Anterior</button>
     <div class="counter" id="presenterCounter">1 / 8</div>
     <button class="ctrl-btn" onclick="nextSlide()">Próximo ▶</button>
-    <div class="viewers" id="viewerCount"></div>
   </div>
 </div>
 
 <div class="screen" id="viewer">
-  <div class="top-right">
-    <button class="icon-btn" onclick="toggleDiag()">⚙</button>
-    <button class="icon-btn" onclick="leaveSession()">✕</button>
+  <div class="viewer-bar">
+    <div class="viewer-bar-code">Código: <b id="viewerBarCode">----</b></div>
+    <button class="exit-btn" onclick="leaveSession()">Sair</button>
+    <button class="icon-btn" onclick="toggleDiag()" style="width:40px;height:40px">⚙</button>
   </div>
   <div class="slide-area" id="viewerSlide"></div>
 </div>
@@ -195,7 +260,6 @@
     <div class="diag-row"><span>Tipo</span><span id="dTransport">—</span></div>
     <div class="diag-row"><span>Biblioteca</span><span id="dLib">—</span></div>
     <div class="diag-row"><span>Host</span><span id="dHost">—</span></div>
-    <div class="diag-row"><span>Ambiente</span><span id="dEnv">—</span></div>
   </div>
   <div class="diag-section">
     <h4>Conexão</h4>
@@ -244,6 +308,7 @@ var echoResult = 'Não executado';
 var stateRequestTimer = null;
 var stateRequestAttempts = 0;
 var myClientId = '';
+var viewerCount = 0;
 
 var slides = [
   { type:'big', title:'SOMOS <span>UM</span>', body:'S1 — Apresentação ao vivo' },
@@ -256,6 +321,50 @@ var slides = [
   { type:'big', title:'OBRIGADO', body:'Somos Um — S1' }
 ];
 
+/* ---------- CÓDIGO SALVO ---------- */
+function saveLastCode(code) {
+  try { localStorage.setItem('s1_last_code', code); } catch(e) {}
+}
+
+function getLastCode() {
+  try { return localStorage.getItem('s1_last_code') || ''; } catch(e) { return ''; }
+}
+
+function refreshLastCodeUI() {
+  var last = getLastCode();
+
+  var homeBox = document.getElementById('homeLastCode');
+  var homeVal = document.getElementById('homeLastCodeValue');
+  if (homeBox && homeVal) {
+    if (last) {
+      homeVal.textContent = last;
+      homeBox.classList.add('show');
+    } else {
+      homeBox.classList.remove('show');
+    }
+  }
+
+  var joinBox = document.getElementById('joinLast');
+  var joinVal = document.getElementById('joinLastValue');
+  if (joinBox && joinVal) {
+    if (last) {
+      joinVal.textContent = last;
+      joinBox.classList.add('show');
+    } else {
+      joinBox.classList.remove('show');
+    }
+  }
+}
+
+function goToJoin() {
+  refreshLastCodeUI();
+  var last = getLastCode();
+  var input = document.getElementById('joinInput');
+  if (input && last) input.value = last;
+  showScreen('join');
+}
+
+/* ---------- NAVEGAÇÃO ---------- */
 function showScreen(name) {
   var all = document.querySelectorAll('.screen');
   for (var i = 0; i < all.length; i++) all[i].classList.remove('active');
@@ -297,24 +406,17 @@ function updateDiag() {
   var dL = document.getElementById('dLib');
   if (dT) dT.textContent = 'Ably Realtime';
   if (dL) {
-    dL.textContent = libOk ? ('carregada v' + (Ably.version || '?')) : 'NÃO CARREGADA';
+    dL.textContent = libOk ? 'carregada (ok)' : 'NÃO CARREGADA';
     dL.className = libOk ? 'green' : 'red';
   }
 
-  var host = '—', env = '—', state = '—';
+  var host = '—', state = '—';
   if (ably) {
-    try {
-      host = ably.connection.connectionManager.host || '—';
-      env = ably.connection.connectionManager.environment || '—';
-    } catch(e) {}
+    try { host = ably.connection.connectionManager.host || '—'; } catch(e) {}
     state = ably.connection.state || '—';
   }
   var dH = document.getElementById('dHost');
-  if (dH) {
-    dH.textContent = host;
-    dH.className = (host.indexOf('local') >= 0 || host.indexOf('Broadcast') >= 0) ? 'red' : '';
-  }
-  var dE = document.getElementById('dEnv'); if (dE) dE.textContent = env;
+  if (dH) dH.textContent = host;
   var dS = document.getElementById('dState'); if (dS) dS.textContent = state;
   var dC = document.getElementById('dClient'); if (dC) dC.textContent = myClientId || '—';
   var dCh = document.getElementById('dChannel'); if (dCh) dCh.textContent = channel ? channel.name : '—';
@@ -342,9 +444,8 @@ function updateDiag() {
 
 function copyDiag() {
   var txt = 'TRANSPORTE: Ably Realtime\n' +
-    'Biblioteca: ' + (typeof Ably !== 'undefined' ? 'carregada v' + Ably.version : 'NÃO CARREGADA') + '\n' +
+    'Biblioteca: ' + (typeof Ably !== 'undefined' ? 'carregada (ok)' : 'NÃO CARREGADA') + '\n' +
     'Host: ' + (ably ? (ably.connection.connectionManager.host || '—') : '—') + '\n' +
-    'Ambiente: ' + (ably ? (ably.connection.connectionManager.environment || '—') : '—') + '\n' +
     'Estado: ' + (ably ? ably.connection.state : '—') + '\n' +
     'Client ID: ' + (myClientId || '—') + '\n' +
     'Canal: ' + (channel ? channel.name : '—') + '\n' +
@@ -368,10 +469,10 @@ function initAbly() {
 
   try {
     ably = new Ably.Realtime({
-  key: API_KEY,
-  clientId: myClientId,
-  echoMessages: true
-  });
+      key: API_KEY,
+      clientId: myClientId,
+      echoMessages: true
+    });
   } catch(e) {
     showError('Erro ao criar cliente Ably: ' + e.message);
     log('ERRO ao criar cliente: ' + e.message);
@@ -400,6 +501,7 @@ function genCode() {
   return c;
 }
 
+/* ---------- APRESENTADOR ---------- */
 function startPresenter() {
   try {
     if (!initAbly()) return;
@@ -427,10 +529,12 @@ function enterPresenterMode() {
     channel.subscribe('state-request', function(){
       log('state-request recebido — respondendo');
       publishSlide();
+      updateViewerCount();
     });
     channel.subscribe('viewer-ready', function(){
       log('viewer-ready recebido — respondendo');
       publishSlide();
+      updateViewerCount();
     });
     channel.subscribe('echo-test', function(msg){
       log('echo recebido de ' + (msg.clientId || '?'));
@@ -449,16 +553,18 @@ function enterPresenterMode() {
         log('presence leave: ' + m.clientId);
         updateViewerCount();
       });
+      channel.presence.subscribe(function(){ updateViewerCount(); });
       log('presence ativo');
     } catch(pe) {
       log('presence falhou (não crítico): ' + pe.message);
     }
 
+    document.getElementById('barCodeValue').textContent = sessionCode;
     showScreen('presenter');
     renderSlide('presenterSlide', currentSlide);
     document.getElementById('presenterCounter').textContent = (currentSlide + 1) + ' / ' + slideCount;
 
-    setTimeout(publishSlide, 500);
+    setTimeout(function(){ publishSlide(); updateViewerCount(); }, 500);
     updateDiag();
   } catch(e) {
     showError('Erro ao iniciar apresentação: ' + e.message);
@@ -475,8 +581,11 @@ function updateViewerCount() {
       for (var i = 0; i < members.length; i++) {
         if (members[i].clientId !== myClientId) others++;
       }
-      var el = document.getElementById('viewerCount');
-      if (el) el.textContent = others > 0 ? ('👥 ' + others + ' assistindo') : '';
+      viewerCount = others;
+      var num = document.getElementById('barViewersNum');
+      var lbl = document.getElementById('barViewersLabel');
+      if (num) num.textContent = others;
+      if (lbl) lbl.textContent = others === 1 ? 'conectado' : 'conectados';
     });
   } catch(e) {}
 }
@@ -511,6 +620,7 @@ function prevSlide() {
   }
 }
 
+/* ---------- ESPECTADOR ---------- */
 function joinSession() {
   try {
     var input = document.getElementById('joinInput');
@@ -520,6 +630,8 @@ function joinSession() {
 
     sessionCode = code;
     role = 'viewer';
+    saveLastCode(code);
+
     var channelName = 's1-' + code;
     channel = ably.channels.get(channelName);
 
@@ -550,6 +662,7 @@ function joinSession() {
       log('presence falhou (não crítico): ' + pe.message);
     }
 
+    document.getElementById('viewerBarCode').textContent = code;
     document.getElementById('waitingCode').textContent = 'Código: ' + code;
     document.getElementById('waitingText').textContent = 'Aguardando o apresentador iniciar...';
     showScreen('waiting');
@@ -610,7 +723,10 @@ function leaveSession() {
   currentSlide = 0;
   recvCount = 0;
   sentCount = 0;
-  document.getElementById('joinInput').value = '';
+  viewerCount = 0;
+  var input = document.getElementById('joinInput');
+  if (input) input.value = '';
+  refreshLastCodeUI();
   showScreen('home');
   log('Sessão encerrada');
 }
@@ -673,8 +789,9 @@ window.addEventListener('load', function(){
     log('ERRO: biblioteca Ably ausente no carregamento');
   } else {
     setDot('yellow', 'Pronto');
-    log('Biblioteca Ably carregada v' + Ably.version);
+    log('Biblioteca Ably carregada (ok)');
   }
+  refreshLastCodeUI();
   updateDiag();
 });
 </script>
