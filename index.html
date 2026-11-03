@@ -368,11 +368,10 @@ function initAbly() {
 
   try {
     ably = new Ably.Realtime({
-      key: API_KEY,
-      clientId: myClientId,
-      environment: 'production',
-      echoMessages: true
-    });
+  key: API_KEY,
+  clientId: myClientId,
+  echoMessages: true
+  });
   } catch(e) {
     showError('Erro ao criar cliente Ably: ' + e.message);
     log('ERRO ao criar cliente: ' + e.message);
