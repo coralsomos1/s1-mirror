@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Teste Ably</title>
+<script src="ably.min.js"></script>
+<style>
+  body { font-family: system-ui, sans-serif; background:#0a0a0f; color:#f2f2f5; padding:24px; }
+  h1 { font-size:20px; margin-bottom:16px; }
+  button { background:#e8b44a; color:#12121a; border:none; padding:14px 22px; border-radius:10px; font-size:16px; font-weight:600; cursor:pointer; }
+  pre { background:#15151d; padding:14px; border-radius:10px; margin-top:18px; font-size:12px; white-space:pre-wrap; word-break:break-all; line-height:1.6; }
+</style>
+</head>
+<body>
+<h1>Teste de conexão Ably</h1>
+<button onclick="testar()">Testar conexão</button>
+<pre id="out">Clique no botão.</pre>
+
+<script>
+function log(msg) {
+  document.getElementById('out').textContent += '\n' + msg;
+}
+
+function testar() {
+  document.getElementById('out').textContent = 'Iniciando...';
+
+  if (typeof Ably === 'undefined') {
+    log('FALHA: objeto Ably não existe.');
+    return;
+  }
+  log('Ably existe. Versão: ' + (Ably.version || 'undefined'));
+
+  var client = new Ably.Realtime({
+    key: 'VEgT6Q.8-6OmA:cpAVi0_Gtfdj7FpD9Sg7TkW40fBBw7295Tj7hz7XkPE',
+    clientId: 'teste-' + Math.random().toString(36).slice(2, 8)
+  });
+
+  client.connection.on('connected', function() {
+    log('CONECTADO com sucesso.');
+    var ch = client.channels.get('s1-TESTE');
+    ch.subscribe('ping', function(msg) {
+      log('MENSAGEM RECEBIDA: ' + JSON.stringify(msg.data));
+    });
+    ch.publish('ping', { ok: true, hora: new Date().toISOString() });
+    log('Mensagem publicada no canal s1-TESTE.');
+  });
+
+  client.connection.on('failed', function(s) {
+    log('FALHOU: ' + (s.reason && s.reason.message ? s.reason.message : 'sem detalhe'));
+  });
+
+  client.connection.on('disconnected', function() {
+    log('Desconectado.');
+  });
+
+  setTimeout(function() {
+    log('Estado após 8s: ' + client.connection.state);
+  }, 8000);
+}
+</script>
+</body>
+</html>
