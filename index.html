@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>S1 Mirror — Somos Um</title>
+<script src="https://cdn.ably.com/lib/ably.min-2.js"></script>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: radial-gradient(circle at 50% 0%, #16161f 0%, #0a0a0f 70%);
+    color:#f2f2f5; min-height:100vh; overflow:hidden;
+  }
+  .screen { display:none; width:100%; height:100vh; }
+  .screen.active { display:flex; flex-direction:column; }
+
+  /* HOME */
+  #home { align-items:center; justify-content:center; padding:24px; gap:14px; }
+  .logo { font-size:clamp(38px,9vw,64px); font-weight:700; letter-spacing:-2px; }
+  .logo span { color:#e8b44a; }
+  .tagline { color:#8a8a99; font-size:15px; letter-spacing:2px; text-transform:uppercase; margin-bottom:26px; }
+  .btn {
+    width:100%; max-width:340px; min-height:56px; border:none; border-radius:14px;
+    font-size:17px; font-weight:600; cursor:pointer; transition:transform .12s, opacity .12s;
+    font-family:inherit;
+  }
+  .btn:active { transform:scale(.97); }
+  .btn-primary { background:#e8b44a; color:#12121a; }
+  .btn-secondary { background:transparent; color:#f2f2f5; border:1.5px solid #33333f; }
+  .btn-ghost { background:#1c1c26; color:#c9c9d4; border:1px solid #2a2a36; }
+  .status-bar {
+    position:fixed; bottom:16px; left:0; right:0; text-align:center;
+    font-size:12px; color:#6a6a7a; display:flex; align-items:center; justify-content:center; gap:7px;
+  }
+  .dot { width:8px; height:8px; border-radius:50%; background:#555; }
+  .dot.green { background:#3ddc84; box-shadow:0 0 8px #3ddc84; }
+  .dot.yellow { background:#e8b44a; animation:pulse 1.2s infinite; }
+  .dot.red { background:#e5484d; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+  /* CODE SCREEN */
+  #code-screen { align-items:center; justify-content:center; padding:24px; gap:22px; }
+  .label { font-size:13px; color:#8a8a99; text-transform:uppercase; letter-spacing:2px; }
+  .code-display {
+    font-size:clamp(56px,16vw,96px); font-weight:700; letter-spacing:14px;
+    color:#e8b44a; padding-left:14px; font-variant-numeric:tabular-nums;
+  }
+  .hint { color:#8a8a99; font-size:14px; text-align:center; max-width:320px; line-height:1.5; }
+
+  /* SLIDE VIEW */
+  #presenter, #viewer { position:relative; }
+  .slide-area {
+    flex:1; display:flex; flex-direction:column; justify-content:center;
+    padding:clamp(28px,6vw,80px); gap:20px;
+  }
+  .slide-title { font-size:clamp(30px,6vw,62px); font-weight:700; line-height:1.1; letter-spacing:-1px; }
+  .slide-body { font-size:clamp(16px,2.4vw,24px); color:#b8b8c8; line-height:1.6; max-width:900px; }
+  .slide-body ul { list-style:none; display:flex; flex-direction:column; gap:10px; }
+  .slide-body li::before { content:"—"; color:#e8b44a; margin-right:10px; }
+  .slide-big { font-size:clamp(44px,11vw,110px); font-weight:700; letter-spacing:-2px; }
+  .slide-big span { color:#e8b44a; }
+
+  .controls {
+    display:flex; align-items:center; justify-content:center; gap:14px;
+    padding:14px 18px calc(14px + env(safe-area-inset-bottom));
+    background:#0f0f16; border-top:1px solid #1e1e28;
+  }
+  .ctrl-btn {
+    background:#1c1c26; border:1px solid #2a2a36; color:#f2f2f5;
+    min-height:48px; padding:0 20px; border-radius:12px; font-size:15px;
+    font-weight:600; cursor:pointer; font-family:inherit;
+  }
+  .ctrl-btn:active { background:#262633; }
+  .counter { font-size:15px; color:#8a8a99; min-width:64px; text-align:center; font-variant-numeric:tabular-nums; }
+  .viewers { font-size:13px; color:#6a6a7a; margin-left:auto; }
+
+  .top-right {
+    position:absolute; top:14px; right:14px; display:flex; gap:8px; z-index:20;
+  }
+  .icon-btn {
+    width:44px; height:44px; border-radius:11px; background:rgba(28,28,38,.85);
+    border:1px solid #2a2a36; color:#c9c9d4; font-size:17px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; backdrop-filter:blur(8px);
+  }
+
+  /* JOIN */
+  #join { align-items:center; justify-content:center; padding:24px; gap:18px; }
+  .code-input {
+    width:100%; max-width:300px; min-height:76px; background:#15151d;
+    border:1.5px solid #2a2a36; border-radius:14px; color:#e8b44a;
+    font-size:38px; font-weight:700; letter-spacing:12px; text-align:center;
+    text-transform:uppercase; font-family:inherit; padding-left:12px;
+  }
+  .code-input:focus { outline:none; border-color:#e8b44a; }
+
+  /* WAITING */
+  #waiting { align-items:center; justify-content:center; padding:24px; gap:20px; text-align:center; }
+  .spinner {
+    width:44px; height:44px; border:3px solid #2a2a36; border-top-color:#e8b44a;
+    border-radius:50%; animation:spin .9s linear infinite;
+  }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  /* DIAGNOSTIC */
+  #diag {
+    position:fixed; inset:0; background:#08080c; z-index:100; display:none;
+    flex-direction:column; padding:16px; overflow-y:auto; font-size:12px;
+  }
+  #diag.open { display:flex; }
+  .diag-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
+  .diag-title { font-size:16px; font-weight:700; color:#e8b44a; }
+  .diag-section { margin-bottom:16px; }
+  .diag-section h4 {
+    font-size:11px; text-transform:uppercase; letter-spacing:1.5px;
+    color:#6a6a7a; margin-bottom:7px; border-bottom:1px solid #1e1e28; padding-bottom:5px;
+  }
+  .diag-row { display:flex; justify-content:space-between; padding:4px 0; gap:12px; }
+  .diag-row span:first-child { color:#8a8a99; flex-shrink:0; }
+  .diag-row span:last-child { color:#e8e8f0; text-align:right; word-break:break-all; font-family:ui-monospace,monospace; }
+  .diag-list {
+    font-family:ui-monospace,monospace; font-size:11px; color:#9a9aa8;
+    background:#0f0f16; border-radius:8px; padding:9px; max-height:170px; overflow-y:auto;
+    line-height:1.6; white-space:pre-wrap; word-break:break-all;
+  }
+  .diag-actions { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+  .diag-btn {
+    background:#1c1c26; border:1px solid #2a2a36; color:#c9c9d4; padding:9px 14px;
+    border-radius:9px; font-size:12px; cursor:pointer; font-family:inherit;
+  }
+  .red { color:#e5484d !important; }
+  .green { color:#3ddc84 !important; }
+
+  .error-banner {
+    position:fixed; top:0; left:0; right:0; background:#e5484d; color:#fff;
+    padding:11px 16px; font-size:13px; text-align:center; z-index:200; display:none;
+  }
+  .error-banner.show { display:block; }
+</style>
+</head>
+<body>
+
+<div class="error-banner" id="errorBanner"></div>
+
+<!-- HOME -->
+<div class="screen active" id="home">
+  <div class="logo">S1 <span>Mirror</span></div>
+  <div class="tagline">Somos Um</div>
+  <button class="btn btn-primary" onclick="startPresenter()">Apresentar</button>
+  <button class="btn btn-secondary" onclick="showScreen('join')">Assistir</button>
+  <div class="status-bar">
+    <div class="dot" id="homeDot"></div>
+    <span id="homeStatus">Inicializando...</span>
+  </div>
+</div>
+
+<!-- CODE SCREEN -->
+<div class="screen" id="code-screen">
+  <div class="label">Código da sessão</div>
+  <div class="code-display" id="sessionCode">----</div>
+  <div class="hint">Compartilhe este código com quem vai assistir</div>
+  <button class="btn btn-ghost" style="max-width:300px" onclick="copyCode()">Copiar código</button>
+  <button class="btn btn-primary" style="max-width:300px" onclick="enterPresenterMode()">Iniciar apresentação</button>
+</div>
+
+<!-- JOIN -->
+<div class="screen" id="join">
+  <div class="label">Digite o código</div>
+  <input class="code-input" id="joinInput" maxlength="4" autocomplete="off" autocapitalize="characters" placeholder="----">
+  <button class="btn btn-primary" style="max-width:300px" onclick="joinSession()">Entrar</button>
+  <button class="btn btn-ghost" style="max-width:300px" onclick="showScreen('home')">Voltar</button>
+</div>
+
+<!-- WAITING -->
+<div class="screen" id="waiting">
+  <div class="spinner"></div>
+  <div class="hint" id="waitingText">Aguardando o apresentador iniciar...</div>
+  <div class="hint" id="waitingCode" style="color:#e8b44a;font-weight:600"></div>
+  <button class="btn btn-ghost" style="max-width:300px" onclick="leaveSession()">Sair</button>
+</div>
+
+<!-- PRESENTER -->
+<div class="screen" id="presenter">
+  <div class="top-right">
+    <button class="icon-btn" onclick="toggleDiag()">⚙</button>
+    <button class="icon-btn" onclick="leaveSession()">✕</button>
+  </div>
+  <div class="slide-area" id="presenterSlide"></div>
+  <div class="controls">
+    <button class="ctrl-btn" onclick="prevSlide()">◀ Anterior</button>
+    <div class="counter" id="presenterCounter">1 / 8</div>
+    <button class="ctrl-btn" onclick="nextSlide()">Próximo ▶</button>
+    <div class="viewers" id="viewerCount"></div>
+  </div>
+</div>
+
+<!-- VIEWER -->
+<div class="screen" id="viewer">
+  <div class="top-right">
+    <button class="icon-btn" onclick="toggleDiag()">⚙</button>
+    <button class="icon-btn" onclick="leaveSession()">✕</button>
+  </div>
+  <div class="slide-area" id="viewerSlide"></div>
+</div>
+
+<!-- DIAGNOSTIC -->
+<div id="diag">
+  <div class="diag-head">
+    <div class="diag-title">Diagnóstico</div>
+    <button class="diag-btn" onclick="toggleDiag()">Fechar</button>
+  </div>
+
+  <div class="diag-section">
+    <h4>Transporte</h4>
+    <div class="diag-row"><span>Tipo</span><span id="dTransport">—</span></div>
+    <div class="diag-row"><span>Biblioteca</span><span id="dLib">—</span></div>
+    <div class="diag-row"><span>Host</span><span id="dHost">—</span></div>
+    <div class="diag-row"><span>Ambiente</span><span id="dEnv">—</span></div>
+  </div>
+
+  <div class="diag-section">
+    <h4>Conexão</h4>
+    <div class="diag-row"><span>Estado</span><span id="dState">—</span></div>
+    <div class="diag-row"><span>Client ID</span><span id="dClient">—</span></div>
+    <div class="diag-row"><span>Canal</span><span id="dChannel">—</span></div>
+    <div class="diag-row"><span>Papel</span><span id="dRole">—</span></div>
+    <div class="diag-row"><span>Membros</span><span id="dMembers">—</span></div>
+  </div>
+
+  <div class="diag-section">
+    <h4>Sincronização</h4>
+    <div class="diag-row"><span>Slide atual</span><span id="dSlide">—</span></div>
+    <div class="diag-row"><span>Recebidas</span><span id="dRecv">0</span></div>
+    <div class="diag-row"><span>Enviadas</span><span id="dSent">0</span></div>
+  </div>
+
+  <div class="diag-section">
+    <h4>Teste de eco</h4>
+    <div class="diag-actions">
+      <button class="diag-btn" onclick="runEchoTest()">Testar eco</button>
+    </div>
+    <div class="diag-row"><span>Resultado</span><span id="dEcho">Não executado</span></div>
+  </div>
+
+  <div class="diag-section">
+    <h4>Log de eventos</h4>
+    <div class="diag-list" id="dLog">Nenhum evento registrado.</div>
+    <div class="diag-actions">
+      <button class="diag-btn" onclick="copyDiag()">Copiar diagnóstico</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   S1 MIRROR — Somos Um
+   Transporte ÚNICO: Ably Realtime. Sem fallback local.
+   ============================================================ */
+
+const API_KEY = 'VEgT6Q.8-6OmA:cpAVi0_Gtfdj7FpD9Sg7TkW40fBBw7295Tj7hz7XkPE';
+
+let ably = null;
+let channel = null;
+let currentScreen = 'home';
+let role = null;
+let sessionCode = '';
+let currentSlide = 0;
+let slideCount = 8;
+let recvCount = 0;
+let sentCount = 0;
+let eventLog = [];
+let echoResult = 'Não executado';
+let stateRequestTimer = null;
+let stateRequestAttempts = 0;
+
+/* ---------- SLIDES DE EXEMPLO ---------- */
+const slides = [
+  { type:'big', title:'SOMOS <span>UM</span>', body:'S1 — Apresentação ao vivo' },
+  { type:'normal', title:'Quem somos', body:'<ul><li>Um grupo que faz música com identidade própria</li><li>Encontros que viram experiência</li><li>Presença de palco e conexão real</li></ul>' },
+  { type:'normal', title:'Nossa música', body:'<ul><li>Repertório que mistura clássicos e novidades</li><li>Arranjos próprios com assinatura do grupo</li><li>Energia ao vivo em cada apresentação</li></ul>' },
+  { type:'normal', title:'Formação', body:'<ul><li>Voz e instrumentos em equilíbrio</li><li>Músicos que se completam no palco</li><li>Time que ensaia junto e cresce junto</li></ul>' },
+  { type:'normal', title:'Onde nos apresentamos', body:'<ul><li>Eventos corporativos e celebrações</li><li>Casamentos e festas privadas</li><li>Casas de show e festivais</li></ul>' },
+  { type:'normal', title:'Repertório', body:'<ul><li>MPB e música popular brasileira</li><li>Pop e rock em versões acústicas</li><li>Gospel e soul</li><li>Clássicos que todo mundo canta</li></ul>' },
+  { type:'normal', title:'Próximos passos', body:'<ul><li>Novas apresentações confirmadas</li><li>Gravação de material inédito</li><li>Expansão do repertório</li></ul>' },
+  { type:'big', title:'OBRIGADO', body:'Somos Um — S1' }
+];
+
+/* ---------- NAVEGAÇÃO DE TELAS ---------- */
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById(name);
+  if (el) el.classList.add('active');
+  currentScreen = name;
+}
+
+function toggleDiag() {
+  document.getElementById('diag').classList.toggle('open');
+  updateDiag();
+}
+
+/* ---------- LOG ---------- */
+function log(msg) {
+  const t = new Date().toLocaleTimeString('pt-BR', { hour12:false });
+  eventLog.unshift(t + ' · ' + msg);
+  if (eventLog.length > 40) eventLog.pop();
+  updateDiag();
+}
+
+/* ---------- DIAGNÓSTICO ---------- */
+function updateDiag() {
+  const libOk = typeof Ably !== 'undefined';
+  document.getElementById('dTransport').textContent = 'Ably Realtime';
+  document.getElementById('dLib').textContent = libOk ? ('carregada v' + (Ably.version || '?')) : 'NÃO CARREGADA';
+  document.getElementById('dLib').className = libOk ? 'green' : 'red';
+
+  let host = '—', env = '—', state = '—';
+  if (ably) {
+    try {
+      host = ably.connection.connectionManager.host || '—';
+      env = ably.connection.connectionManager.environment || '—';
+    } catch(e) {}
+    state = ably.connection.state || '—';
+  }
+  document.getElementById('dHost').textContent = host;
+  document.getElementById('dHost').className = (host.indexOf('local') >= 0 || host.indexOf('Broadcast') >= 0) ? 'red' : '';
+  document.getElementById('dEnv').textContent = env;
+  document.getElementById('dState').textContent = state;
+  document.getElementById('dClient').textContent = ably ? (ably.auth.clientId || '—') : '—';
+  document.getElementById('dChannel').textContent = channel ? channel.name : '—';
+  document.getElementById('dRole').textContent = role || '—';
+  document.getElementById('dSlide').textContent = (currentSlide + 1) + ' / ' + slideCount;
+  document.getElementById('dRecv').textContent = recvCount;
+  document.getElementById('dSent').textContent = sentCount;
+  document.getElementById('dEcho').textContent = echoResult;
+  document.getElementById('dLog').textContent = eventLog.length ? eventLog.join('\n') : 'Nenhum evento registrado.';
+
+  if (channel && channel.presence) {
+    channel.presence.get((err, members) => {
+      if (!err && members) {
+        document.getElementById('dMembers').textContent = members.length + ' (' + members.map(m => m.clientId).join(', ') + ')';
+      }
+    });
+  }
+}
+
+function copyDiag() {
+  const txt = [
+    'TRANSPORTE: Ably Realtime',
+    'Biblioteca: ' + (typeof Ably !== 'undefined' ? 'carregada v' + Ably.version : 'NÃO CARREGADA'),
+    'Host: ' + (ably ? (ably.connection.connectionManager.host || '—') : '—'),
+    'Ambiente: ' + (ably ? (ably.connection.connectionManager.environment || '—') : '—'),
+    'Estado: ' + (ably ? ably.connection.state : '—'),
+    'Client ID: ' + (ably ? ably.auth.clientId : '—'),
+    'Canal: ' + (channel ? channel.name : '—'),
+    'Papel: ' + (role || '—'),
+    'Slide: ' + (currentSlide + 1) + '/' + slideCount,
+    'Recebidas: ' + recvCount,
+    'Enviadas: ' + sentCount,
+    'Eco: ' + echoResult,
+    '',
+    'LOG:',
+    eventLog.join('\n')
+  ].join('\n');
+  navigator.clipboard.writeText(txt).then(() => {
+    log('Diagnóstico copiado');
+  }).catch(() => {
+    log('Falha ao copiar diagnóstico');
+  });
+}
+
+/* ---------- ERRO VISÍVEL ---------- */
+function showError(msg) {
+  const b = document.getElementById('errorBanner');
+  b.textContent = msg;
+  b.classList.add('show');
+  setTimeout(() => b.classList.remove('show'), 9000);
+}
+
+/* ---------- INICIALIZAÇÃO DO ABLY ---------- */
+function initAbly() {
+  if (typeof Ably === 'undefined') {
+    showError('ERRO: A biblioteca do Ably não carregou. Verifique a internet e recarregue.');
+    log('ERRO: biblioteca Ably ausente');
+    return false;
+  }
+  if (ably) return true;
+
+  const clientId = 's1-' + Math.random().toString(36).slice(2, 10);
+  ably = new Ably.Realtime({
+    key: API_KEY,
+    clientId: clientId,
+    environment: 'production',
+    echoMessages: true
+  });
+
+  ably.connection.on('connected', () => {
+    log('Conexão: connected');
+    setDot('green', 'Conectado');
+    updateDiag();
+  });
+  ably.connection.on('connecting', () => { log('Conexão: connecting'); setDot('yellow', 'Conectando...'); });
+  ably.connection.on('disconnected', () => { log('Conexão: disconnected'); setDot('yellow', 'Desconectado'); });
+  ably.connection.on('suspended', () => { log('Conexão: suspended'); setDot('yellow', 'Suspenso'); });
+  ably.connection.on('failed', (s) => {
+    log('Conexão: FAILED — ' + (s.reason && s.reason.message ? s.reason.message : 'motivo desconhecido'));
+    setDot('red', 'Falhou');
+    showError('Falha na conexão com o Ably: ' + (s.reason && s.reason.message ? s.reason.message : 'erro desconhecido'));
+  });
+
+  log('Cliente Ably criado — clientId ' + clientId);
+  return true;
+}
+
+function setDot(color, text) {
+  const dot = document.getElementById('homeDot');
+  const st = document.getElementById('homeStatus');
+  if (dot) dot.className = 'dot ' + color;
+  if (st) st.textContent = text;
+}
+
+/* ---------- GERAR CÓDIGO ---------- */
+function genCode() {
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  let c = '';
+  for (let i = 0; i < 4; i++) c += chars[Math.floor(Math.random() * chars.length)];
+  return c;
+}
+
+/* ---------- APRESENTADOR ---------- */
+function startPresenter() {
+  if (!initAbly()) return;
+  sessionCode = genCode();
+  role = 'presenter';
+  document.getElementById('sessionCode').textContent = sessionCode;
+  showScreen('code-screen');
+  log('Sessão criada: ' + sessionCode);
+}
+
+function copyCode() {
+  navigator.clipboard.writeText(sessionCode).then(() => log('Código copiado'));
+}
+
+function enterPresenterMode() {
+  const channelName = 's1-' + sessionCode;
+  channel = ably.channels.get(channelName);
+
+  // 1. ASSINAR PRIMEIRO
+  channel.subscribe('state-request', () => {
+    log('state-request recebido — respondendo');
+    publishSlide();
+  });
+  channel.subscribe('viewer-ready', () => {
+    log('viewer-ready recebido — respondendo');
+    publishSlide();
+  });
+  channel.subscribe('echo-test', (msg) => {
+    log('echo recebido de ' + (msg.clientId || '?'));
+  });
+  log('subscribe(state-request) em ' + channelName);
+  log('subscribe(viewer-ready) em ' + channelName);
+
+  // 2. PRESENCE DEPOIS, SEM TRAVAR
+  try {
+    channel.presence.enter();
+    channel.presence.subscribe('enter', (m) => {
+      log('presence enter: ' + m.clientId);
+      publishSlide();
+      updateViewerCount();
+    });
+    channel.presence.subscribe('leave', (m) => {
+      log('presence leave: ' + m.clientId);
+      updateViewerCount();
+    });
+    channel.presence.subscribe(() => updateViewerCount());
+    log('presence ativo');
+  } catch(e) {
+    log('presence falhou (não crítico): ' + e.message);
+  }
+
+  showScreen('presenter');
+  renderSlide('presenterSlide', currentSlide);
+  document.getElementById('presenterCounter').textContent = (currentSlide + 1) + ' / ' + slideCount;
+
+  // 3. PUBLICAR ESTADO INICIAL
+  setTimeout(publishSlide, 400);
+  updateDiag();
+}
+
+function updateViewerCount() {
+  if (!channel) return;
+  channel.presence.get((err, members) => {
+    if (err || !members) return;
+    const others = members.filter(m => m.clientId !== ably.auth.clientId).length;
+    const el = document.getElementById('viewerCount');
+    if (el) el.textContent = others > 0 ? ('👥 ' + others + ' assistindo') : '';
+  });
+}
+
+function publishSlide() {
+  if (!channel) return;
+  channel.publish('slide', { index: currentSlide, total: slideCount });
+  sentCount++;
+  log('slide publicado: ' + (currentSlide + 1));
+  updateDiag();
+}
+
+function nextSlide() {
+  if (currentSlide < slideCount - 1) {
+    currentSlide++;
+    renderSlide('presenterSlide', currentSlide);
+    document.getElementById('presenterCounter').textContent = (currentSlide + 1) + ' / ' + slideCount;
+    publishSlide();
+  }
+}
+
+function prevSlide() {
+  if (currentSlide > 0) {
+    currentSlide--;
+    renderSlide('presenterSlide', currentSlide);
+    document.getElementById('presenterCounter').textContent = (currentSlide + 1) + ' / ' + slideCount;
+    publishSlide();
+  }
+}
+
+/* ---------- ESPECTADOR ---------- */
+function joinSession() {
+  const input = document.getElementById('joinInput');
+  const code = (input.value || '').trim().toUpperCase();
+  if (code.length !== 4) { showError('Digite o código de 4 caracteres.'); return; }
+  if (!initAbly()) return;
+
+  sessionCode = code;
+  role = 'viewer';
+  const channelName = 's1-' + code;
+  channel = ably.channels.get(channelName);
+
+  // 1. ASSINAR PRIMEIRO
+  channel.subscribe('slide', (msg) => {
+    recvCount++;
+    if (msg.data && typeof msg.data.index === 'number') {
+      currentSlide = msg.data.index;
+      slideCount = msg.data.total || slideCount;
+      renderSlide('viewerSlide', currentSlide);
+      showScreen('viewer');
+      stopStateRequests();
+      log('slide recebido: ' + (currentSlide + 1));
+    }
+    updateDiag();
+  });
+  channel.subscribe('echo-test', (msg) => {
+    if (msg.clientId !== ably.auth.clientId) log('echo de outro cliente: ' + msg.clientId);
+  });
+  log('subscribe(slide) em ' + channelName);
+
+  // 2. PRESENCE
+  try {
+    channel.presence.enter();
+    channel.presence.subscribe('leave', (m) => {
+      if (m.clientId !== ably.auth.clientId) log('apresentador saiu');
+    });
+    log('presence ativo');
+  } catch(e) {
+    log('presence falhou (não crítico): ' + e.message);
+  }
+
+  document.getElementById('waitingCode').textContent = 'Código: ' + code;
+  document.getElementById('waitingText').textContent = 'Aguardando o apresentador iniciar...';
+  showScreen('waiting');
+
+  // 3. PEDIR ESTADO ATIVAMENTE
+  startStateRequests();
+  updateDiag();
+}
+
+function startStateRequests() {
+  stopStateRequests();
+  stateRequestAttempts = 0;
+  const tick = () => {
+    if (!channel) return;
+    stateRequestAttempts++;
+    channel.publish('state-request', { code: sessionCode, from: ably.auth.clientId });
+    sentCount++;
+    log('state-request tentativa ' + stateRequestAttempts);
+    if (stateRequestAttempts >= 8) {
+      stopStateRequests();
+      document.getElementById('waitingText').innerHTML =
+        'Nenhum slide recebido.<br>Verifique se o apresentador iniciou e se o código é o mesmo.';
+      log('Sincronização falhou após 8 tentativas');
+    }
+    updateDiag();
+  };
+  tick();
+  stateRequestTimer = setInterval(tick, 2200);
+}
+
+function stopStateRequests() {
+  if (stateRequestTimer) { clearInterval(stateRequestTimer); stateRequestTimer = null; }
+}
+
+/* ---------- RENDER ---------- */
+function renderSlide(targetId, index) {
+  const s = slides[index] || slides[0];
+  const el = document.getElementById(targetId);
+  if (!el) return;
+  if (s.type === 'big') {
+    el.innerHTML = '<div class="slide-big">' + s.title + '</div><div class="slide-body">' + s.body + '</div>';
+  } else {
+    el.innerHTML = '<div class="slide-title">' + s.title + '</div><div class="slide-body">' + s.body + '</div>';
+  }
+}
+
+/* ---------- SAIR ---------- */
+function leaveSession() {
+  stopStateRequests();
+  try { if (channel) { channel.presence.leave(); channel.detach(); } } catch(e) {}
+  channel = null;
+  role = null;
+  sessionCode = '';
+  currentSlide = 0;
+  recvCount = 0;
+  sentCount = 0;
+  document.getElementById('joinInput').value = '';
+  showScreen('home');
+  log('Sessão encerrada');
+}
+
+/* ---------- TESTE DE ECO ---------- */
+function runEchoTest() {
+  if (!channel) { echoResult = 'Conecte-se a um canal primeiro'; updateDiag(); return; }
+  echoResult = 'Testando...';
+  updateDiag();
+  const ts = Date.now();
+  let got = false;
+  const handler = (msg) => {
+    if (msg.data && msg.data.ts === ts) {
+      got = true;
+      echoResult = 'Eco OK — o Ably está entregando mensagens neste canal';
+      log('Eco OK');
+      updateDiag();
+      channel.unsubscribe('echo-test', handler);
+    }
+  };
+  channel.subscribe('echo-test', handler);
+  channel.publish('echo-test', { ts: ts, clientId: ably.auth.clientId });
+  sentCount++;
+  log('subscribe(echo-test) em ' + channel.name);
+  setTimeout(() => {
+    if (!got) {
+      echoResult = 'Eco FALHOU — nenhuma mensagem retornou';
+      log('Eco FALHOU');
+      updateDiag();
+      channel.unsubscribe('echo-test', handler);
+    }
+  }, 5000);
+}
+
+/* ---------- TECLADO ---------- */
+document.addEventListener('keydown', (e) => {
+  if (currentScreen !== 'presenter') return;
+  if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); nextSlide(); }
+  if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); prevSlide(); }
+});
+
+/* ---------- SWIPE ---------- */
+let touchStartX = 0;
+document.addEventListener('touchstart', (e) => { touchStartX = e.changedTouches[0].screenX; }, {passive:true});
+document.addEventListener('touchend', (e) => {
+  if (currentScreen !== 'presenter') return;
+  const dx = e.changedTouches[0].screenX - touchStartX;
+  if (dx < -50) nextSlide();
+  if (dx > 50) prevSlide();
+}, {passive:true});
+
+/* ---------- INPUT DO CÓDIGO ---------- */
+document.getElementById('joinInput').addEventListener('input', (e) => {
+  e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4);
+});
+document.getElementById('joinInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') joinSession();
+});
+
+/* ---------- BOOT ---------- */
+window.addEventListener('load', () => {
+  if (typeof Ably === 'undefined') {
+    showError('ERRO: A biblioteca do Ably não carregou. Verifique a internet e recarregue.');
+    setDot('red', 'Biblioteca ausente');
+    log('ERRO: biblioteca Ably ausente no carregamento');
+  } else {
+    setDot('yellow', 'Pronto');
+    log('Biblioteca Ably carregada v' + Ably.version);
+  }
+  updateDiag();
+});
+</script>
+</body>
+</html>
