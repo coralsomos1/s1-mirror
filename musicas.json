@@ -1,0 +1,11 @@
+{
+  "musicas": [
+    {
+      "id": "bate-o-sino",
+      "titulo": "Bate o Sino",
+      "pasta": "musicas/bate-o-sino",
+      "total": 15,
+      "extensao": "jpg"
+    }
+  ]
+}
