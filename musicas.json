@@ -22,10 +22,24 @@
       "extensao": "jpg"
     },
     {
+      "id": "holy-forever",
+      "titulo": "Holy Forever",
+      "pasta": "musicas/holy-forever",
+      "total": 10,
+      "extensao": "jpg"
+    },
+    {
       "id": "natal-de-joinville",
       "titulo": "Natal de Joinville",
       "pasta": "musicas/natal-de-joinville",
       "total": 14,
+      "extensao": "jpg"
+    },
+    {
+      "id": "silent-night",
+      "titulo": "Silent Night",
+      "pasta": "musicas/silent-night",
+      "total": 5,
       "extensao": "jpg"
     },
     {
