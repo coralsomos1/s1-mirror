@@ -94,6 +94,30 @@
     font-style:italic;
   }
 
+  /* ---------- CRONÔMETRO NA BARRA LATERAL ---------- */
+  .timer-block {
+    background:#15151d; border:1px solid #2a2a36; border-radius:12px;
+    padding:12px; display:flex; flex-direction:column; gap:9px;
+  }
+  .timer-block-label {
+    font-size:10px; color:#6a6a7a; text-transform:uppercase;
+    letter-spacing:1.5px; font-weight:600;
+  }
+  .timer-block-value {
+    font-size:clamp(26px,3vw,34px); font-weight:700; color:#e8b44a;
+    font-variant-numeric:tabular-nums; letter-spacing:2px;
+    text-align:center; line-height:1;
+  }
+  .timer-reset-btn {
+    width:100%; min-height:36px; border-radius:9px;
+    background:#3a2f14; border:1px solid #6b5520; color:#e8b44a;
+    font-size:12px; font-weight:700; letter-spacing:1px;
+    cursor:pointer; font-family:inherit;
+    display:flex; align-items:center; justify-content:center; gap:6px;
+  }
+  .timer-reset-btn:active { background:#4a3c1a; border-color:#8a6f2a; }
+  .timer-reset-btn .ico { font-size:14px; line-height:1; }
+
   .members-block {
     margin-top:6px; padding-top:12px; border-top:1px solid #1e1e28;
     display:flex; flex-direction:column; gap:8px; flex:1; min-height:0;
@@ -139,23 +163,6 @@
     padding:7px 12px; font-size:13px; color:#c9c9d4;
   }
   .bar-viewers-num { font-weight:700; color:#3ddc84; font-size:15px; }
-  .bar-timer {
-    display:flex; align-items:center; gap:6px;
-    background:#15151d; border:1px solid #2a2a36; border-radius:10px;
-    padding:5px 6px 5px 12px; font-size:13px; color:#c9c9d4;
-  }
-  .bar-timer-value {
-    font-weight:700; color:#e8b44a; font-size:15px;
-    font-variant-numeric:tabular-nums; letter-spacing:1px;
-  }
-  .timer-reset-btn {
-    width:28px; height:28px; border-radius:7px;
-    background:#1c1c26; border:1px solid #2a2a36; color:#8a8a99;
-    font-size:13px; cursor:pointer; font-family:inherit;
-    display:flex; align-items:center; justify-content:center;
-    flex-shrink:0; line-height:1;
-  }
-  .timer-reset-btn:active { background:#2a2a36; color:#e8b44a; }
   .bar-spacer { flex:1; }
 
   .finish-btn {
@@ -341,13 +348,17 @@
     .mirror-panel {
       width:100%; border-left:none; border-top:1px solid #1e1e28;
       flex-direction:row; align-items:flex-start; gap:12px; padding:10px 14px;
-      max-height:150px; overflow-y:auto;
+      max-height:170px; overflow-y:auto;
     }
     .mirror-panel .mirror-label { display:none; }
     .mirror-preview { aspect-ratio:auto; padding:8px 12px; flex:1; min-height:70px; }
     .mirror-preview .slide-title { font-size:13px; }
     .mirror-preview .slide-body { font-size:9px; }
     .mirror-next-num { margin:0; white-space:nowrap; }
+    .timer-block { padding:8px 10px; min-width:110px; }
+    .timer-block-label { display:none; }
+    .timer-block-value { font-size:20px; }
+    .timer-reset-btn { min-height:30px; font-size:10px; }
     .members-block { margin:0; padding:0; border:none; flex:1; }
     .members-list { max-height:80px; }
   }
@@ -413,10 +424,6 @@
       <span class="bar-viewers-num" id="barViewersNum">0</span>
       <span id="barViewersLabel">conectados</span>
     </div>
-    <div class="bar-timer">
-      <span class="bar-timer-value" id="barTimerValue">00:00</span>
-      <button class="timer-reset-btn" onclick="resetTimerClick()" title="Zerar cronômetro">↺</button>
-    </div>
     <div class="bar-spacer"></div>
     <button class="icon-btn" onclick="toggleFullscreen()" title="Tela cheia">⛶</button>
     <button class="icon-btn" onclick="toggleDiag()" title="Diagnóstico">⚙</button>
@@ -429,6 +436,14 @@
       <div class="mirror-label">A seguir</div>
       <div class="mirror-preview" id="mirrorPreview"></div>
       <div class="mirror-next-num" id="mirrorNextNum">—</div>
+
+      <div class="timer-block">
+        <div class="timer-block-label">Tempo de apresentação</div>
+        <div class="timer-block-value" id="barTimerValue">00:00</div>
+        <button class="timer-reset-btn" onclick="resetTimerClick()">
+          <span class="ico">↺</span> ZERAR
+        </button>
+      </div>
 
       <div class="members-block">
         <div class="members-head">
@@ -619,7 +634,6 @@ function resetTimer() {
   if (el) el.textContent = '00:00';
 }
 
-/* botão de zerar cronômetro */
 function resetTimerClick() {
   elapsedMs = 0;
   startTime = Date.now();
@@ -948,7 +962,6 @@ function startPresenter() {
   }
 }
 
-/* volta da tela de código para a inicial */
 function cancelPresenterSetup() {
   sessionCode = '';
   role = null;
@@ -1236,7 +1249,6 @@ function endPresentation() {
     }
   } catch(e) {}
 
-  /* mostra a mesma tela de encerramento no apresentador */
   var t = document.getElementById('endedTimeValue');
   if (t) t.textContent = finalText;
 
