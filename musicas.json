@@ -6,6 +6,13 @@
       "pasta": "musicas/bate-o-sino",
       "total": 15,
       "extensao": "jpg"
+    },
+    {
+      "id": "natal-de-joinville",
+      "titulo": "Natal de Joinville",
+      "pasta": "musicas/natal-de-joinville",
+      "total": 14,
+      "extensao": "jpg"
     }
   ]
 }
