@@ -341,7 +341,7 @@
     <div class="diag-row"><span>Canal</span><span id="dChannel">—</span></div>
     <div class="diag-row"><span>Papel</span><span id="dRole">—</span></div>
     <div class="diag-row"><span>Membros no canal</span><span id="dMembers">—</span></div>
-    <div class="diag-row"><span>Espectadores</span><span id="dViewers">—</span></div>
+    <div class="diag-row"><span>Espectadores ativos</span><span id="dViewers">—</span></div>
     <div class="diag-row"><span>Tela cheia</span><span id="dFullscreen">—</span></div>
     <div class="diag-row"><span>Wake Lock</span><span id="dWake">—</span></div>
   </div>
@@ -389,10 +389,14 @@ var presencePollTimer = null;
 var wakeLock = null;
 var presenterOnline = null;
 
-/* mapa local de membros: clientId -> true */
+/* mapa de membros: clientId -> timestamp da última atividade */
 var memberMap = {};
+var heartbeatTimer = null;
+var cleanupTimer = null;
 
-var CODE_TTL_MS = 60 * 60 * 1000; /* 60 minutos */
+var CODE_TTL_MS = 60 * 60 * 1000;
+var HEARTBEAT_INTERVAL = 4000;    /* espectador envia sinal a cada 4s */
+var MEMBER_TIMEOUT = 10000;       /* remove quem não sinaliza há 10s */
 
 var slides = [
   { type:'big', title:'SOMOS <span>UM</span>', body:'S1 — Apresentação ao vivo' },
@@ -482,7 +486,7 @@ document.addEventListener('visibilitychange', function(){
   }
 });
 
-/* ---------- CÓDIGO SALVO (com validade de 60 min) ---------- */
+/* ---------- CÓDIGO SALVO (60 min) ---------- */
 function saveLastCode(code) {
   try {
     localStorage.setItem('s1_last_code', code);
@@ -524,7 +528,6 @@ function refreshLastCodeUI() {
 
 function goToJoin() {
   refreshLastCodeUI();
-  /* NÃO preenche o campo — o código aparece apenas como dica abaixo */
   var input = document.getElementById('joinInput');
   if (input) input.value = '';
   showScreen('join');
@@ -624,7 +627,7 @@ function copyDiag() {
     'Client ID: ' + (myClientId || '—') + '\n' +
     'Canal: ' + (channel ? channel.name : '—') + '\n' +
     'Papel: ' + (role || '—') + '\n' +
-    'Espectadores: ' + viewerCount + '\n' +
+    'Espectadores ativos: ' + viewerCount + '\n' +
     'Slide: ' + (currentSlide + 1) + '/' + slideCount + '\n' +
     'Recebidas: ' + recvCount + '\n' +
     'Enviadas: ' + sentCount + '\n' +
@@ -646,7 +649,9 @@ function initAbly() {
     ably = new Ably.Realtime({
       key: API_KEY,
       clientId: myClientId,
-      echoMessages: true
+      echoMessages: true,
+      disconnectedRetryTimeout: 5000,
+      suspendedRetryTimeout: 8000
     });
   } catch(e) {
     showError('Erro ao criar cliente Ably: ' + e.message);
@@ -715,24 +720,26 @@ function enterPresenterMode() {
     channel.subscribe('echo-test', function(msg){
       log('echo recebido de ' + (msg.clientId || '?'));
     });
-    log('subscribe(state-request) em ' + channelName);
-    log('subscribe(viewer-ready) em ' + channelName);
+
+    /* sinal de vida do espectador */
+    channel.subscribe('heartbeat', function(msg){
+      if (msg.clientId && msg.clientId !== myClientId) {
+        memberMap[msg.clientId] = Date.now();
+      }
+    });
+    log('subscribe(heartbeat) em ' + channelName);
 
     try {
       channel.presence.enter();
       channel.presence.subscribe('enter', function(m){
         log('presence enter: ' + m.clientId);
-        memberMap[m.clientId] = true;
+        if (m.clientId !== myClientId) memberMap[m.clientId] = Date.now();
         publishSlide();
         updateViewerCount();
       });
       channel.presence.subscribe('leave', function(m){
         log('presence leave: ' + m.clientId);
         delete memberMap[m.clientId];
-        updateViewerCount();
-      });
-      channel.presence.subscribe('update', function(m){
-        if (m && m.clientId) memberMap[m.clientId] = true;
         updateViewerCount();
       });
       log('presence ativo');
@@ -748,6 +755,7 @@ function enterPresenterMode() {
 
     setTimeout(function(){ publishSlide(); updateViewerCount(); }, 500);
     startPresencePoll();
+    startMemberCleanup();
     requestWakeLock();
     updateDiag();
   } catch(e) {
@@ -767,36 +775,59 @@ function stopPresencePoll() {
   if (presencePollTimer) { clearInterval(presencePollTimer); presencePollTimer = null; }
 }
 
-/* Conta espectadores usando duas fontes: mapa local + presence.get() */
+/* remove membros que pararam de sinalizar (modo avião, rede caída) */
+function startMemberCleanup() {
+  stopMemberCleanup();
+  cleanupTimer = setInterval(function(){
+    if (role !== 'presenter') return;
+    var now = Date.now();
+    var removed = 0;
+    for (var id in memberMap) {
+      if (memberMap.hasOwnProperty(id)) {
+        if (now - memberMap[id] > MEMBER_TIMEOUT) {
+          delete memberMap[id];
+          removed++;
+        }
+      }
+    }
+    if (removed > 0) {
+      log('Espectador inativo removido: ' + removed);
+      applyViewerCount(countActiveMembers());
+    }
+  }, 5000);
+}
+
+function stopMemberCleanup() {
+  if (cleanupTimer) { clearInterval(cleanupTimer); cleanupTimer = null; }
+}
+
+function countActiveMembers() {
+  var n = 0;
+  for (var id in memberMap) {
+    if (memberMap.hasOwnProperty(id) && id !== myClientId) n++;
+  }
+  return n;
+}
+
 function updateViewerCount() {
   if (!channel) return;
 
-  /* fonte 1: mapa local acumulado pelos eventos */
-  var localCount = 0;
-  for (var id in memberMap) {
-    if (memberMap.hasOwnProperty(id) && id !== myClientId) localCount++;
-  }
-
-  /* fonte 2: consulta direta ao presence */
   try {
     channel.presence.get(function(err, members){
-      var remoteCount = 0;
       if (!err && members) {
+        var now = Date.now();
         for (var i = 0; i < members.length; i++) {
-          if (members[i].clientId !== myClientId) remoteCount++;
-        }
-        /* sincroniza o mapa local com a verdade do servidor */
-        memberMap = {};
-        for (var j = 0; j < members.length; j++) {
-          memberMap[members[j].clientId] = true;
+          var cid = members[i].clientId;
+          if (cid !== myClientId && !memberMap[cid]) {
+            /* membro do presence ainda sem heartbeat: registra agora */
+            memberMap[cid] = now;
+          }
         }
       }
-      /* usa o maior valor entre as duas fontes */
-      var finalCount = Math.max(localCount, remoteCount);
-      applyViewerCount(finalCount);
+      applyViewerCount(countActiveMembers());
     });
   } catch(e) {
-    applyViewerCount(localCount);
+    applyViewerCount(countActiveMembers());
   }
 }
 
@@ -930,12 +961,30 @@ function joinSession() {
     setPresenterOnline(null);
 
     startStateRequests();
+    startHeartbeat();
     requestWakeLock();
     updateDiag();
   } catch(e) {
     showError('Erro ao entrar: ' + e.message);
     log('ERRO joinSession: ' + e.message);
   }
+}
+
+/* espectador envia sinal de vida a cada 10s */
+function startHeartbeat() {
+  stopHeartbeat();
+  var send = function() {
+    if (!channel || role !== 'viewer') return;
+    try {
+      channel.publish('heartbeat', { ts: Date.now() });
+    } catch(e) {}
+  };
+  send();
+  heartbeatTimer = setInterval(send, HEARTBEAT_INTERVAL);
+}
+
+function stopHeartbeat() {
+  if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
 }
 
 function setPresenterOnline(online) {
@@ -1003,6 +1052,8 @@ function renderSlide(targetId, index) {
 function leaveSession() {
   stopStateRequests();
   stopPresencePoll();
+  stopMemberCleanup();
+  stopHeartbeat();
   releaseWakeLock();
   try {
     if (channel) { channel.presence.leave(); channel.detach(); }
