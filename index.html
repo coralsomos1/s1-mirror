@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>S1 Mirror — Somos Um</title>
 <script src="ably.min.js"></script>
 <style>
@@ -12,7 +12,7 @@
     background: radial-gradient(circle at 50% 0%, #16161f 0%, #0a0a0f 70%);
     color:#f2f2f5; min-height:100vh; overflow:hidden;
   }
-  .screen { display:none; width:100%; height:100vh; }
+  .screen { display:none; width:100%; height:100vh; height:100dvh; }
   .screen.active { display:flex; flex-direction:column; }
 
   #home { align-items:center; justify-content:center; padding:24px; gap:14px; }
@@ -35,7 +35,6 @@
   .dot.yellow { background:#e8b44a; }
   .dot.red { background:#e5484d; }
 
-  /* último código salvo na tela inicial */
   .last-code {
     display:none; margin-top:6px; padding:12px 20px; border-radius:12px;
     background:#15151d; border:1px solid #2a2a36; text-align:center;
@@ -55,9 +54,12 @@
   .hint { color:#8a8a99; font-size:14px; text-align:center; max-width:320px; line-height:1.5; }
 
   #presenter, #viewer { position:relative; }
+
+  /* área do apresentador: slide + barra lateral de espelho */
+  .presenter-body { flex:1; display:flex; min-height:0; }
   .slide-area {
     flex:1; display:flex; flex-direction:column; justify-content:center;
-    padding:clamp(28px,6vw,80px); gap:20px;
+    padding:clamp(28px,6vw,80px); gap:20px; min-width:0; overflow:hidden;
   }
   .slide-title { font-size:clamp(30px,6vw,62px); font-weight:700; line-height:1.1; }
   .slide-body { font-size:clamp(16px,2.4vw,24px); color:#b8b8c8; line-height:1.6; max-width:900px; }
@@ -66,10 +68,38 @@
   .slide-big { font-size:clamp(44px,11vw,110px); font-weight:700; }
   .slide-big span { color:#e8b44a; }
 
-  /* barra superior do apresentador: código + conectados */
+  /* barra lateral do modo espelho */
+  .mirror-panel {
+    width:clamp(220px,26vw,340px); flex-shrink:0;
+    background:#0d0d14; border-left:1px solid #1e1e28;
+    display:flex; flex-direction:column; padding:16px; gap:12px;
+    overflow-y:auto;
+  }
+  .mirror-label {
+    font-size:10px; color:#6a6a7a; text-transform:uppercase;
+    letter-spacing:1.5px; font-weight:600;
+  }
+  .mirror-preview {
+    background:#15151d; border:1px solid #2a2a36; border-radius:12px;
+    padding:16px; aspect-ratio:16/9; display:flex; flex-direction:column;
+    justify-content:center; gap:8px; overflow:hidden;
+  }
+  .mirror-preview .slide-title { font-size:clamp(13px,1.5vw,19px); }
+  .mirror-preview .slide-body { font-size:clamp(9px,1vw,12px); color:#8a8a99; }
+  .mirror-preview .slide-body ul { gap:4px; }
+  .mirror-preview .slide-big { font-size:clamp(20px,3vw,38px); }
+  .mirror-next-num {
+    font-size:11px; color:#6a6a7a; text-align:center; margin-top:2px;
+  }
+  .mirror-empty {
+    color:#4a4a5a; font-size:12px; text-align:center; padding:20px 8px;
+    font-style:italic;
+  }
+
   .presenter-bar {
-    display:flex; align-items:center; gap:12px; flex-wrap:wrap;
-    padding:10px 16px; background:#0f0f16; border-bottom:1px solid #1e1e28;
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+    padding:10px 14px; background:#0f0f16; border-bottom:1px solid #1e1e28;
+    flex-shrink:0;
   }
   .bar-code {
     display:flex; align-items:center; gap:8px;
@@ -90,6 +120,7 @@
     display:flex; align-items:center; justify-content:center; gap:14px;
     padding:14px 18px calc(14px + env(safe-area-inset-bottom));
     background:#0f0f16; border-top:1px solid #1e1e28;
+    flex-shrink:0;
   }
   .ctrl-btn {
     background:#1c1c26; border:1px solid #2a2a36; color:#f2f2f5;
@@ -98,27 +129,36 @@
   }
   .counter { font-size:15px; color:#8a8a99; min-width:64px; text-align:center; }
 
-  .top-right { position:absolute; top:14px; right:14px; display:flex; gap:8px; z-index:20; }
   .icon-btn {
     width:44px; height:44px; border-radius:11px; background:rgba(28,28,38,.85);
     border:1px solid #2a2a36; color:#c9c9d4; font-size:17px; cursor:pointer;
-    display:flex; align-items:center; justify-content:center;
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
   }
+  .icon-btn:active { background:#2a2a36; }
 
-  /* barra superior do receptor */
   .viewer-bar {
     display:flex; align-items:center; gap:10px;
     padding:10px 14px; background:#0f0f16; border-bottom:1px solid #1e1e28;
+    flex-shrink:0;
   }
-  .viewer-bar-code {
-    font-size:12px; color:#6a6a7a; letter-spacing:1px;
-  }
+  .viewer-bar-code { font-size:12px; color:#6a6a7a; letter-spacing:1px; }
   .viewer-bar-code b { color:#e8b44a; letter-spacing:3px; font-size:14px; }
   .exit-btn {
     margin-left:auto; background:#1c1c26; border:1px solid #2a2a36; color:#c9c9d4;
     padding:9px 16px; border-radius:10px; font-size:13px; font-weight:600;
     cursor:pointer; font-family:inherit; min-height:40px;
   }
+
+  /* indicador de status do apresentador (lado do espectador) */
+  .conn-pill {
+    display:flex; align-items:center; gap:6px;
+    padding:6px 11px; border-radius:20px; font-size:11px; font-weight:600;
+    background:#15151d; border:1px solid #2a2a36; color:#8a8a99;
+    white-space:nowrap;
+  }
+  .conn-pill .dot { width:7px; height:7px; }
+  .conn-pill.online { color:#3ddc84; border-color:#1e4a33; }
+  .conn-pill.offline { color:#e5484d; border-color:#4a1e20; }
 
   #join { align-items:center; justify-content:center; padding:24px; gap:18px; }
   .code-input {
@@ -128,9 +168,7 @@
     text-transform:uppercase; font-family:inherit; padding-left:12px;
   }
   .code-input:focus { outline:none; border-color:#e8b44a; }
-  .join-last {
-    display:none; font-size:13px; color:#8a8a99; text-align:center;
-  }
+  .join-last { display:none; font-size:13px; color:#8a8a99; text-align:center; }
   .join-last.show { display:block; }
   .join-last b { color:#e8b44a; letter-spacing:3px; font-size:15px; }
 
@@ -140,6 +178,12 @@
     border-radius:50%; animation:spin .9s linear infinite;
   }
   @keyframes spin { to { transform:rotate(360deg); } }
+
+  .offline-banner {
+    display:none; background:#e5484d; color:#fff; padding:10px 16px;
+    font-size:13px; text-align:center; font-weight:600; flex-shrink:0;
+  }
+  .offline-banner.show { display:block; }
 
   #diag {
     position:fixed; inset:0; background:#08080c; z-index:100; display:none;
@@ -174,6 +218,23 @@
     padding:11px 16px; font-size:13px; text-align:center; z-index:200; display:none;
   }
   .error-banner.show { display:block; }
+
+  .fs-hide { display:none !important; }
+
+  /* em telas estreitas, espelho vira faixa inferior menor */
+  @media (max-width:760px) {
+    .presenter-body { flex-direction:column; }
+    .mirror-panel {
+      width:100%; border-left:none; border-top:1px solid #1e1e28;
+      flex-direction:row; align-items:center; gap:12px; padding:10px 14px;
+      max-height:110px;
+    }
+    .mirror-panel .mirror-label { display:none; }
+    .mirror-preview { aspect-ratio:auto; padding:8px 12px; flex:1; min-height:70px; }
+    .mirror-preview .slide-title { font-size:13px; }
+    .mirror-preview .slide-body { font-size:9px; }
+    .mirror-next-num { margin:0; white-space:nowrap; }
+  }
 </style>
 </head>
 <body>
@@ -220,7 +281,7 @@
 </div>
 
 <div class="screen" id="presenter">
-  <div class="presenter-bar">
+  <div class="presenter-bar" id="presenterBar">
     <div class="bar-code">
       <span class="bar-code-label">Código</span>
       <span class="bar-code-value" id="barCodeValue">----</span>
@@ -230,11 +291,21 @@
       <span id="barViewersLabel">conectados</span>
     </div>
     <div class="bar-spacer"></div>
-    <button class="icon-btn" onclick="toggleDiag()">⚙</button>
-    <button class="icon-btn" onclick="leaveSession()">✕</button>
+    <button class="icon-btn" onclick="toggleFullscreen()" title="Tela cheia">⛶</button>
+    <button class="icon-btn" onclick="toggleDiag()" title="Diagnóstico">⚙</button>
+    <button class="icon-btn" onclick="leaveSession()" title="Sair">✕</button>
   </div>
-  <div class="slide-area" id="presenterSlide"></div>
-  <div class="controls">
+
+  <div class="presenter-body">
+    <div class="slide-area" id="presenterSlide"></div>
+    <div class="mirror-panel" id="mirrorPanel">
+      <div class="mirror-label">A seguir</div>
+      <div class="mirror-preview" id="mirrorPreview"></div>
+      <div class="mirror-next-num" id="mirrorNextNum">—</div>
+    </div>
+  </div>
+
+  <div class="controls" id="presenterControls">
     <button class="ctrl-btn" onclick="prevSlide()">◀ Anterior</button>
     <div class="counter" id="presenterCounter">1 / 8</div>
     <button class="ctrl-btn" onclick="nextSlide()">Próximo ▶</button>
@@ -242,10 +313,16 @@
 </div>
 
 <div class="screen" id="viewer">
-  <div class="viewer-bar">
+  <div class="offline-banner" id="offlineBanner">Apresentador desconectado</div>
+  <div class="viewer-bar" id="viewerBar">
     <div class="viewer-bar-code">Código: <b id="viewerBarCode">----</b></div>
+    <div class="conn-pill" id="connPill">
+      <div class="dot"></div>
+      <span id="connPillText">Conectando</span>
+    </div>
     <button class="exit-btn" onclick="leaveSession()">Sair</button>
-    <button class="icon-btn" onclick="toggleDiag()" style="width:40px;height:40px">⚙</button>
+    <button class="icon-btn" onclick="toggleFullscreen()" title="Tela cheia" style="width:40px;height:40px">⛶</button>
+    <button class="icon-btn" onclick="toggleDiag()" title="Diagnóstico" style="width:40px;height:40px">⚙</button>
   </div>
   <div class="slide-area" id="viewerSlide"></div>
 </div>
@@ -268,6 +345,9 @@
     <div class="diag-row"><span>Canal</span><span id="dChannel">—</span></div>
     <div class="diag-row"><span>Papel</span><span id="dRole">—</span></div>
     <div class="diag-row"><span>Membros</span><span id="dMembers">—</span></div>
+    <div class="diag-row"><span>Espectadores</span><span id="dViewers">—</span></div>
+    <div class="diag-row"><span>Tela cheia</span><span id="dFullscreen">—</span></div>
+    <div class="diag-row"><span>Wake Lock</span><span id="dWake">—</span></div>
   </div>
   <div class="diag-section">
     <h4>Sincronização</h4>
@@ -309,6 +389,9 @@ var stateRequestTimer = null;
 var stateRequestAttempts = 0;
 var myClientId = '';
 var viewerCount = 0;
+var presencePollTimer = null;
+var wakeLock = null;
+var presenterOnline = null;
 
 var slides = [
   { type:'big', title:'SOMOS <span>UM</span>', body:'S1 — Apresentação ao vivo' },
@@ -321,38 +404,104 @@ var slides = [
   { type:'big', title:'OBRIGADO', body:'Somos Um — S1' }
 ];
 
+/* ---------- TELA CHEIA ---------- */
+function toggleFullscreen() {
+  var el = document.documentElement;
+  var isFs = document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
+
+  if (!isFs) {
+    var req = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+    if (req) {
+      var p = req.call(el);
+      if (p && p.catch) p.catch(function(e){ log('Tela cheia recusada: ' + e.message); });
+    } else {
+      showError('Este navegador não suporta tela cheia.');
+    }
+  } else {
+    var exit = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
+    if (exit) exit.call(document);
+  }
+}
+
+function onFullscreenChange() {
+  var isFs = !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
+  var bar = document.getElementById('presenterBar');
+  var controls = document.getElementById('presenterControls');
+  var vbar = document.getElementById('viewerBar');
+
+  if (isFs) {
+    if (bar) bar.classList.add('fs-hide');
+    if (controls) controls.classList.add('fs-hide');
+    if (vbar) vbar.classList.add('fs-hide');
+    log('Tela cheia ativada');
+  } else {
+    if (bar) bar.classList.remove('fs-hide');
+    if (controls) controls.classList.remove('fs-hide');
+    if (vbar) vbar.classList.remove('fs-hide');
+    log('Tela cheia desativada');
+  }
+  updateDiag();
+}
+
+document.addEventListener('fullscreenchange', onFullscreenChange);
+document.addEventListener('webkitfullscreenchange', onFullscreenChange);
+document.addEventListener('msfullscreenchange', onFullscreenChange);
+
+/* ---------- WAKE LOCK ---------- */
+function requestWakeLock() {
+  if (!('wakeLock' in navigator)) {
+    log('Wake Lock não suportado neste navegador');
+    return;
+  }
+  navigator.wakeLock.request('screen').then(function(lock) {
+    wakeLock = lock;
+    log('Wake Lock ativo — tela não apaga');
+    lock.addEventListener('release', function(){
+      log('Wake Lock liberado');
+      wakeLock = null;
+      updateDiag();
+    });
+    updateDiag();
+  }).catch(function(e) {
+    log('Wake Lock falhou: ' + e.message);
+    updateDiag();
+  });
+}
+
+function releaseWakeLock() {
+  if (wakeLock) {
+    try { wakeLock.release(); } catch(e) {}
+    wakeLock = null;
+  }
+}
+
+document.addEventListener('visibilitychange', function(){
+  if (document.visibilityState === 'visible' && role) {
+    requestWakeLock();
+  }
+});
+
 /* ---------- CÓDIGO SALVO ---------- */
 function saveLastCode(code) {
   try { localStorage.setItem('s1_last_code', code); } catch(e) {}
 }
-
 function getLastCode() {
   try { return localStorage.getItem('s1_last_code') || ''; } catch(e) { return ''; }
 }
 
 function refreshLastCodeUI() {
   var last = getLastCode();
-
   var homeBox = document.getElementById('homeLastCode');
   var homeVal = document.getElementById('homeLastCodeValue');
   if (homeBox && homeVal) {
-    if (last) {
-      homeVal.textContent = last;
-      homeBox.classList.add('show');
-    } else {
-      homeBox.classList.remove('show');
-    }
+    if (last) { homeVal.textContent = last; homeBox.classList.add('show'); }
+    else { homeBox.classList.remove('show'); }
   }
-
   var joinBox = document.getElementById('joinLast');
   var joinVal = document.getElementById('joinLastValue');
   if (joinBox && joinVal) {
-    if (last) {
-      joinVal.textContent = last;
-      joinBox.classList.add('show');
-    } else {
-      joinBox.classList.remove('show');
-    }
+    if (last) { joinVal.textContent = last; joinBox.classList.add('show'); }
+    else { joinBox.classList.remove('show'); }
   }
 }
 
@@ -415,17 +564,23 @@ function updateDiag() {
     try { host = ably.connection.connectionManager.host || '—'; } catch(e) {}
     state = ably.connection.state || '—';
   }
-  var dH = document.getElementById('dHost');
-  if (dH) dH.textContent = host;
+  var dH = document.getElementById('dHost'); if (dH) dH.textContent = host;
   var dS = document.getElementById('dState'); if (dS) dS.textContent = state;
   var dC = document.getElementById('dClient'); if (dC) dC.textContent = myClientId || '—';
   var dCh = document.getElementById('dChannel'); if (dCh) dCh.textContent = channel ? channel.name : '—';
   var dR = document.getElementById('dRole'); if (dR) dR.textContent = role || '—';
+  var dV = document.getElementById('dViewers'); if (dV) dV.textContent = viewerCount;
   var dSl = document.getElementById('dSlide'); if (dSl) dSl.textContent = (currentSlide + 1) + ' / ' + slideCount;
   var dRe = document.getElementById('dRecv'); if (dRe) dRe.textContent = recvCount;
   var dSe = document.getElementById('dSent'); if (dSe) dSe.textContent = sentCount;
   var dEc = document.getElementById('dEcho'); if (dEc) dEc.textContent = echoResult;
   var dLo = document.getElementById('dLog'); if (dLo) dLo.textContent = eventLog.length ? eventLog.join('\n') : 'Nenhum evento registrado.';
+
+  var isFs = !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
+  var dF = document.getElementById('dFullscreen');
+  if (dF) { dF.textContent = isFs ? 'ativa' : 'inativa'; dF.className = isFs ? 'green' : ''; }
+  var dW = document.getElementById('dWake');
+  if (dW) { dW.textContent = wakeLock ? 'ativo' : ('wakeLock' in navigator ? 'inativo' : 'não suportado'); dW.className = wakeLock ? 'green' : ''; }
 
   if (channel) {
     try {
@@ -450,6 +605,7 @@ function copyDiag() {
     'Client ID: ' + (myClientId || '—') + '\n' +
     'Canal: ' + (channel ? channel.name : '—') + '\n' +
     'Papel: ' + (role || '—') + '\n' +
+    'Espectadores: ' + viewerCount + '\n' +
     'Slide: ' + (currentSlide + 1) + '/' + slideCount + '\n' +
     'Recebidas: ' + recvCount + '\n' +
     'Enviadas: ' + sentCount + '\n' +
@@ -553,7 +709,7 @@ function enterPresenterMode() {
         log('presence leave: ' + m.clientId);
         updateViewerCount();
       });
-      channel.presence.subscribe(function(){ updateViewerCount(); });
+      channel.presence.subscribe('update', function(){ updateViewerCount(); });
       log('presence ativo');
     } catch(pe) {
       log('presence falhou (não crítico): ' + pe.message);
@@ -562,14 +718,28 @@ function enterPresenterMode() {
     document.getElementById('barCodeValue').textContent = sessionCode;
     showScreen('presenter');
     renderSlide('presenterSlide', currentSlide);
+    renderMirror();
     document.getElementById('presenterCounter').textContent = (currentSlide + 1) + ' / ' + slideCount;
 
     setTimeout(function(){ publishSlide(); updateViewerCount(); }, 500);
+    startPresencePoll();
+    requestWakeLock();
     updateDiag();
   } catch(e) {
     showError('Erro ao iniciar apresentação: ' + e.message);
     log('ERRO enterPresenterMode: ' + e.message);
   }
+}
+
+function startPresencePoll() {
+  stopPresencePoll();
+  presencePollTimer = setInterval(function(){
+    if (role === 'presenter' && channel) updateViewerCount();
+  }, 2000);
+}
+
+function stopPresencePoll() {
+  if (presencePollTimer) { clearInterval(presencePollTimer); presencePollTimer = null; }
 }
 
 function updateViewerCount() {
@@ -586,8 +756,38 @@ function updateViewerCount() {
       var lbl = document.getElementById('barViewersLabel');
       if (num) num.textContent = others;
       if (lbl) lbl.textContent = others === 1 ? 'conectado' : 'conectados';
+      updateDiag();
     });
   } catch(e) {}
+}
+
+/* ---------- MODO ESPELHO ---------- */
+function renderMirror() {
+  var preview = document.getElementById('mirrorPreview');
+  var num = document.getElementById('mirrorNextNum');
+  if (!preview) return;
+
+  var nextIndex = currentSlide + 1;
+
+  if (nextIndex >= slideCount) {
+    preview.innerHTML = '<div class="mirror-empty">Fim da apresentação</div>';
+    if (num) num.textContent = '—';
+    return;
+  }
+
+  var s = slides[nextIndex];
+  if (!s) {
+    preview.innerHTML = '<div class="mirror-empty">—</div>';
+    if (num) num.textContent = '—';
+    return;
+  }
+
+  if (s.type === 'big') {
+    preview.innerHTML = '<div class="slide-big">' + s.title + '</div>';
+  } else {
+    preview.innerHTML = '<div class="slide-title">' + s.title + '</div><div class="slide-body">' + s.body + '</div>';
+  }
+  if (num) num.textContent = 'Slide ' + (nextIndex + 1) + ' de ' + slideCount;
 }
 
 function publishSlide() {
@@ -606,6 +806,7 @@ function nextSlide() {
   if (currentSlide < slideCount - 1) {
     currentSlide++;
     renderSlide('presenterSlide', currentSlide);
+    renderMirror();
     document.getElementById('presenterCounter').textContent = (currentSlide + 1) + ' / ' + slideCount;
     publishSlide();
   }
@@ -615,6 +816,7 @@ function prevSlide() {
   if (currentSlide > 0) {
     currentSlide--;
     renderSlide('presenterSlide', currentSlide);
+    renderMirror();
     document.getElementById('presenterCounter').textContent = (currentSlide + 1) + ' / ' + slideCount;
     publishSlide();
   }
@@ -643,6 +845,7 @@ function joinSession() {
         renderSlide('viewerSlide', currentSlide);
         showScreen('viewer');
         stopStateRequests();
+        setPresenterOnline(true);
         log('slide recebido: ' + (currentSlide + 1));
       }
       updateDiag();
@@ -655,7 +858,16 @@ function joinSession() {
     try {
       channel.presence.enter();
       channel.presence.subscribe('leave', function(m){
-        if (m.clientId !== myClientId) log('apresentador saiu');
+        if (m.clientId !== myClientId) {
+          log('apresentador saiu');
+          setPresenterOnline(false);
+        }
+      });
+      channel.presence.subscribe('enter', function(m){
+        if (m.clientId !== myClientId) {
+          log('apresentador presente');
+          setPresenterOnline(true);
+        }
       });
       log('presence ativo');
     } catch(pe) {
@@ -666,12 +878,39 @@ function joinSession() {
     document.getElementById('waitingCode').textContent = 'Código: ' + code;
     document.getElementById('waitingText').textContent = 'Aguardando o apresentador iniciar...';
     showScreen('waiting');
+    setPresenterOnline(null);
 
     startStateRequests();
+    requestWakeLock();
     updateDiag();
   } catch(e) {
     showError('Erro ao entrar: ' + e.message);
     log('ERRO joinSession: ' + e.message);
+  }
+}
+
+function setPresenterOnline(online) {
+  presenterOnline = online;
+  var banner = document.getElementById('offlineBanner');
+  var pill = document.getElementById('connPill');
+  var pillText = document.getElementById('connPillText');
+
+  if (banner) {
+    if (online === false) banner.classList.add('show');
+    else banner.classList.remove('show');
+  }
+
+  if (pill && pillText) {
+    pill.classList.remove('online', 'offline');
+    if (online === true) {
+      pill.classList.add('online');
+      pillText.textContent = 'Apresentador online';
+    } else if (online === false) {
+      pill.classList.add('offline');
+      pillText.textContent = 'Apresentador offline';
+    } else {
+      pillText.textContent = 'Conectando';
+    }
   }
 }
 
@@ -714,6 +953,8 @@ function renderSlide(targetId, index) {
 
 function leaveSession() {
   stopStateRequests();
+  stopPresencePoll();
+  releaseWakeLock();
   try {
     if (channel) { channel.presence.leave(); channel.detach(); }
   } catch(e) {}
@@ -724,6 +965,7 @@ function leaveSession() {
   recvCount = 0;
   sentCount = 0;
   viewerCount = 0;
+  setPresenterOnline(null);
   var input = document.getElementById('joinInput');
   if (input) input.value = '';
   refreshLastCodeUI();
@@ -764,6 +1006,7 @@ document.addEventListener('keydown', function(e){
   if (currentScreen !== 'presenter') return;
   if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); nextSlide(); }
   if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); prevSlide(); }
+  if (e.key === 'f' || e.key === 'F') { e.preventDefault(); toggleFullscreen(); }
 });
 
 var touchStartX = 0;
