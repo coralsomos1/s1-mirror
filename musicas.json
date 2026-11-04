@@ -48,6 +48,41 @@
       "pasta": "musicas/the-magic",
       "total": 7,
       "extensao": "jpg"
+    },
+    {
+      "id": "jingle-bells-rock",
+      "titulo": "Jingle Bells Rock",
+      "pasta": "musicas/jingle-bells-rock",
+      "total": 10,
+      "extensao": "jpg"
+    },
+    {
+      "id": "feliz-navidad",
+      "titulo": "Feliz Navidad",
+      "pasta": "musicas/feliz-navidad",
+      "total": 13,
+      "extensao": "jpg"
+    },
+    {
+      "id": "carol-of-the-bells",
+      "titulo": "Carol of the Bells",
+      "pasta": "musicas/carol-of-the-bells",
+      "total": 24,
+      "extensao": "jpg"
+    },
+    {
+      "id": "holly-jolly-jingle",
+      "titulo": "Holly Jolly Jingle",
+      "pasta": "musicas/holly-jolly-jingle",
+      "total": 17,
+      "extensao": "jpg"
+    },
+    {
+      "id": "all-i-want-for-christmas-is-you",
+      "titulo": "All I Want for Christmas Is You",
+      "pasta": "musicas/all-i-want-for-christmas-is-you",
+      "total": 7,
+      "extensao": "jpg"
     }
   ]
 }
