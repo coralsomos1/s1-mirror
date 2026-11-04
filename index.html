@@ -140,14 +140,22 @@
   }
   .bar-viewers-num { font-weight:700; color:#3ddc84; font-size:15px; }
   .bar-timer {
-    display:flex; align-items:center; gap:7px;
+    display:flex; align-items:center; gap:6px;
     background:#15151d; border:1px solid #2a2a36; border-radius:10px;
-    padding:7px 12px; font-size:13px; color:#c9c9d4;
+    padding:5px 6px 5px 12px; font-size:13px; color:#c9c9d4;
   }
   .bar-timer-value {
     font-weight:700; color:#e8b44a; font-size:15px;
     font-variant-numeric:tabular-nums; letter-spacing:1px;
   }
+  .timer-reset-btn {
+    width:28px; height:28px; border-radius:7px;
+    background:#1c1c26; border:1px solid #2a2a36; color:#8a8a99;
+    font-size:13px; cursor:pointer; font-family:inherit;
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink:0; line-height:1;
+  }
+  .timer-reset-btn:active { background:#2a2a36; color:#e8b44a; }
   .bar-spacer { flex:1; }
 
   .finish-btn {
@@ -236,7 +244,6 @@
   }
   .offline-banner.show { display:block; }
 
-  /* ---------- PAINEL DE ENCERRAMENTO ---------- */
   .end-overlay {
     position:fixed; inset:0; background:rgba(6,6,10,.92);
     z-index:150; display:none; align-items:center; justify-content:center;
@@ -272,7 +279,6 @@
   .end-btn-safe { background:#1c1c26; color:#f2f2f5; border:1px solid #2a2a36; }
   .end-btn-safe:active { background:#262632; }
 
-  /* ---------- TELA DE ENCERRAMENTO (CORALISTA) ---------- */
   #ended {
     align-items:center; justify-content:center; padding:24px; gap:18px; text-align:center;
   }
@@ -282,7 +288,6 @@
     justify-content:center; font-size:28px; color:#3ddc84;
   }
   .ended-title { font-size:24px; font-weight:700; }
-  .ended-sub { font-size:14px; color:#8a8a99; max-width:300px; line-height:1.5; }
   .ended-time-box {
     background:#15151d; border:1px solid #2a2a36; border-radius:14px;
     padding:16px 28px; display:flex; flex-direction:column; gap:6px; margin-top:6px;
@@ -374,6 +379,7 @@
   <div class="hint">Compartilhe este código com o coral</div>
   <button class="btn btn-ghost" style="max-width:300px" onclick="copyCode()">Copiar código</button>
   <button class="btn btn-primary" style="max-width:300px" onclick="enterPresenterMode()">Iniciar apresentação</button>
+  <button class="btn btn-ghost" style="max-width:300px" onclick="cancelPresenterSetup()">Voltar</button>
 </div>
 
 <div class="screen" id="join">
@@ -409,6 +415,7 @@
     </div>
     <div class="bar-timer">
       <span class="bar-timer-value" id="barTimerValue">00:00</span>
+      <button class="timer-reset-btn" onclick="resetTimerClick()" title="Zerar cronômetro">↺</button>
     </div>
     <div class="bar-spacer"></div>
     <button class="icon-btn" onclick="toggleFullscreen()" title="Tela cheia">⛶</button>
@@ -460,7 +467,6 @@
 <div class="screen" id="ended">
   <div class="ended-icon">✓</div>
   <div class="ended-title">Apresentação encerrada</div>
-  <div class="ended-sub">Obrigado por participar do ensaio do coral Somos Um.</div>
   <div class="ended-time-box">
     <div class="ended-time-label">Tempo de apresentação</div>
     <div class="ended-time-value" id="endedTimeValue">00:00</div>
@@ -552,7 +558,6 @@ var presencePollTimer = null;
 var wakeLock = null;
 var presenterOnline = null;
 
-/* cronômetro */
 var startTime = 0;
 var elapsedMs = 0;
 var timerInterval = null;
@@ -612,6 +617,16 @@ function resetTimer() {
   isPaused = false;
   var el = document.getElementById('barTimerValue');
   if (el) el.textContent = '00:00';
+}
+
+/* botão de zerar cronômetro */
+function resetTimerClick() {
+  elapsedMs = 0;
+  startTime = Date.now();
+  var el = document.getElementById('barTimerValue');
+  if (el) el.textContent = '00:00';
+  if (!timerInterval) startTimer();
+  log('Cronômetro zerado');
 }
 
 function getElapsed() {
@@ -933,6 +948,14 @@ function startPresenter() {
   }
 }
 
+/* volta da tela de código para a inicial */
+function cancelPresenterSetup() {
+  sessionCode = '';
+  role = null;
+  showScreen('home');
+  log('Criação de sessão cancelada');
+}
+
 function copyCode() {
   navigator.clipboard.writeText(sessionCode).then(function(){ log('Código copiado'); });
 }
@@ -1213,11 +1236,32 @@ function endPresentation() {
     }
   } catch(e) {}
 
-  setTimeout(function(){
-    var t = document.getElementById('endPanelTime');
-    if (t) t.textContent = finalText;
-    leaveSession();
-  }, 400);
+  /* mostra a mesma tela de encerramento no apresentador */
+  var t = document.getElementById('endedTimeValue');
+  if (t) t.textContent = finalText;
+
+  stopStateRequests();
+  stopPresencePoll();
+  stopMemberCleanup();
+  stopHeartbeat();
+  releaseWakeLock();
+
+  try {
+    if (channel) { channel.presence.leave(); channel.detach(); }
+  } catch(e) {}
+
+  channel = null;
+  role = null;
+  sessionCode = '';
+  currentSlide = 0;
+  recvCount = 0;
+  sentCount = 0;
+  viewerCount = 0;
+  memberMap = {};
+  setPresenterOnline(null);
+
+  showScreen('ended');
+  log('Apresentação encerrada — tempo ' + finalText);
 }
 
 /* ---------- ESPECTADOR ---------- */
