@@ -356,6 +356,15 @@
   }
   .error-banner.show { display:block; }
 
+  .preload-indicator {
+    position:fixed; bottom:16px; right:16px; z-index:180;
+    background:#15151d; border:1px solid #2a2a36; border-radius:10px;
+    padding:9px 14px; font-size:12px; font-weight:600; color:#e8b44a;
+    display:none; align-items:center; gap:8px;
+    font-variant-numeric:tabular-nums;
+  }
+  .preload-indicator.show { display:flex; }
+
   .fs-hide { display:none !important; }
 
   @media (max-width:760px) {
@@ -376,12 +385,14 @@
     .timer-reset-btn { min-height:30px; font-size:10px; }
     .members-block { margin:0; padding:0; border:none; flex:1; }
     .members-list { max-height:80px; }
+    .preload-indicator { bottom:10px; right:10px; font-size:11px; padding:7px 11px; }
   }
 </style>
 </head>
 <body>
 
 <div class="error-banner" id="errorBanner"></div>
+<div class="preload-indicator" id="preloadIndicator">Carregando slides...</div>
 
 <div class="screen active" id="home">
   <div class="logo">S1 <span>Mirror</span></div>
@@ -560,6 +571,7 @@
     <h4>Músicas</h4>
     <div class="diag-row"><span>Total carregado</span><span id="dMusicCount">0</span></div>
     <div class="diag-row"><span>Música atual</span><span id="dMusicCurrent">—</span></div>
+    <div class="diag-row"><span>Slides em cache</span><span id="dCache">0</span></div>
     <div class="diag-row"><span>Slide atual</span><span id="dSlide">—</span></div>
     <div class="diag-row"><span>Tempo</span><span id="dElapsed">—</span></div>
     <div class="diag-row"><span>Recebidas</span><span id="dRecv">0</span></div>
@@ -618,6 +630,9 @@ var currentMusicIndex = 0;
 var currentSlide = 0;
 var slideCount = 0;
 
+/* cache de pré-carregamento */
+var preloadCache = {};
+
 var CODE_TTL_MS = 60 * 60 * 1000;
 var NAME_TTL_MS = 60 * 60 * 1000;
 var HEARTBEAT_INTERVAL = 4000;
@@ -654,6 +669,69 @@ function loadMusicas(callback) {
       musicas = [];
       if (callback) callback(false);
     });
+}
+
+/* ---------- PRÉ-CARREGAMENTO DE IMAGENS ---------- */
+function preloadMusic(musicIndex) {
+  var m = musicas[musicIndex];
+  if (!m) return;
+
+  var total = m.total || 1;
+  var pending = 0;
+  var started = 0;
+
+  showPreloadIndicator(true, 0, total);
+
+  for (var i = 0; i < total; i++) {
+    var url = slideUrl(musicIndex, i);
+    if (!url) continue;
+
+    if (preloadCache[url] === 'done') continue;
+
+    started++;
+    pending++;
+
+    (function(u){
+      var img = new Image();
+      img.onload = img.onerror = function(){
+        pending--;
+        var done = total - pending;
+        preloadCache[u] = 'done';
+        showPreloadIndicator(pending > 0, done, total);
+        if (pending === 0) {
+          log('Pré-carregamento concluído: ' + m.titulo);
+          updateDiag();
+        }
+      };
+      img.src = u;
+    })(url);
+
+    preloadCache[url] = 'loading';
+  }
+
+  if (started === 0) {
+    showPreloadIndicator(false, total, total);
+    log('Música já em cache: ' + m.titulo);
+  }
+}
+
+function showPreloadIndicator(show, done, total) {
+  var el = document.getElementById('preloadIndicator');
+  if (!el) return;
+  if (show) {
+    el.classList.add('show');
+    el.textContent = 'Carregando slides... ' + done + '/' + total;
+  } else {
+    el.classList.remove('show');
+  }
+}
+
+function countCached() {
+  var n = 0;
+  for (var k in preloadCache) {
+    if (preloadCache.hasOwnProperty(k) && preloadCache[k] === 'done') n++;
+  }
+  return n;
 }
 
 /* ---------- CRONÔMETRO ---------- */
@@ -917,6 +995,7 @@ function updateDiag() {
     var cm = currentMusic();
     dMCur.textContent = cm ? cm.titulo : '—';
   }
+  var dCache = document.getElementById('dCache'); if (dCache) dCache.textContent = countCached();
   var dSl = document.getElementById('dSlide'); if (dSl) dSl.textContent = (currentSlide + 1) + ' / ' + slideCount;
   var dEl = document.getElementById('dElapsed'); if (dEl) dEl.textContent = formatTime(getElapsed());
   var dRe = document.getElementById('dRecv'); if (dRe) dRe.textContent = recvCount;
@@ -960,6 +1039,7 @@ function copyDiag() {
     'Coralistas ativos: ' + viewerCount + '\n' +
     'Músicas: ' + musicas.length + '\n' +
     'Música atual: ' + (cm ? cm.titulo : '—') + '\n' +
+    'Slides em cache: ' + countCached() + '\n' +
     'Slide: ' + (currentSlide + 1) + '/' + slideCount + '\n' +
     'Tempo: ' + formatTime(getElapsed()) + '\n' +
     'Recebidas: ' + recvCount + '\n' +
@@ -1115,6 +1195,7 @@ function enterPresenterMode() {
       renderPresenterSlide();
       renderMirror();
       updateCounter();
+      preloadMusic(0);
       publishSlide();
     });
 
@@ -1150,6 +1231,7 @@ function changeMusic(index) {
   renderMirror();
   updateCounter();
   publishSlide();
+  preloadMusic(idx);
   log('Música alterada: ' + musicas[idx].titulo);
 }
 
@@ -1589,6 +1671,7 @@ function leaveSession() {
   memberMap = {};
   resetTimer();
   setPresenterOnline(null);
+  showPreloadIndicator(false, 0, 0);
   var input = document.getElementById('joinInput');
   if (input) input.value = '';
   refreshLastCodeUI();
