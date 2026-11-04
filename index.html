@@ -94,7 +94,6 @@
     font-style:italic;
   }
 
-  /* lista de coralistas ativos */
   .members-block {
     margin-top:6px; padding-top:12px; border-top:1px solid #1e1e28;
     display:flex; flex-direction:column; gap:8px; flex:1; min-height:0;
@@ -140,6 +139,15 @@
     padding:7px 12px; font-size:13px; color:#c9c9d4;
   }
   .bar-viewers-num { font-weight:700; color:#3ddc84; font-size:15px; }
+  .bar-timer {
+    display:flex; align-items:center; gap:7px;
+    background:#15151d; border:1px solid #2a2a36; border-radius:10px;
+    padding:7px 12px; font-size:13px; color:#c9c9d4;
+  }
+  .bar-timer-value {
+    font-weight:700; color:#e8b44a; font-size:15px;
+    font-variant-numeric:tabular-nums; letter-spacing:1px;
+  }
   .bar-spacer { flex:1; }
 
   .finish-btn {
@@ -227,6 +235,65 @@
     font-size:13px; text-align:center; font-weight:600; flex-shrink:0;
   }
   .offline-banner.show { display:block; }
+
+  /* ---------- PAINEL DE ENCERRAMENTO ---------- */
+  .end-overlay {
+    position:fixed; inset:0; background:rgba(6,6,10,.92);
+    z-index:150; display:none; align-items:center; justify-content:center;
+    padding:24px; backdrop-filter:blur(6px);
+  }
+  .end-overlay.open { display:flex; }
+  .end-card {
+    background:#12121a; border:1px solid #2a2a36; border-radius:20px;
+    padding:28px 24px; width:100%; max-width:400px;
+    display:flex; flex-direction:column; gap:16px; text-align:center;
+  }
+  .end-title { font-size:20px; font-weight:700; }
+  .end-sub { font-size:13px; color:#8a8a99; line-height:1.5; }
+  .end-time-box {
+    background:#15151d; border:1px solid #2a2a36; border-radius:14px;
+    padding:16px; display:flex; flex-direction:column; gap:6px;
+  }
+  .end-time-label {
+    font-size:10px; color:#6a6a7a; text-transform:uppercase; letter-spacing:1.5px;
+  }
+  .end-time-value {
+    font-size:34px; font-weight:700; color:#e8b44a;
+    font-variant-numeric:tabular-nums; letter-spacing:2px;
+  }
+  .end-actions { display:flex; flex-direction:column; gap:10px; margin-top:4px; }
+  .end-btn {
+    width:100%; min-height:52px; border-radius:13px; border:none;
+    font-size:15px; font-weight:700; cursor:pointer; font-family:inherit;
+    letter-spacing:.5px;
+  }
+  .end-btn-danger { background:#e5484d; color:#fff; }
+  .end-btn-danger:active { background:#c93c40; }
+  .end-btn-safe { background:#1c1c26; color:#f2f2f5; border:1px solid #2a2a36; }
+  .end-btn-safe:active { background:#262632; }
+
+  /* ---------- TELA DE ENCERRAMENTO (CORALISTA) ---------- */
+  #ended {
+    align-items:center; justify-content:center; padding:24px; gap:18px; text-align:center;
+  }
+  .ended-icon {
+    width:64px; height:64px; border-radius:50%; background:#132a1e;
+    border:1px solid #1e4a33; display:flex; align-items:center;
+    justify-content:center; font-size:28px; color:#3ddc84;
+  }
+  .ended-title { font-size:24px; font-weight:700; }
+  .ended-sub { font-size:14px; color:#8a8a99; max-width:300px; line-height:1.5; }
+  .ended-time-box {
+    background:#15151d; border:1px solid #2a2a36; border-radius:14px;
+    padding:16px 28px; display:flex; flex-direction:column; gap:6px; margin-top:6px;
+  }
+  .ended-time-label {
+    font-size:10px; color:#6a6a7a; text-transform:uppercase; letter-spacing:1.5px;
+  }
+  .ended-time-value {
+    font-size:30px; font-weight:700; color:#e8b44a;
+    font-variant-numeric:tabular-nums; letter-spacing:2px;
+  }
 
   #diag {
     position:fixed; inset:0; background:#08080c; z-index:100; display:none;
@@ -340,10 +407,13 @@
       <span class="bar-viewers-num" id="barViewersNum">0</span>
       <span id="barViewersLabel">conectados</span>
     </div>
+    <div class="bar-timer">
+      <span class="bar-timer-value" id="barTimerValue">00:00</span>
+    </div>
     <div class="bar-spacer"></div>
     <button class="icon-btn" onclick="toggleFullscreen()" title="Tela cheia">⛶</button>
     <button class="icon-btn" onclick="toggleDiag()" title="Diagnóstico">⚙</button>
-    <button class="finish-btn" onclick="finishPresentation()">FINALIZAR</button>
+    <button class="finish-btn" onclick="openEndPanel()">FINALIZAR</button>
   </div>
 
   <div class="presenter-body">
@@ -387,6 +457,32 @@
   <div class="slide-area" id="viewerSlide"></div>
 </div>
 
+<div class="screen" id="ended">
+  <div class="ended-icon">✓</div>
+  <div class="ended-title">Apresentação encerrada</div>
+  <div class="ended-sub">Obrigado por participar do ensaio do coral Somos Um.</div>
+  <div class="ended-time-box">
+    <div class="ended-time-label">Tempo de apresentação</div>
+    <div class="ended-time-value" id="endedTimeValue">00:00</div>
+  </div>
+  <button class="btn btn-ghost" style="max-width:300px;margin-top:8px" onclick="leaveSession()">Voltar ao início</button>
+</div>
+
+<div class="end-overlay" id="endOverlay">
+  <div class="end-card">
+    <div class="end-title">Finalizar apresentação</div>
+    <div class="end-sub">Escolha o que fazer com a sessão atual</div>
+    <div class="end-time-box">
+      <div class="end-time-label">Tempo de apresentação</div>
+      <div class="end-time-value" id="endPanelTime">00:00</div>
+    </div>
+    <div class="end-actions">
+      <button class="end-btn end-btn-danger" onclick="endPresentation()">ENCERRAR APRESENTAÇÃO</button>
+      <button class="end-btn end-btn-safe" onclick="closeEndPanel()">RETOMAR APRESENTAÇÃO</button>
+    </div>
+  </div>
+</div>
+
 <div id="diag">
   <div class="diag-head">
     <div class="diag-title">Diagnóstico</div>
@@ -413,6 +509,7 @@
   <div class="diag-section">
     <h4>Sincronização</h4>
     <div class="diag-row"><span>Slide atual</span><span id="dSlide">—</span></div>
+    <div class="diag-row"><span>Tempo</span><span id="dElapsed">—</span></div>
     <div class="diag-row"><span>Recebidas</span><span id="dRecv">0</span></div>
     <div class="diag-row"><span>Enviadas</span><span id="dSent">0</span></div>
   </div>
@@ -455,7 +552,12 @@ var presencePollTimer = null;
 var wakeLock = null;
 var presenterOnline = null;
 
-/* mapa de coralistas: clientId -> { name, ts } */
+/* cronômetro */
+var startTime = 0;
+var elapsedMs = 0;
+var timerInterval = null;
+var isPaused = false;
+
 var memberMap = {};
 var heartbeatTimer = null;
 var cleanupTimer = null;
@@ -475,6 +577,47 @@ var slides = [
   { type:'normal', title:'Próximos passos', body:'<ul><li>Novas apresentações confirmadas</li><li>Gravação de material inédito</li><li>Expansão do repertório</li></ul>' },
   { type:'big', title:'OBRIGADO', body:'Somos Um — S1' }
 ];
+
+/* ---------- CRONÔMETRO ---------- */
+function formatTime(ms) {
+  var total = Math.floor(ms / 1000);
+  var h = Math.floor(total / 3600);
+  var m = Math.floor((total % 3600) / 60);
+  var s = total % 60;
+  var mm = ('0' + m).slice(-2);
+  var ss = ('0' + s).slice(-2);
+  if (h > 0) return h + ':' + mm + ':' + ss;
+  return mm + ':' + ss;
+}
+
+function startTimer() {
+  if (timerInterval) return;
+  startTime = Date.now() - elapsedMs;
+  timerInterval = setInterval(function(){
+    if (isPaused) return;
+    elapsedMs = Date.now() - startTime;
+    var el = document.getElementById('barTimerValue');
+    if (el) el.textContent = formatTime(elapsedMs);
+  }, 1000);
+}
+
+function stopTimer() {
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+}
+
+function resetTimer() {
+  stopTimer();
+  startTime = 0;
+  elapsedMs = 0;
+  isPaused = false;
+  var el = document.getElementById('barTimerValue');
+  if (el) el.textContent = '00:00';
+}
+
+function getElapsed() {
+  if (timerInterval && !isPaused) return Date.now() - startTime;
+  return elapsedMs;
+}
 
 /* ---------- TELA CHEIA ---------- */
 function toggleFullscreen() {
@@ -682,6 +825,7 @@ function updateDiag() {
   var dN = document.getElementById('dMyName'); if (dN) dN.textContent = myName || '—';
   var dV = document.getElementById('dViewers'); if (dV) dV.textContent = viewerCount;
   var dSl = document.getElementById('dSlide'); if (dSl) dSl.textContent = (currentSlide + 1) + ' / ' + slideCount;
+  var dEl = document.getElementById('dElapsed'); if (dEl) dEl.textContent = formatTime(getElapsed());
   var dRe = document.getElementById('dRecv'); if (dRe) dRe.textContent = recvCount;
   var dSe = document.getElementById('dSent'); if (dSe) dSe.textContent = sentCount;
   var dEc = document.getElementById('dEcho'); if (dEc) dEc.textContent = echoResult;
@@ -721,6 +865,7 @@ function copyDiag() {
     'Papel: ' + (role || '—') + '\n' +
     'Coralistas ativos: ' + viewerCount + '\n' +
     'Slide: ' + (currentSlide + 1) + '/' + slideCount + '\n' +
+    'Tempo: ' + formatTime(getElapsed()) + '\n' +
     'Recebidas: ' + recvCount + '\n' +
     'Enviadas: ' + sentCount + '\n' +
     'Eco: ' + echoResult + '\n\nLOG:\n' + eventLog.join('\n');
@@ -813,7 +958,6 @@ function enterPresenterMode() {
       log('echo recebido de ' + (msg.clientId || '?'));
     });
 
-    /* sinal de vida com nome do coralista */
     channel.subscribe('heartbeat', function(msg){
       if (msg.clientId && msg.clientId !== myClientId) {
         var nm = (msg.data && msg.data.name) ? String(msg.data.name).toUpperCase() : '';
@@ -850,6 +994,9 @@ function enterPresenterMode() {
     renderMirror();
     renderMembers();
     document.getElementById('presenterCounter').textContent = (currentSlide + 1) + ' / ' + slideCount;
+
+    resetTimer();
+    startTimer();
 
     setTimeout(function(){ publishSlide(); updateViewerCount(); }, 500);
     startPresencePoll();
@@ -939,7 +1086,6 @@ function applyViewerCount(n) {
   updateDiag();
 }
 
-/* ---------- LISTA DE CORALISTAS ---------- */
 function renderMembers() {
   var list = document.getElementById('membersList');
   var countEl = document.getElementById('membersCount');
@@ -978,7 +1124,6 @@ function escapeHtml(s) {
     .replace(/'/g, '&#39;');
 }
 
-/* ---------- MODO ESPELHO ---------- */
 function renderMirror() {
   var preview = document.getElementById('mirrorPreview');
   var num = document.getElementById('mirrorNextNum');
@@ -1039,16 +1184,40 @@ function prevSlide() {
   }
 }
 
-/* finaliza a apresentação e avisa todos os coralistas */
-function finishPresentation() {
-  if (!confirm('Finalizar a apresentação para todos os coralistas?')) return;
+/* ---------- PAINEL DE FINALIZAR ---------- */
+function openEndPanel() {
+  var t = document.getElementById('endPanelTime');
+  if (t) t.textContent = formatTime(getElapsed());
+  var ov = document.getElementById('endOverlay');
+  if (ov) ov.classList.add('open');
+  log('Painel de finalização aberto');
+}
+
+function closeEndPanel() {
+  var ov = document.getElementById('endOverlay');
+  if (ov) ov.classList.remove('open');
+  log('Apresentação retomada');
+}
+
+function endPresentation() {
+  var finalMs = getElapsed();
+  var finalText = formatTime(finalMs);
+
+  closeEndPanel();
+  stopTimer();
+
   try {
     if (channel) {
-      channel.publish('session-end', { ts: Date.now() });
-      log('session-end publicado');
+      channel.publish('session-end', { ts: Date.now(), elapsedMs: finalMs });
+      log('session-end publicado — tempo ' + finalText);
     }
   } catch(e) {}
-  setTimeout(function(){ leaveSession(); }, 400);
+
+  setTimeout(function(){
+    var t = document.getElementById('endPanelTime');
+    if (t) t.textContent = finalText;
+    leaveSession();
+  }, 400);
 }
 
 /* ---------- ESPECTADOR ---------- */
@@ -1087,13 +1256,15 @@ function joinSession() {
       }
       updateDiag();
     });
-    channel.subscribe('session-end', function(){
-      log('apresentação finalizada pela maestrina');
+    channel.subscribe('session-end', function(msg){
+      var ms = (msg.data && typeof msg.data.elapsedMs === 'number') ? msg.data.elapsedMs : 0;
+      log('apresentação encerrada pela maestrina — tempo ' + formatTime(ms));
       stopHeartbeat();
       stopStateRequests();
       setPresenterOnline(false);
-      var banner = document.getElementById('offlineBanner');
-      if (banner) banner.textContent = 'Apresentação encerrada';
+      var t = document.getElementById('endedTimeValue');
+      if (t) t.textContent = formatTime(ms);
+      showScreen('ended');
     });
     channel.subscribe('echo-test', function(msg){
       if (msg.clientId !== myClientId) log('echo de outro cliente: ' + msg.clientId);
@@ -1135,7 +1306,6 @@ function joinSession() {
   }
 }
 
-/* coralista envia sinal de vida com o nome */
 function startHeartbeat() {
   stopHeartbeat();
   var send = function() {
@@ -1219,6 +1389,7 @@ function leaveSession() {
   stopPresencePoll();
   stopMemberCleanup();
   stopHeartbeat();
+  stopTimer();
   releaseWakeLock();
   try {
     if (channel) { channel.presence.leave(); channel.detach(); }
@@ -1231,6 +1402,7 @@ function leaveSession() {
   sentCount = 0;
   viewerCount = 0;
   memberMap = {};
+  resetTimer();
   setPresenterOnline(null);
   var input = document.getElementById('joinInput');
   if (input) input.value = '';
@@ -1270,6 +1442,10 @@ function runEchoTest() {
 
 document.addEventListener('keydown', function(e){
   if (currentScreen !== 'presenter') return;
+  if (e.key === 'Escape') {
+    var ov = document.getElementById('endOverlay');
+    if (ov && ov.classList.contains('open')) { closeEndPanel(); return; }
+  }
   if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); nextSlide(); }
   if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); prevSlide(); }
   if (e.key === 'f' || e.key === 'F') { e.preventDefault(); toggleFullscreen(); }
