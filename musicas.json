@@ -1,37 +1,39 @@
-[
-  {
-    "id": "a-todos-um-bom-natal",
-    "titulo": "A Todos um Bom Natal",
-    "pasta": "musicas/a-todos-um-bom-natal",
-    "total": 11,
-    "extensao": "jpg"
-  },
-  {
-    "id": "bate-o-sino",
-    "titulo": "Bate o Sino",
-    "pasta": "musicas/bate-o-sino",
-    "total": 15,
-    "extensao": "jpg"
-  },
-  {
-    "id": "happily-ever-after",
-    "titulo": "Happily Ever After",
-    "pasta": "musicas/happily-ever-after",
-    "total": 12,
-    "extensao": "jpg"
-  },
-  {
-    "id": "natal-de-joinville",
-    "titulo": "Natal de Joinville",
-    "pasta": "musicas/natal-de-joinville",
-    "total": 14,
-    "extensao": "jpg"
-  },
-  {
-    "id": "the-magic",
-    "titulo": "THE MAGIC",
-    "pasta": "musicas/the-magic",
-    "total": 7,
-    "extensao": "jpg"
-  }
-]
+{
+  "musicas": [
+    {
+      "id": "a-todos-um-bom-natal",
+      "titulo": "A Todos um Bom Natal",
+      "pasta": "musicas/a-todos-um-bom-natal",
+      "total": 11,
+      "extensao": "jpg"
+    },
+    {
+      "id": "bate-o-sino",
+      "titulo": "Bate o Sino",
+      "pasta": "musicas/bate-o-sino",
+      "total": 15,
+      "extensao": "jpg"
+    },
+    {
+      "id": "happily-ever-after",
+      "titulo": "Happily Ever After",
+      "pasta": "musicas/happily-ever-after",
+      "total": 12,
+      "extensao": "jpg"
+    },
+    {
+      "id": "natal-de-joinville",
+      "titulo": "Natal de Joinville",
+      "pasta": "musicas/natal-de-joinville",
+      "total": 14,
+      "extensao": "jpg"
+    },
+    {
+      "id": "the-magic",
+      "titulo": "THE MAGIC",
+      "pasta": "musicas/the-magic",
+      "total": 7,
+      "extensao": "jpg"
+    }
+  ]
+}
