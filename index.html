@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>S1 Mirror — Somos Um</title>
-<script src="ably.min.js"></script>
+<script src="https://cdn.ably.com/lib/ably.min-1.js"></script>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   body {
@@ -14,7 +14,6 @@
   }
   .screen { display:none; width:100%; height:100vh; height:100dvh; }
   .screen.active { display:flex; flex-direction:column; }
-
   #home { align-items:center; justify-content:center; padding:24px; gap:14px; }
   .logo { font-size:clamp(38px,9vw,64px); font-weight:700; letter-spacing:-2px; }
   .logo span { color:#e8b44a; }
@@ -34,7 +33,6 @@
   .dot.green { background:#3ddc84; }
   .dot.yellow { background:#e8b44a; }
   .dot.red { background:#e5484d; }
-
   .last-code {
     display:none; margin-top:6px; padding:12px 20px; border-radius:12px;
     background:#15151d; border:1px solid #2a2a36; text-align:center;
@@ -44,7 +42,6 @@
   .last-code-label { font-size:11px; color:#6a6a7a; text-transform:uppercase; letter-spacing:1.5px; margin-bottom:6px; }
   .last-code-value { font-size:26px; font-weight:700; color:#e8b44a; letter-spacing:8px; padding-left:8px; }
   .last-code-hint { font-size:11px; color:#6a6a7a; margin-top:6px; }
-
   #code-screen { align-items:center; justify-content:center; padding:24px; gap:22px; }
   .label { font-size:13px; color:#8a8a99; text-transform:uppercase; letter-spacing:2px; }
   .code-display {
@@ -52,14 +49,12 @@
     color:#e8b44a; padding-left:14px;
   }
   .hint { color:#8a8a99; font-size:14px; text-align:center; max-width:320px; line-height:1.5; }
-
   #presenter, #viewer { position:relative; }
-
   .presenter-body { flex:1; display:flex; min-height:0; }
   .slide-area {
     flex:1; display:flex; align-items:center; justify-content:center;
     padding:clamp(10px,2vw,28px); min-width:0; overflow:hidden;
-    background:#000;
+    background:#000; position:relative;
   }
   .slide-img {
     max-width:100%; max-height:100%; width:auto; height:auto;
@@ -69,7 +64,23 @@
     color:#4a4a5a; font-size:14px; text-align:center; padding:30px;
     line-height:1.6;
   }
-
+  .prep-overlay {
+    position:absolute; inset:0; display:none;
+    align-items:flex-end; justify-content:center;
+    padding-bottom:28px; pointer-events:none; z-index:5;
+  }
+  .prep-overlay.show { display:flex; }
+  .prep-badge {
+    background:rgba(20,20,28,.94); border:1px solid #2a2a36;
+    border-radius:999px; padding:11px 22px;
+    font-size:14px; font-weight:600; letter-spacing:.3px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .prep-badge .spin {
+    width:14px; height:14px; border:2px solid #3a3a48; border-top-color:#e8b44a;
+    border-radius:50%; animation:spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform:rotate(360deg); } }
   .mirror-panel {
     width:clamp(230px,27vw,350px); flex-shrink:0;
     background:#0d0d14; border-left:1px solid #1e1e28;
@@ -93,7 +104,6 @@
     color:#4a4a5a; font-size:12px; text-align:center; padding:20px 8px;
     font-style:italic;
   }
-
   .music-block {
     background:#15151d; border:1px solid #2a2a36; border-radius:12px;
     padding:11px 12px; display:flex; flex-direction:column; gap:7px;
@@ -109,7 +119,6 @@
     font-size:11px; color:#6a6a7a; text-align:center;
     font-variant-numeric:tabular-nums;
   }
-
   .timer-block {
     background:#15151d; border:1px solid #2a2a36; border-radius:12px;
     padding:12px; display:flex; flex-direction:column; gap:9px;
@@ -132,7 +141,6 @@
   }
   .timer-reset-btn:active { background:#4a3c1a; border-color:#8a6f2a; }
   .timer-reset-btn .ico { font-size:14px; line-height:1; }
-
   .members-block {
     margin-top:6px; padding-top:12px; border-top:1px solid #1e1e28;
     display:flex; flex-direction:column; gap:8px; flex:1; min-height:0;
@@ -159,7 +167,6 @@
   .members-empty {
     font-size:11px; color:#4a4a5a; font-style:italic; padding:8px 2px;
   }
-
   .presenter-bar {
     display:flex; align-items:center; gap:10px; flex-wrap:wrap;
     padding:10px 14px; background:#0f0f16; border-bottom:1px solid #1e1e28;
@@ -179,7 +186,6 @@
   }
   .bar-viewers-num { font-weight:700; color:#3ddc84; font-size:15px; }
   .bar-spacer { flex:1; }
-
   .finish-btn {
     background:#e5484d; border:1px solid #b8383c; color:#fff;
     padding:0 18px; min-height:44px; border-radius:11px;
@@ -187,7 +193,6 @@
     cursor:pointer; font-family:inherit; flex-shrink:0;
   }
   .finish-btn:active { background:#c93c40; }
-
   .controls {
     display:flex; align-items:center; justify-content:center; gap:14px;
     padding:14px 18px calc(14px + env(safe-area-inset-bottom));
@@ -199,15 +204,14 @@
     min-height:48px; padding:0 20px; border-radius:12px; font-size:15px;
     font-weight:600; cursor:pointer; font-family:inherit;
   }
+  .ctrl-btn:disabled { opacity:.35; cursor:default; }
   .counter { font-size:15px; color:#8a8a99; min-width:64px; text-align:center; }
-
   .icon-btn {
     width:44px; height:44px; border-radius:11px; background:rgba(28,28,38,.85);
     border:1px solid #2a2a36; color:#c9c9d4; font-size:17px; cursor:pointer;
     display:flex; align-items:center; justify-content:center; flex-shrink:0;
   }
   .icon-btn:active { background:#2a2a36; }
-
   .viewer-bar {
     display:flex; align-items:center; gap:10px;
     padding:10px 14px; background:#0f0f16; border-bottom:1px solid #1e1e28;
@@ -220,7 +224,6 @@
     padding:9px 16px; border-radius:10px; font-size:13px; font-weight:600;
     cursor:pointer; font-family:inherit; min-height:40px;
   }
-
   .conn-pill {
     display:flex; align-items:center; gap:6px;
     padding:6px 11px; border-radius:20px; font-size:11px; font-weight:600;
@@ -230,7 +233,6 @@
   .conn-pill .dot { width:7px; height:7px; }
   .conn-pill.online { color:#3ddc84; border-color:#1e4a33; }
   .conn-pill.offline { color:#e5484d; border-color:#4a1e20; }
-
   #join { align-items:center; justify-content:center; padding:24px; gap:16px; overflow-y:auto; }
   .field-group { width:100%; max-width:300px; display:flex; flex-direction:column; gap:7px; }
   .field-label { font-size:11px; color:#8a8a99; text-transform:uppercase; letter-spacing:1.5px; }
@@ -252,20 +254,16 @@
   .join-last { display:none; font-size:13px; color:#8a8a99; text-align:center; }
   .join-last.show { display:block; }
   .join-last b { color:#e8b44a; letter-spacing:3px; font-size:15px; }
-
   #waiting { align-items:center; justify-content:center; padding:24px; gap:20px; text-align:center; }
   .spinner {
     width:44px; height:44px; border:3px solid #2a2a36; border-top-color:#e8b44a;
     border-radius:50%; animation:spin .9s linear infinite;
   }
-  @keyframes spin { to { transform:rotate(360deg); } }
-
   .offline-banner {
     display:none; background:#e5484d; color:#fff; padding:10px 16px;
     font-size:13px; text-align:center; font-weight:600; flex-shrink:0;
   }
   .offline-banner.show { display:block; }
-
   .end-overlay {
     position:fixed; inset:0; background:rgba(6,6,10,.92);
     z-index:150; display:none; align-items:center; justify-content:center;
@@ -300,7 +298,6 @@
   .end-btn-danger:active { background:#c93c40; }
   .end-btn-safe { background:#1c1c26; color:#f2f2f5; border:1px solid #2a2a36; }
   .end-btn-safe:active { background:#262632; }
-
   #ended {
     align-items:center; justify-content:center; padding:24px; gap:18px; text-align:center;
   }
@@ -321,7 +318,6 @@
     font-size:30px; font-weight:700; color:#e8b44a;
     font-variant-numeric:tabular-nums; letter-spacing:2px;
   }
-
   #diag {
     position:fixed; inset:0; background:#08080c; z-index:100; display:none;
     flex-direction:column; padding:16px; overflow-y:auto; font-size:12px;
@@ -349,13 +345,11 @@
   }
   .red { color:#e5484d !important; }
   .green { color:#3ddc84 !important; }
-
   .error-banner {
     position:fixed; top:0; left:0; right:0; background:#e5484d; color:#fff;
     padding:11px 16px; font-size:13px; text-align:center; z-index:200; display:none;
   }
   .error-banner.show { display:block; }
-
   .preload-indicator {
     position:fixed; bottom:16px; right:16px; z-index:180;
     background:#15151d; border:1px solid #2a2a36; border-radius:10px;
@@ -364,9 +358,7 @@
     font-variant-numeric:tabular-nums;
   }
   .preload-indicator.show { display:flex; }
-
   .fs-hide { display:none !important; }
-
   @media (max-width:760px) {
     .presenter-body { flex-direction:column; }
     .mirror-panel {
@@ -390,7 +382,6 @@
 </style>
 </head>
 <body>
-
 <div class="error-banner" id="errorBanner"></div>
 <div class="preload-indicator" id="preloadIndicator">Carregando slides...</div>
 
@@ -455,10 +446,12 @@
     <button class="icon-btn" onclick="toggleDiag()" title="Diagnóstico">⚙</button>
     <button class="finish-btn" onclick="openEndPanel()">FINALIZAR</button>
   </div>
-
   <div class="presenter-body">
     <div class="slide-area" id="presenterSlide">
       <div class="slide-placeholder">Carregando músicas...</div>
+      <div class="prep-overlay" id="presenterPrep">
+        <div class="prep-badge"><span class="spin"></span> Carregando slides...</div>
+      </div>
     </div>
     <div class="mirror-panel" id="mirrorPanel">
       <div class="mirror-label">A seguir</div>
@@ -466,7 +459,6 @@
         <div class="mirror-empty">—</div>
       </div>
       <div class="mirror-next-num" id="mirrorNextNum">—</div>
-
       <div class="music-block">
         <div class="mirror-label">Música</div>
         <select class="music-select" id="musicSelect" onchange="changeMusic(this.value)">
@@ -474,7 +466,6 @@
         </select>
         <div class="music-progress" id="musicProgress">—</div>
       </div>
-
       <div class="timer-block">
         <div class="timer-block-label">Tempo de apresentação</div>
         <div class="timer-block-value" id="barTimerValue">00:00</div>
@@ -482,7 +473,6 @@
           <span class="ico">↺</span> ZERAR
         </button>
       </div>
-
       <div class="members-block">
         <div class="members-head">
           <div class="mirror-label">Coralistas ativos</div>
@@ -494,11 +484,10 @@
       </div>
     </div>
   </div>
-
   <div class="controls" id="presenterControls">
-    <button class="ctrl-btn" onclick="prevSlide()">◀ Anterior</button>
+    <button class="ctrl-btn" id="btnPrev" onclick="prevSlide()">◀ Anterior</button>
     <div class="counter" id="presenterCounter">1 / 1</div>
-    <button class="ctrl-btn" onclick="nextSlide()">Próximo ▶</button>
+    <button class="ctrl-btn" id="btnNext" onclick="nextSlide()">Próximo ▶</button>
   </div>
 </div>
 
@@ -516,6 +505,9 @@
   </div>
   <div class="slide-area" id="viewerSlide">
     <div class="slide-placeholder">Aguardando...</div>
+    <div class="prep-overlay" id="viewerPrep">
+      <div class="prep-badge"><span class="spin"></span> Carregando slides...</div>
+    </div>
   </div>
 </div>
 
@@ -594,9 +586,20 @@
 </div>
 
 <script>
+/* =========================================================
+   CONFIGURAÇÃO — edite apenas se necessário
+   ========================================================= */
 var API_KEY = 'VEgT6Q.8-6OmA:cpAVi0_Gtfdj7FpD9Sg7TkW40fBBw7295Tj7hz7XkPE';
 var BASE_URL = 'https://coralsomos1.github.io/s1-mirror/';
 
+/* Tempo de preparação visual: 0,4 s por slide */
+var PREP_PER_SLIDE_MS = 400;
+/* Pausa no primeiro slide antes de liberar o controle */
+var PREP_HOLD_FIRST_MS = 900;
+
+/* =========================================================
+   Estado global
+   ========================================================= */
 var ably = null;
 var channel = null;
 var currentScreen = 'home';
@@ -614,12 +617,10 @@ var viewerCount = 0;
 var presencePollTimer = null;
 var wakeLock = null;
 var presenterOnline = null;
-
 var startTime = 0;
 var elapsedMs = 0;
 var timerInterval = null;
 var isPaused = false;
-
 var memberMap = {};
 var heartbeatTimer = null;
 var cleanupTimer = null;
@@ -633,12 +634,18 @@ var slideCount = 0;
 /* cache de pré-carregamento */
 var preloadCache = {};
 
+/* estado da preparação visual */
+var isPreparing = false;
+var prepTimer = null;
+
 var CODE_TTL_MS = 60 * 60 * 1000;
 var NAME_TTL_MS = 60 * 60 * 1000;
 var HEARTBEAT_INTERVAL = 4000;
 var MEMBER_TIMEOUT = 10000;
 
-/* ---------- URL DAS IMAGENS ---------- */
+/* =========================================================
+   URL DAS IMAGENS
+   ========================================================= */
 function slideUrl(musicIndex, slideIndex) {
   var m = musicas[musicIndex];
   if (!m) return '';
@@ -651,7 +658,9 @@ function currentMusic() {
   return musicas[currentMusicIndex] || null;
 }
 
-/* ---------- CARREGAR musicas.json ---------- */
+/* =========================================================
+   CARREGAR musicas.json
+   ========================================================= */
 function loadMusicas(callback) {
   var url = BASE_URL + 'musicas.json?t=' + Date.now();
   fetch(url)
@@ -671,26 +680,24 @@ function loadMusicas(callback) {
     });
 }
 
-/* ---------- PRÉ-CARREGAMENTO DE IMAGENS ---------- */
+/* =========================================================
+   PRÉ-CARREGAMENTO EM PARALELO
+   Baixa todas as imagens de uma vez, sem exibir nada.
+   ========================================================= */
 function preloadMusic(musicIndex) {
   var m = musicas[musicIndex];
   if (!m) return;
-
   var total = m.total || 1;
   var pending = 0;
   var started = 0;
-
   showPreloadIndicator(true, 0, total);
 
   for (var i = 0; i < total; i++) {
     var url = slideUrl(musicIndex, i);
     if (!url) continue;
-
     if (preloadCache[url] === 'done') continue;
-
     started++;
     pending++;
-
     (function(u){
       var img = new Image();
       img.onload = img.onerror = function(){
@@ -705,7 +712,6 @@ function preloadMusic(musicIndex) {
       };
       img.src = u;
     })(url);
-
     preloadCache[url] = 'loading';
   }
 
@@ -734,7 +740,79 @@ function countCached() {
   return n;
 }
 
-/* ---------- CRONÔMETRO ---------- */
+/* =========================================================
+   PREPARAÇÃO VISUAL — 0,4 s por slide
+   Passa cada slide na tela para forçar a decodificação.
+   Sincronizada: o apresentador publica prep-start e todos
+   os aparelhos executam a mesma passagem.
+   ========================================================= */
+function startPreparation(musicIndex, onDone) {
+  var m = musicas[musicIndex];
+  if (!m) { if (onDone) onDone(); return; }
+
+  isPreparing = true;
+  setPrepOverlay(true);
+  setNavEnabled(false);
+
+  var total = m.total || 1;
+  var i = 0;
+
+  function step() {
+    if (!isPreparing) return;
+
+    if (i >= total) {
+      /* volta ao primeiro slide e segura antes de liberar */
+      currentSlide = 0;
+      renderSlideForRole();
+      updateCounter();
+      prepTimer = setTimeout(function(){
+        isPreparing = false;
+        setPrepOverlay(false);
+        setNavEnabled(true);
+        if (onDone) onDone();
+      }, PREP_HOLD_FIRST_MS);
+      return;
+    }
+
+    currentSlide = i;
+    renderSlideForRole();
+    updateCounter();
+    i++;
+    prepTimer = setTimeout(step, PREP_PER_SLIDE_MS);
+  }
+
+  step();
+}
+
+function cancelPreparation() {
+  if (prepTimer) { clearTimeout(prepTimer); prepTimer = null; }
+  isPreparing = false;
+  setPrepOverlay(false);
+  setNavEnabled(true);
+}
+
+function setPrepOverlay(show) {
+  var p = document.getElementById('presenterPrep');
+  var v = document.getElementById('viewerPrep');
+  if (p) { if (show) p.classList.add('show'); else p.classList.remove('show'); }
+  if (v) { if (show) v.classList.add('show'); else v.classList.remove('show'); }
+}
+
+function setNavEnabled(enabled) {
+  var prev = document.getElementById('btnPrev');
+  var next = document.getElementById('btnNext');
+  if (prev) prev.disabled = !enabled;
+  if (next) next.disabled = !enabled;
+}
+
+function renderSlideForRole() {
+  if (role === 'presenter') renderPresenterSlide();
+  else renderViewerSlide();
+}
+
+/* =========================================================
+   CRONÔMETRO
+   ========================================================= */
 function formatTime(ms) {
   var total = Math.floor(ms / 1000);
   var h = Math.floor(total / 3600);
@@ -784,11 +862,12 @@ function getElapsed() {
   return elapsedMs;
 }
 
-/* ---------- TELA CHEIA ---------- */
+/* =========================================================
+   TELA CHEIA
+   ========================================================= */
 function toggleFullscreen() {
   var el = document.documentElement;
   var isFs = document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
-
   if (!isFs) {
     var req = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
     if (req) {
@@ -808,7 +887,6 @@ function onFullscreenChange() {
   var bar = document.getElementById('presenterBar');
   var controls = document.getElementById('presenterControls');
   var vbar = document.getElementById('viewerBar');
-
   if (isFs) {
     if (bar) bar.classList.add('fs-hide');
     if (controls) controls.classList.add('fs-hide');
@@ -827,7 +905,9 @@ document.addEventListener('fullscreenchange', onFullscreenChange);
 document.addEventListener('webkitfullscreenchange', onFullscreenChange);
 document.addEventListener('msfullscreenchange', onFullscreenChange);
 
-/* ---------- WAKE LOCK ---------- */
+/* =========================================================
+   WAKE LOCK — mantém a tela acesa
+   ========================================================= */
 function requestWakeLock() {
   if (!('wakeLock' in navigator)) {
     log('Wake Lock não suportado neste navegador');
@@ -861,7 +941,9 @@ document.addEventListener('visibilitychange', function(){
   }
 });
 
-/* ---------- CÓDIGO E NOME SALVOS ---------- */
+/* =========================================================
+   CÓDIGO E NOME SALVOS
+   ========================================================= */
 function saveLastCode(code) {
   try {
     localStorage.setItem('s1_last_code', code);
@@ -906,14 +988,12 @@ function getSavedName() {
 
 function refreshLastCodeUI() {
   var last = getLastCode();
-
   var homeBox = document.getElementById('homeLastCode');
   var homeVal = document.getElementById('homeLastCodeValue');
   if (homeBox && homeVal) {
     if (last) { homeVal.textContent = last; homeBox.classList.add('show'); }
     else { homeBox.classList.remove('show'); }
   }
-
   var joinBox = document.getElementById('joinLast');
   var joinVal = document.getElementById('joinLastValue');
   if (joinBox && joinVal) {
@@ -931,7 +1011,9 @@ function goToJoin() {
   showScreen('join');
 }
 
-/* ---------- NAVEGAÇÃO ---------- */
+/* =========================================================
+   NAVEGAÇÃO E LOG
+   ========================================================= */
 function showScreen(name) {
   var all = document.querySelectorAll('.screen');
   for (var i = 0; i < all.length; i++) all[i].classList.remove('active');
@@ -967,6 +1049,9 @@ function setDot(color, text) {
   if (st) st.textContent = text;
 }
 
+/* =========================================================
+   DIAGNÓSTICO
+   ========================================================= */
 function updateDiag() {
   var libOk = (typeof Ably !== 'undefined');
   var dT = document.getElementById('dTransport');
@@ -976,7 +1061,6 @@ function updateDiag() {
     dL.textContent = libOk ? 'carregada (ok)' : 'NÃO CARREGADA';
     dL.className = libOk ? 'green' : 'red';
   }
-
   var host = '—', state = '—';
   if (ably) {
     try { host = ably.connection.connectionManager.host || '—'; } catch(e) {}
@@ -1002,13 +1086,11 @@ function updateDiag() {
   var dSe = document.getElementById('dSent'); if (dSe) dSe.textContent = sentCount;
   var dEc = document.getElementById('dEcho'); if (dEc) dEc.textContent = echoResult;
   var dLo = document.getElementById('dLog'); if (dLo) dLo.textContent = eventLog.length ? eventLog.join('\n') : 'Nenhum evento registrado.';
-
   var isFs = !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
   var dF = document.getElementById('dFullscreen');
   if (dF) { dF.textContent = isFs ? 'ativa' : 'inativa'; dF.className = isFs ? 'green' : ''; }
   var dW = document.getElementById('dWake');
   if (dW) { dW.textContent = wakeLock ? 'ativo' : ('wakeLock' in navigator ? 'inativo' : 'não suportado'); dW.className = wakeLock ? 'green' : ''; }
-
   if (channel) {
     try {
       channel.presence.get(function(err, members) {
@@ -1048,6 +1130,9 @@ function copyDiag() {
   navigator.clipboard.writeText(txt).then(function(){ log('Diagnóstico copiado'); });
 }
 
+/* =========================================================
+   ABLY
+   ========================================================= */
 function initAbly() {
   if (typeof Ably === 'undefined') {
     showError('ERRO: A biblioteca do Ably não carregou. Verifique a internet e recarregue.');
@@ -1055,9 +1140,7 @@ function initAbly() {
     return false;
   }
   if (ably) return true;
-
   myClientId = 's1-' + Math.random().toString(36).slice(2, 10);
-
   try {
     ably = new Ably.Realtime({
       key: API_KEY,
@@ -1071,7 +1154,6 @@ function initAbly() {
     log('ERRO ao criar cliente: ' + e.message);
     return false;
   }
-
   ably.connection.on('connected', function(){ log('Conexão: connected'); setDot('green','Conectado'); updateDiag(); });
   ably.connection.on('connecting', function(){ log('Conexão: connecting'); setDot('yellow','Conectando...'); });
   ably.connection.on('disconnected', function(){ log('Conexão: disconnected'); setDot('yellow','Desconectado'); });
@@ -1082,7 +1164,6 @@ function initAbly() {
     setDot('red','Falhou');
     showError('Falha na conexão com o Ably: ' + r);
   });
-
   log('Cliente Ably criado — clientId ' + myClientId);
   return true;
 }
@@ -1094,7 +1175,9 @@ function genCode() {
   return c;
 }
 
-/* ---------- APRESENTADOR ---------- */
+/* =========================================================
+   APRESENTADOR
+   ========================================================= */
 function startPresenter() {
   try {
     if (!initAbly()) return;
@@ -1140,7 +1223,6 @@ function enterPresenterMode() {
     channel.subscribe('echo-test', function(msg){
       log('echo recebido de ' + (msg.clientId || '?'));
     });
-
     channel.subscribe('heartbeat', function(msg){
       if (msg.clientId && msg.clientId !== myClientId) {
         var nm = (msg.data && msg.data.name) ? String(msg.data.name).toUpperCase() : '';
@@ -1148,6 +1230,7 @@ function enterPresenterMode() {
         renderMembers();
       }
     });
+
     log('subscribe(heartbeat) em ' + channelName);
 
     try {
@@ -1221,55 +1304,88 @@ function buildMusicSelect() {
   sel.value = '0';
 }
 
+/* =========================================================
+   TROCA DE MÚSICA — dispara pré-carregamento + preparação
+   ========================================================= */
 function changeMusic(index) {
   var idx = parseInt(index, 10);
   if (isNaN(idx) || !musicas[idx]) return;
+
+  cancelPreparation();
+
   currentMusicIndex = idx;
   currentSlide = 0;
   slideCount = musicas[idx].total || 1;
+
   renderPresenterSlide();
   renderMirror();
   updateCounter();
-  publishSlide();
+
+  /* 1) pré-carregamento em paralelo (rápido) */
   preloadMusic(idx);
+
+  /* 2) avisa todos os aparelhos para preparar */
+  publishPrepStart(idx);
+
+  /* 3) preparação visual local */
+  startPreparation(idx, function(){
+    publishSlide();
+  });
+
   log('Música alterada: ' + musicas[idx].titulo);
+}
+
+function publishPrepStart(musicIndex) {
+  if (!channel) return;
+  try {
+    channel.publish('prep-start', {
+      music: musicIndex,
+      total: musicas[musicIndex] ? (musicas[musicIndex].total || 1) : 1,
+      perSlide: PREP_PER_SLIDE_MS
+    });
+    sentCount++;
+    log('prep-start publicado: música ' + musicIndex);
+  } catch(e) {
+    log('ERRO ao publicar prep-start: ' + e.message);
+  }
 }
 
 function renderPresenterSlide() {
   var el = document.getElementById('presenterSlide');
   if (!el) return;
   var url = slideUrl(currentMusicIndex, currentSlide);
+  var overlay = document.getElementById('presenterPrep');
+  var keepOverlay = overlay ? overlay.outerHTML : '';
   if (!url) {
-    el.innerHTML = '<div class="slide-placeholder">Sem slide</div>';
+    el.innerHTML = '<div class="slide-placeholder">Sem slide</div>' + keepOverlay;
     return;
   }
-  el.innerHTML = '<img class="slide-img" src="' + url + '" alt="Slide ' + (currentSlide + 1) + '">';
+  el.innerHTML = '<img class="slide-img" src="' + url + '" alt="Slide ' + (currentSlide + 1) + '">' + keepOverlay;
 }
 
 function renderViewerSlide() {
   var el = document.getElementById('viewerSlide');
   if (!el) return;
   var url = slideUrl(currentMusicIndex, currentSlide);
+  var overlay = document.getElementById('viewerPrep');
+  var keepOverlay = overlay ? overlay.outerHTML : '';
   if (!url) {
-    el.innerHTML = '<div class="slide-placeholder">Aguardando...</div>';
+    el.innerHTML = '<div class="slide-placeholder">Aguardando...</div>' + keepOverlay;
     return;
   }
-  el.innerHTML = '<img class="slide-img" src="' + url + '" alt="Slide ' + (currentSlide + 1) + '">';
+  el.innerHTML = '<img class="slide-img" src="' + url + '" alt="Slide ' + (currentSlide + 1) + '">' + keepOverlay;
 }
 
 function renderMirror() {
   var preview = document.getElementById('mirrorPreview');
   var num = document.getElementById('mirrorNextNum');
   if (!preview) return;
-
   var nextIndex = currentSlide + 1;
-
   if (nextIndex >= slideCount) {
     preview.innerHTML = '<div class="mirror-empty">Fim da música</div>';
     if (num) num.textContent = '—';
     return;
   }
-
   var url = slideUrl(currentMusicIndex, nextIndex);
   preview.innerHTML = '<img src="' + url + '" alt="Próximo slide">';
   if (num) num.textContent = 'Slide ' + (nextIndex + 1) + ' de ' + slideCount;
@@ -1332,7 +1448,6 @@ function countActiveMembers() {
 
 function updateViewerCount() {
   if (!channel) return;
-
   try {
     channel.presence.get(function(err, members){
       if (!err && members) {
@@ -1366,7 +1481,6 @@ function renderMembers() {
   var list = document.getElementById('membersList');
   var countEl = document.getElementById('membersCount');
   if (!list) return;
-
   var names = [];
   for (var id in memberMap) {
     if (memberMap.hasOwnProperty(id) && id !== myClientId) {
@@ -1374,16 +1488,12 @@ function renderMembers() {
       if (nm) names.push(nm);
     }
   }
-
   names.sort(function(a, b){ return a.localeCompare(b, 'pt-BR'); });
-
   if (countEl) countEl.textContent = names.length;
-
   if (names.length === 0) {
     list.innerHTML = '<div class="members-empty">Ninguém conectado ainda</div>';
     return;
   }
-
   var html = '';
   for (var i = 0; i < names.length; i++) {
     html += '<div class="member-item"><div class="dot green"></div>' + escapeHtml(names[i]) + '</div>';
@@ -1417,6 +1527,7 @@ function publishSlide() {
 }
 
 function nextSlide() {
+  if (isPreparing) return;
   if (currentSlide < slideCount - 1) {
     currentSlide++;
     renderPresenterSlide();
@@ -1427,6 +1538,7 @@ function nextSlide() {
 }
 
 function prevSlide() {
+  if (isPreparing) return;
   if (currentSlide > 0) {
     currentSlide--;
     renderPresenterSlide();
@@ -1436,7 +1548,9 @@ function prevSlide() {
   }
 }
 
-/* ---------- PAINEL DE FINALIZAR ---------- */
+/* =========================================================
+   PAINEL DE FINALIZAR
+   ========================================================= */
 function openEndPanel() {
   var t = document.getElementById('endPanelTime');
   if (t) t.textContent = formatTime(getElapsed());
@@ -1454,30 +1568,24 @@ function closeEndPanel() {
 function endPresentation() {
   var finalMs = getElapsed();
   var finalText = formatTime(finalMs);
-
   closeEndPanel();
   stopTimer();
-
   try {
     if (channel) {
       channel.publish('session-end', { ts: Date.now(), elapsedMs: finalMs });
       log('session-end publicado — tempo ' + finalText);
     }
   } catch(e) {}
-
   var t = document.getElementById('endedTimeValue');
   if (t) t.textContent = finalText;
-
   stopStateRequests();
   stopPresencePoll();
   stopMemberCleanup();
   stopHeartbeat();
   releaseWakeLock();
-
   try {
     if (channel) { channel.presence.leave(); channel.detach(); }
   } catch(e) {}
-
   channel = null;
   role = null;
   sessionCode = '';
@@ -1487,17 +1595,17 @@ function endPresentation() {
   viewerCount = 0;
   memberMap = {};
   setPresenterOnline(null);
-
   showScreen('ended');
   log('Apresentação encerrada — tempo ' + finalText);
 }
 
-/* ---------- ESPECTADOR ---------- */
+/* =========================================================
+   ESPECTADOR (CORALISTA)
+   ========================================================= */
 function joinSession() {
   try {
     var nameInput = document.getElementById('nameInput');
     var input = document.getElementById('joinInput');
-
     var name = (nameInput.value || '').trim().toUpperCase();
     var code = (input.value || '').trim().toUpperCase();
 
@@ -1515,9 +1623,11 @@ function joinSession() {
     var channelName = 's1-' + code;
     channel = ably.channels.get(channelName);
 
+    /* slide normal */
     channel.subscribe('slide', function(msg){
       recvCount++;
       if (msg.data && typeof msg.data.index === 'number') {
+        if (isPreparing) return;
         currentMusicIndex = (typeof msg.data.music === 'number') ? msg.data.music : 0;
         currentSlide = msg.data.index;
         slideCount = msg.data.total || 1;
@@ -1529,9 +1639,34 @@ function joinSession() {
       }
       updateDiag();
     });
+
+    /* PREPARAÇÃO SINCRONIZADA — o coralista faz a mesma passagem */
+    channel.subscribe('prep-start', function(msg){
+      recvCount++;
+      var idx = (msg.data && typeof msg.data.music === 'number') ? msg.data.music : 0;
+      if (!musicas[idx]) {
+        log('prep-start recebido, mas música ' + idx + ' não está carregada');
+        return;
+      }
+      log('prep-start recebido: música ' + idx);
+      cancelPreparation();
+      currentMusicIndex = idx;
+      currentSlide = 0;
+      slideCount = musicas[idx].total || 1;
+      showScreen('viewer');
+      setPresenterOnline(true);
+      stopStateRequests();
+      preloadMusic(idx);
+      startPreparation(idx, function(){
+        log('Preparação concluída no receptor');
+      });
+      updateDiag();
+    });
+
     channel.subscribe('session-end', function(msg){
       var ms = (msg.data && typeof msg.data.elapsedMs === 'number') ? msg.data.elapsedMs : 0;
       log('apresentação encerrada pela maestrina — tempo ' + formatTime(ms));
+      cancelPreparation();
       stopHeartbeat();
       stopStateRequests();
       setPresenterOnline(false);
@@ -1539,10 +1674,12 @@ function joinSession() {
       if (t) t.textContent = formatTime(ms);
       showScreen('ended');
     });
+
     channel.subscribe('echo-test', function(msg){
       if (msg.clientId !== myClientId) log('echo de outro cliente: ' + msg.clientId);
     });
-    log('subscribe(slide) em ' + channelName);
+
+    log('subscribe(slide, prep-start) em ' + channelName);
 
     try {
       channel.presence.enter();
@@ -1604,12 +1741,10 @@ function setPresenterOnline(online) {
   var banner = document.getElementById('offlineBanner');
   var pill = document.getElementById('connPill');
   var pillText = document.getElementById('connPillText');
-
   if (banner) {
     if (online === false) banner.classList.add('show');
     else banner.classList.remove('show');
   }
-
   if (pill && pillText) {
     pill.classList.remove('online', 'offline');
     if (online === true) {
@@ -1651,6 +1786,7 @@ function stopStateRequests() {
 }
 
 function leaveSession() {
+  cancelPreparation();
   stopStateRequests();
   stopPresencePoll();
   stopMemberCleanup();
@@ -1708,6 +1844,9 @@ function runEchoTest() {
   }, 5000);
 }
 
+/* =========================================================
+   EVENTOS DE TECLADO E TOQUE
+   ========================================================= */
 document.addEventListener('keydown', function(e){
   if (currentScreen !== 'presenter') return;
   if (e.key === 'Escape') {
