@@ -94,6 +94,34 @@
     font-style:italic;
   }
 
+  /* lista de coralistas ativos */
+  .members-block {
+    margin-top:6px; padding-top:12px; border-top:1px solid #1e1e28;
+    display:flex; flex-direction:column; gap:8px; flex:1; min-height:0;
+  }
+  .members-head {
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
+  }
+  .members-count {
+    font-size:11px; font-weight:700; color:#3ddc84;
+    background:#132a1e; border:1px solid #1e4a33; border-radius:10px;
+    padding:2px 8px;
+  }
+  .members-list {
+    display:flex; flex-direction:column; gap:5px; overflow-y:auto;
+    max-height:220px; padding-right:2px;
+  }
+  .member-item {
+    display:flex; align-items:center; gap:8px;
+    background:#15151d; border:1px solid #24242f; border-radius:9px;
+    padding:7px 10px; font-size:12px; font-weight:600;
+    color:#e8e8f0; letter-spacing:.5px;
+  }
+  .member-item .dot { width:6px; height:6px; flex-shrink:0; }
+  .members-empty {
+    font-size:11px; color:#4a4a5a; font-style:italic; padding:8px 2px;
+  }
+
   .presenter-bar {
     display:flex; align-items:center; gap:10px; flex-wrap:wrap;
     padding:10px 14px; background:#0f0f16; border-bottom:1px solid #1e1e28;
@@ -113,6 +141,14 @@
   }
   .bar-viewers-num { font-weight:700; color:#3ddc84; font-size:15px; }
   .bar-spacer { flex:1; }
+
+  .finish-btn {
+    background:#e5484d; border:1px solid #b8383c; color:#fff;
+    padding:0 18px; min-height:44px; border-radius:11px;
+    font-size:13px; font-weight:700; letter-spacing:1px;
+    cursor:pointer; font-family:inherit; flex-shrink:0;
+  }
+  .finish-btn:active { background:#c93c40; }
 
   .controls {
     display:flex; align-items:center; justify-content:center; gap:14px;
@@ -157,9 +193,19 @@
   .conn-pill.online { color:#3ddc84; border-color:#1e4a33; }
   .conn-pill.offline { color:#e5484d; border-color:#4a1e20; }
 
-  #join { align-items:center; justify-content:center; padding:24px; gap:18px; }
+  #join { align-items:center; justify-content:center; padding:24px; gap:16px; overflow-y:auto; }
+  .field-group { width:100%; max-width:300px; display:flex; flex-direction:column; gap:7px; }
+  .field-label { font-size:11px; color:#8a8a99; text-transform:uppercase; letter-spacing:1.5px; }
+  .name-input {
+    width:100%; min-height:56px; background:#15151d;
+    border:1.5px solid #2a2a36; border-radius:14px; color:#f2f2f5;
+    font-size:17px; font-weight:600; letter-spacing:1px; text-align:center;
+    text-transform:uppercase; font-family:inherit; padding:0 14px;
+  }
+  .name-input:focus { outline:none; border-color:#e8b44a; }
+  .name-input::placeholder { color:#4a4a5a; letter-spacing:1px; }
   .code-input {
-    width:100%; max-width:300px; min-height:76px; background:#15151d;
+    width:100%; min-height:76px; background:#15151d;
     border:1.5px solid #2a2a36; border-radius:14px; color:#e8b44a;
     font-size:38px; font-weight:700; letter-spacing:12px; text-align:center;
     text-transform:uppercase; font-family:inherit; padding-left:12px;
@@ -222,14 +268,16 @@
     .presenter-body { flex-direction:column; }
     .mirror-panel {
       width:100%; border-left:none; border-top:1px solid #1e1e28;
-      flex-direction:row; align-items:center; gap:12px; padding:10px 14px;
-      max-height:110px;
+      flex-direction:row; align-items:flex-start; gap:12px; padding:10px 14px;
+      max-height:150px; overflow-y:auto;
     }
     .mirror-panel .mirror-label { display:none; }
     .mirror-preview { aspect-ratio:auto; padding:8px 12px; flex:1; min-height:70px; }
     .mirror-preview .slide-title { font-size:13px; }
     .mirror-preview .slide-body { font-size:9px; }
     .mirror-next-num { margin:0; white-space:nowrap; }
+    .members-block { margin:0; padding:0; border:none; flex:1; }
+    .members-list { max-height:80px; }
   }
 </style>
 </head>
@@ -256,14 +304,20 @@
 <div class="screen" id="code-screen">
   <div class="label">Código da sessão</div>
   <div class="code-display" id="sessionCode">----</div>
-  <div class="hint">Compartilhe este código com quem vai assistir</div>
+  <div class="hint">Compartilhe este código com o coral</div>
   <button class="btn btn-ghost" style="max-width:300px" onclick="copyCode()">Copiar código</button>
   <button class="btn btn-primary" style="max-width:300px" onclick="enterPresenterMode()">Iniciar apresentação</button>
 </div>
 
 <div class="screen" id="join">
-  <div class="label">Digite o código</div>
-  <input class="code-input" id="joinInput" maxlength="4" autocomplete="off" autocapitalize="characters" placeholder="----">
+  <div class="field-group">
+    <div class="field-label">Seu nome</div>
+    <input class="name-input" id="nameInput" maxlength="18" autocomplete="off" placeholder="DIGITE SEU NOME">
+  </div>
+  <div class="field-group">
+    <div class="field-label">Código da sessão</div>
+    <input class="code-input" id="joinInput" maxlength="4" autocomplete="off" autocapitalize="characters" placeholder="----">
+  </div>
   <div class="join-last" id="joinLast">Último código usado: <b id="joinLastValue">----</b></div>
   <button class="btn btn-primary" style="max-width:300px" onclick="joinSession()">Entrar</button>
   <button class="btn btn-ghost" style="max-width:300px" onclick="showScreen('home')">Voltar</button>
@@ -271,7 +325,7 @@
 
 <div class="screen" id="waiting">
   <div class="spinner"></div>
-  <div class="hint" id="waitingText">Aguardando o apresentador iniciar...</div>
+  <div class="hint" id="waitingText">Aguardando a maestrina iniciar...</div>
   <div class="hint" id="waitingCode" style="color:#e8b44a;font-weight:600"></div>
   <button class="btn btn-ghost" style="max-width:300px" onclick="leaveSession()">Sair</button>
 </div>
@@ -289,7 +343,7 @@
     <div class="bar-spacer"></div>
     <button class="icon-btn" onclick="toggleFullscreen()" title="Tela cheia">⛶</button>
     <button class="icon-btn" onclick="toggleDiag()" title="Diagnóstico">⚙</button>
-    <button class="icon-btn" onclick="leaveSession()" title="Sair">✕</button>
+    <button class="finish-btn" onclick="finishPresentation()">FINALIZAR</button>
   </div>
 
   <div class="presenter-body">
@@ -298,6 +352,16 @@
       <div class="mirror-label">A seguir</div>
       <div class="mirror-preview" id="mirrorPreview"></div>
       <div class="mirror-next-num" id="mirrorNextNum">—</div>
+
+      <div class="members-block">
+        <div class="members-head">
+          <div class="mirror-label">Coralistas ativos</div>
+          <div class="members-count" id="membersCount">0</div>
+        </div>
+        <div class="members-list" id="membersList">
+          <div class="members-empty">Ninguém conectado ainda</div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -309,7 +373,7 @@
 </div>
 
 <div class="screen" id="viewer">
-  <div class="offline-banner" id="offlineBanner">Apresentador desconectado</div>
+  <div class="offline-banner" id="offlineBanner">Apresentação encerrada</div>
   <div class="viewer-bar" id="viewerBar">
     <div class="viewer-bar-code">Código: <b id="viewerBarCode">----</b></div>
     <div class="conn-pill" id="connPill">
@@ -340,8 +404,9 @@
     <div class="diag-row"><span>Client ID</span><span id="dClient">—</span></div>
     <div class="diag-row"><span>Canal</span><span id="dChannel">—</span></div>
     <div class="diag-row"><span>Papel</span><span id="dRole">—</span></div>
+    <div class="diag-row"><span>Meu nome</span><span id="dMyName">—</span></div>
     <div class="diag-row"><span>Membros no canal</span><span id="dMembers">—</span></div>
-    <div class="diag-row"><span>Espectadores ativos</span><span id="dViewers">—</span></div>
+    <div class="diag-row"><span>Coralistas ativos</span><span id="dViewers">—</span></div>
     <div class="diag-row"><span>Tela cheia</span><span id="dFullscreen">—</span></div>
     <div class="diag-row"><span>Wake Lock</span><span id="dWake">—</span></div>
   </div>
@@ -384,19 +449,21 @@ var echoResult = 'Não executado';
 var stateRequestTimer = null;
 var stateRequestAttempts = 0;
 var myClientId = '';
+var myName = '';
 var viewerCount = 0;
 var presencePollTimer = null;
 var wakeLock = null;
 var presenterOnline = null;
 
-/* mapa de membros: clientId -> timestamp da última atividade */
+/* mapa de coralistas: clientId -> { name, ts } */
 var memberMap = {};
 var heartbeatTimer = null;
 var cleanupTimer = null;
 
 var CODE_TTL_MS = 60 * 60 * 1000;
-var HEARTBEAT_INTERVAL = 4000;    /* espectador envia sinal a cada 4s */
-var MEMBER_TIMEOUT = 10000;       /* remove quem não sinaliza há 10s */
+var NAME_TTL_MS = 60 * 60 * 1000;
+var HEARTBEAT_INTERVAL = 4000;
+var MEMBER_TIMEOUT = 10000;
 
 var slides = [
   { type:'big', title:'SOMOS <span>UM</span>', body:'S1 — Apresentação ao vivo' },
@@ -486,7 +553,7 @@ document.addEventListener('visibilitychange', function(){
   }
 });
 
-/* ---------- CÓDIGO SALVO (60 min) ---------- */
+/* ---------- CÓDIGO E NOME SALVOS ---------- */
 function saveLastCode(code) {
   try {
     localStorage.setItem('s1_last_code', code);
@@ -505,6 +572,27 @@ function getLastCode() {
       return '';
     }
     return code;
+  } catch(e) { return ''; }
+}
+
+function saveName(name) {
+  try {
+    localStorage.setItem('s1_name', name);
+    localStorage.setItem('s1_name_ts', String(Date.now()));
+  } catch(e) {}
+}
+
+function getSavedName() {
+  try {
+    var n = localStorage.getItem('s1_name');
+    var ts = parseInt(localStorage.getItem('s1_name_ts') || '0', 10);
+    if (!n || !ts) return '';
+    if (Date.now() - ts > NAME_TTL_MS) {
+      localStorage.removeItem('s1_name');
+      localStorage.removeItem('s1_name_ts');
+      return '';
+    }
+    return n;
   } catch(e) { return ''; }
 }
 
@@ -530,6 +618,8 @@ function goToJoin() {
   refreshLastCodeUI();
   var input = document.getElementById('joinInput');
   if (input) input.value = '';
+  var nameInput = document.getElementById('nameInput');
+  if (nameInput) nameInput.value = getSavedName();
   showScreen('join');
 }
 
@@ -589,6 +679,7 @@ function updateDiag() {
   var dC = document.getElementById('dClient'); if (dC) dC.textContent = myClientId || '—';
   var dCh = document.getElementById('dChannel'); if (dCh) dCh.textContent = channel ? channel.name : '—';
   var dR = document.getElementById('dRole'); if (dR) dR.textContent = role || '—';
+  var dN = document.getElementById('dMyName'); if (dN) dN.textContent = myName || '—';
   var dV = document.getElementById('dViewers'); if (dV) dV.textContent = viewerCount;
   var dSl = document.getElementById('dSlide'); if (dSl) dSl.textContent = (currentSlide + 1) + ' / ' + slideCount;
   var dRe = document.getElementById('dRecv'); if (dRe) dRe.textContent = recvCount;
@@ -625,9 +716,10 @@ function copyDiag() {
     'Host: ' + (ably ? (ably.connection.connectionManager.host || '—') : '—') + '\n' +
     'Estado: ' + (ably ? ably.connection.state : '—') + '\n' +
     'Client ID: ' + (myClientId || '—') + '\n' +
+    'Nome: ' + (myName || '—') + '\n' +
     'Canal: ' + (channel ? channel.name : '—') + '\n' +
     'Papel: ' + (role || '—') + '\n' +
-    'Espectadores ativos: ' + viewerCount + '\n' +
+    'Coralistas ativos: ' + viewerCount + '\n' +
     'Slide: ' + (currentSlide + 1) + '/' + slideCount + '\n' +
     'Recebidas: ' + recvCount + '\n' +
     'Enviadas: ' + sentCount + '\n' +
@@ -721,10 +813,12 @@ function enterPresenterMode() {
       log('echo recebido de ' + (msg.clientId || '?'));
     });
 
-    /* sinal de vida do espectador */
+    /* sinal de vida com nome do coralista */
     channel.subscribe('heartbeat', function(msg){
       if (msg.clientId && msg.clientId !== myClientId) {
-        memberMap[msg.clientId] = Date.now();
+        var nm = (msg.data && msg.data.name) ? String(msg.data.name).toUpperCase() : '';
+        memberMap[msg.clientId] = { name: nm, ts: Date.now() };
+        renderMembers();
       }
     });
     log('subscribe(heartbeat) em ' + channelName);
@@ -733,13 +827,16 @@ function enterPresenterMode() {
       channel.presence.enter();
       channel.presence.subscribe('enter', function(m){
         log('presence enter: ' + m.clientId);
-        if (m.clientId !== myClientId) memberMap[m.clientId] = Date.now();
+        if (m.clientId !== myClientId && !memberMap[m.clientId]) {
+          memberMap[m.clientId] = { name: '', ts: Date.now() };
+        }
         publishSlide();
         updateViewerCount();
       });
       channel.presence.subscribe('leave', function(m){
         log('presence leave: ' + m.clientId);
         delete memberMap[m.clientId];
+        renderMembers();
         updateViewerCount();
       });
       log('presence ativo');
@@ -751,6 +848,7 @@ function enterPresenterMode() {
     showScreen('presenter');
     renderSlide('presenterSlide', currentSlide);
     renderMirror();
+    renderMembers();
     document.getElementById('presenterCounter').textContent = (currentSlide + 1) + ' / ' + slideCount;
 
     setTimeout(function(){ publishSlide(); updateViewerCount(); }, 500);
@@ -775,7 +873,6 @@ function stopPresencePoll() {
   if (presencePollTimer) { clearInterval(presencePollTimer); presencePollTimer = null; }
 }
 
-/* remove membros que pararam de sinalizar (modo avião, rede caída) */
 function startMemberCleanup() {
   stopMemberCleanup();
   cleanupTimer = setInterval(function(){
@@ -784,14 +881,15 @@ function startMemberCleanup() {
     var removed = 0;
     for (var id in memberMap) {
       if (memberMap.hasOwnProperty(id)) {
-        if (now - memberMap[id] > MEMBER_TIMEOUT) {
+        if (now - memberMap[id].ts > MEMBER_TIMEOUT) {
           delete memberMap[id];
           removed++;
         }
       }
     }
     if (removed > 0) {
-      log('Espectador inativo removido: ' + removed);
+      log('Coralista inativo removido: ' + removed);
+      renderMembers();
       applyViewerCount(countActiveMembers());
     }
   }, 5000);
@@ -819,15 +917,16 @@ function updateViewerCount() {
         for (var i = 0; i < members.length; i++) {
           var cid = members[i].clientId;
           if (cid !== myClientId && !memberMap[cid]) {
-            /* membro do presence ainda sem heartbeat: registra agora */
-            memberMap[cid] = now;
+            memberMap[cid] = { name: '', ts: now };
           }
         }
       }
       applyViewerCount(countActiveMembers());
+      renderMembers();
     });
   } catch(e) {
     applyViewerCount(countActiveMembers());
+    renderMembers();
   }
 }
 
@@ -838,6 +937,45 @@ function applyViewerCount(n) {
   if (num) num.textContent = n;
   if (lbl) lbl.textContent = n === 1 ? 'conectado' : 'conectados';
   updateDiag();
+}
+
+/* ---------- LISTA DE CORALISTAS ---------- */
+function renderMembers() {
+  var list = document.getElementById('membersList');
+  var countEl = document.getElementById('membersCount');
+  if (!list) return;
+
+  var names = [];
+  for (var id in memberMap) {
+    if (memberMap.hasOwnProperty(id) && id !== myClientId) {
+      var nm = memberMap[id].name;
+      if (nm) names.push(nm);
+    }
+  }
+
+  names.sort(function(a, b){ return a.localeCompare(b, 'pt-BR'); });
+
+  if (countEl) countEl.textContent = names.length;
+
+  if (names.length === 0) {
+    list.innerHTML = '<div class="members-empty">Ninguém conectado ainda</div>';
+    return;
+  }
+
+  var html = '';
+  for (var i = 0; i < names.length; i++) {
+    html += '<div class="member-item"><div class="dot green"></div>' + escapeHtml(names[i]) + '</div>';
+  }
+  list.innerHTML = html;
+}
+
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 /* ---------- MODO ESPELHO ---------- */
@@ -901,17 +1039,36 @@ function prevSlide() {
   }
 }
 
+/* finaliza a apresentação e avisa todos os coralistas */
+function finishPresentation() {
+  if (!confirm('Finalizar a apresentação para todos os coralistas?')) return;
+  try {
+    if (channel) {
+      channel.publish('session-end', { ts: Date.now() });
+      log('session-end publicado');
+    }
+  } catch(e) {}
+  setTimeout(function(){ leaveSession(); }, 400);
+}
+
 /* ---------- ESPECTADOR ---------- */
 function joinSession() {
   try {
+    var nameInput = document.getElementById('nameInput');
     var input = document.getElementById('joinInput');
+
+    var name = (nameInput.value || '').trim().toUpperCase();
     var code = (input.value || '').trim().toUpperCase();
-    if (code.length !== 4) { showError('Digite o código de 4 caracteres.'); return; }
+
+    if (name.length < 2) { showError('Digite seu nome para entrar.'); nameInput.focus(); return; }
+    if (code.length !== 4) { showError('Digite o código de 4 caracteres.'); input.focus(); return; }
     if (!initAbly()) return;
 
+    myName = name;
     sessionCode = code;
     role = 'viewer';
     saveLastCode(code);
+    saveName(name);
     memberMap = {};
 
     var channelName = 's1-' + code;
@@ -929,6 +1086,14 @@ function joinSession() {
         log('slide recebido: ' + (currentSlide + 1));
       }
       updateDiag();
+    });
+    channel.subscribe('session-end', function(){
+      log('apresentação finalizada pela maestrina');
+      stopHeartbeat();
+      stopStateRequests();
+      setPresenterOnline(false);
+      var banner = document.getElementById('offlineBanner');
+      if (banner) banner.textContent = 'Apresentação encerrada';
     });
     channel.subscribe('echo-test', function(msg){
       if (msg.clientId !== myClientId) log('echo de outro cliente: ' + msg.clientId);
@@ -956,7 +1121,7 @@ function joinSession() {
 
     document.getElementById('viewerBarCode').textContent = code;
     document.getElementById('waitingCode').textContent = 'Código: ' + code;
-    document.getElementById('waitingText').textContent = 'Aguardando o apresentador iniciar...';
+    document.getElementById('waitingText').textContent = 'Aguardando a maestrina iniciar...';
     showScreen('waiting');
     setPresenterOnline(null);
 
@@ -970,13 +1135,13 @@ function joinSession() {
   }
 }
 
-/* espectador envia sinal de vida a cada 10s */
+/* coralista envia sinal de vida com o nome */
 function startHeartbeat() {
   stopHeartbeat();
   var send = function() {
     if (!channel || role !== 'viewer') return;
     try {
-      channel.publish('heartbeat', { ts: Date.now() });
+      channel.publish('heartbeat', { ts: Date.now(), name: myName });
     } catch(e) {}
   };
   send();
@@ -1002,10 +1167,10 @@ function setPresenterOnline(online) {
     pill.classList.remove('online', 'offline');
     if (online === true) {
       pill.classList.add('online');
-      pillText.textContent = 'Apresentador online';
+      pillText.textContent = 'Maestrina online';
     } else if (online === false) {
       pill.classList.add('offline');
-      pillText.textContent = 'Apresentador offline';
+      pillText.textContent = 'Maestrina offline';
     } else {
       pillText.textContent = 'Conectando';
     }
@@ -1025,7 +1190,7 @@ function startStateRequests() {
     log('state-request tentativa ' + stateRequestAttempts);
     if (stateRequestAttempts >= 8) {
       stopStateRequests();
-      document.getElementById('waitingText').innerHTML = 'Nenhum slide recebido.<br>Verifique se o apresentador iniciou e se o código é o mesmo.';
+      document.getElementById('waitingText').innerHTML = 'Nenhum slide recebido.<br>Verifique se a maestrina iniciou e se o código é o mesmo.';
       log('Sincronização falhou após 8 tentativas');
     }
     updateDiag();
@@ -1124,6 +1289,12 @@ document.getElementById('joinInput').addEventListener('input', function(e){
 });
 document.getElementById('joinInput').addEventListener('keydown', function(e){
   if (e.key === 'Enter') joinSession();
+});
+document.getElementById('nameInput').addEventListener('input', function(e){
+  e.target.value = e.target.value.toUpperCase().slice(0, 18);
+});
+document.getElementById('nameInput').addEventListener('keydown', function(e){
+  if (e.key === 'Enter') document.getElementById('joinInput').focus();
 });
 
 window.addEventListener('load', function(){
