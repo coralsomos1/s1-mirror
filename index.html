@@ -55,7 +55,6 @@
 
   #presenter, #viewer { position:relative; }
 
-  /* área do apresentador: slide + barra lateral de espelho */
   .presenter-body { flex:1; display:flex; min-height:0; }
   .slide-area {
     flex:1; display:flex; flex-direction:column; justify-content:center;
@@ -68,7 +67,6 @@
   .slide-big { font-size:clamp(44px,11vw,110px); font-weight:700; }
   .slide-big span { color:#e8b44a; }
 
-  /* barra lateral do modo espelho */
   .mirror-panel {
     width:clamp(220px,26vw,340px); flex-shrink:0;
     background:#0d0d14; border-left:1px solid #1e1e28;
@@ -149,7 +147,6 @@
     cursor:pointer; font-family:inherit; min-height:40px;
   }
 
-  /* indicador de status do apresentador (lado do espectador) */
   .conn-pill {
     display:flex; align-items:center; gap:6px;
     padding:6px 11px; border-radius:20px; font-size:11px; font-weight:600;
@@ -221,7 +218,6 @@
 
   .fs-hide { display:none !important; }
 
-  /* em telas estreitas, espelho vira faixa inferior menor */
   @media (max-width:760px) {
     .presenter-body { flex-direction:column; }
     .mirror-panel {
@@ -344,7 +340,7 @@
     <div class="diag-row"><span>Client ID</span><span id="dClient">—</span></div>
     <div class="diag-row"><span>Canal</span><span id="dChannel">—</span></div>
     <div class="diag-row"><span>Papel</span><span id="dRole">—</span></div>
-    <div class="diag-row"><span>Membros</span><span id="dMembers">—</span></div>
+    <div class="diag-row"><span>Membros no canal</span><span id="dMembers">—</span></div>
     <div class="diag-row"><span>Espectadores</span><span id="dViewers">—</span></div>
     <div class="diag-row"><span>Tela cheia</span><span id="dFullscreen">—</span></div>
     <div class="diag-row"><span>Wake Lock</span><span id="dWake">—</span></div>
@@ -392,6 +388,11 @@ var viewerCount = 0;
 var presencePollTimer = null;
 var wakeLock = null;
 var presenterOnline = null;
+
+/* mapa local de membros: clientId -> true */
+var memberMap = {};
+
+var CODE_TTL_MS = 60 * 60 * 1000; /* 60 minutos */
 
 var slides = [
   { type:'big', title:'SOMOS <span>UM</span>', body:'S1 — Apresentação ao vivo' },
@@ -481,22 +482,38 @@ document.addEventListener('visibilitychange', function(){
   }
 });
 
-/* ---------- CÓDIGO SALVO ---------- */
+/* ---------- CÓDIGO SALVO (com validade de 60 min) ---------- */
 function saveLastCode(code) {
-  try { localStorage.setItem('s1_last_code', code); } catch(e) {}
+  try {
+    localStorage.setItem('s1_last_code', code);
+    localStorage.setItem('s1_last_code_ts', String(Date.now()));
+  } catch(e) {}
 }
+
 function getLastCode() {
-  try { return localStorage.getItem('s1_last_code') || ''; } catch(e) { return ''; }
+  try {
+    var code = localStorage.getItem('s1_last_code');
+    var ts = parseInt(localStorage.getItem('s1_last_code_ts') || '0', 10);
+    if (!code || !ts) return '';
+    if (Date.now() - ts > CODE_TTL_MS) {
+      localStorage.removeItem('s1_last_code');
+      localStorage.removeItem('s1_last_code_ts');
+      return '';
+    }
+    return code;
+  } catch(e) { return ''; }
 }
 
 function refreshLastCodeUI() {
   var last = getLastCode();
+
   var homeBox = document.getElementById('homeLastCode');
   var homeVal = document.getElementById('homeLastCodeValue');
   if (homeBox && homeVal) {
     if (last) { homeVal.textContent = last; homeBox.classList.add('show'); }
     else { homeBox.classList.remove('show'); }
   }
+
   var joinBox = document.getElementById('joinLast');
   var joinVal = document.getElementById('joinLastValue');
   if (joinBox && joinVal) {
@@ -507,9 +524,9 @@ function refreshLastCodeUI() {
 
 function goToJoin() {
   refreshLastCodeUI();
-  var last = getLastCode();
+  /* NÃO preenche o campo — o código aparece apenas como dica abaixo */
   var input = document.getElementById('joinInput');
-  if (input && last) input.value = last;
+  if (input) input.value = '';
   showScreen('join');
 }
 
@@ -591,6 +608,8 @@ function updateDiag() {
           var ids = [];
           for (var i = 0; i < members.length; i++) ids.push(members[i].clientId);
           dM.textContent = members.length + ' (' + ids.join(', ') + ')';
+        } else if (err) {
+          dM.textContent = 'erro: ' + err.message;
         }
       });
     } catch(e) {}
@@ -681,6 +700,7 @@ function enterPresenterMode() {
     if (!ably) { showError('Ably não inicializado. Recarregue a página.'); return; }
     var channelName = 's1-' + sessionCode;
     channel = ably.channels.get(channelName);
+    memberMap = {};
 
     channel.subscribe('state-request', function(){
       log('state-request recebido — respondendo');
@@ -702,14 +722,19 @@ function enterPresenterMode() {
       channel.presence.enter();
       channel.presence.subscribe('enter', function(m){
         log('presence enter: ' + m.clientId);
+        memberMap[m.clientId] = true;
         publishSlide();
         updateViewerCount();
       });
       channel.presence.subscribe('leave', function(m){
         log('presence leave: ' + m.clientId);
+        delete memberMap[m.clientId];
         updateViewerCount();
       });
-      channel.presence.subscribe('update', function(){ updateViewerCount(); });
+      channel.presence.subscribe('update', function(m){
+        if (m && m.clientId) memberMap[m.clientId] = true;
+        updateViewerCount();
+      });
       log('presence ativo');
     } catch(pe) {
       log('presence falhou (não crítico): ' + pe.message);
@@ -742,23 +767,46 @@ function stopPresencePoll() {
   if (presencePollTimer) { clearInterval(presencePollTimer); presencePollTimer = null; }
 }
 
+/* Conta espectadores usando duas fontes: mapa local + presence.get() */
 function updateViewerCount() {
   if (!channel) return;
+
+  /* fonte 1: mapa local acumulado pelos eventos */
+  var localCount = 0;
+  for (var id in memberMap) {
+    if (memberMap.hasOwnProperty(id) && id !== myClientId) localCount++;
+  }
+
+  /* fonte 2: consulta direta ao presence */
   try {
     channel.presence.get(function(err, members){
-      if (err || !members) return;
-      var others = 0;
-      for (var i = 0; i < members.length; i++) {
-        if (members[i].clientId !== myClientId) others++;
+      var remoteCount = 0;
+      if (!err && members) {
+        for (var i = 0; i < members.length; i++) {
+          if (members[i].clientId !== myClientId) remoteCount++;
+        }
+        /* sincroniza o mapa local com a verdade do servidor */
+        memberMap = {};
+        for (var j = 0; j < members.length; j++) {
+          memberMap[members[j].clientId] = true;
+        }
       }
-      viewerCount = others;
-      var num = document.getElementById('barViewersNum');
-      var lbl = document.getElementById('barViewersLabel');
-      if (num) num.textContent = others;
-      if (lbl) lbl.textContent = others === 1 ? 'conectado' : 'conectados';
-      updateDiag();
+      /* usa o maior valor entre as duas fontes */
+      var finalCount = Math.max(localCount, remoteCount);
+      applyViewerCount(finalCount);
     });
-  } catch(e) {}
+  } catch(e) {
+    applyViewerCount(localCount);
+  }
+}
+
+function applyViewerCount(n) {
+  viewerCount = n;
+  var num = document.getElementById('barViewersNum');
+  var lbl = document.getElementById('barViewersLabel');
+  if (num) num.textContent = n;
+  if (lbl) lbl.textContent = n === 1 ? 'conectado' : 'conectados';
+  updateDiag();
 }
 
 /* ---------- MODO ESPELHO ---------- */
@@ -833,6 +881,7 @@ function joinSession() {
     sessionCode = code;
     role = 'viewer';
     saveLastCode(code);
+    memberMap = {};
 
     var channelName = 's1-' + code;
     channel = ably.channels.get(channelName);
@@ -965,6 +1014,7 @@ function leaveSession() {
   recvCount = 0;
   sentCount = 0;
   viewerCount = 0;
+  memberMap = {};
   setPresenterOnline(null);
   var input = document.getElementById('joinInput');
   if (input) input.value = '';
