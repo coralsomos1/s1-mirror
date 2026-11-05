@@ -72,7 +72,7 @@
   }
   .prep-overlay.show { display:flex; }
   .prep-badge {
-    background:rgba(20,20,28,.94); border:1px solid #2a2a36;
+    background:rgba(0,0,0,.55); border:1px solid #2a2a36;
     border-radius:999px; padding:11px 22px;
     font-size:14px; font-weight:600; letter-spacing:.3px;
     display:flex; align-items:center; gap:8px;
@@ -423,7 +423,7 @@
 </div>
 <div class="screen" id="waiting">
   <div class="spinner"></div>
-  <div class="hint" id="waitingText">Aguardando a maestrina iniciar...</div>
+  <div class="hint" id="waitingText">Aguardando o apresentador iniciar...</div>
   <div class="hint" id="waitingCode" style="color:#e8b44a;font-weight:600"></div>
   <button class="btn btn-ghost" style="max-width:300px" onclick="leaveSession()">Sair</button>
 </div>
@@ -584,8 +584,8 @@ var API_KEY = 'VEgT6Q.8-6OmA:cpAVi0_Gtfdj7FpD9Sg7TkW40fBBw7295Tj7hz7XkPE';
 var BASE_URL = 'https://coralsomos1.github.io/s1-mirror/';
 /* Caminho do PDF.js dentro do repositório */
 var PDFJS_DIR = 'pdfjs/';
-/* Tempo de preparação visual: 0,4 s por slide */
-var PREP_PER_SLIDE_MS = 400;
+/* Tempo de preparação visual: 0,1 s por slide */
+var PREP_PER_SLIDE_MS = 100;
 /* Pausa no primeiro slide antes de liberar o controle */
 var PREP_HOLD_FIRST_MS = 900;
 /* =========================================================
@@ -1616,7 +1616,7 @@ function joinSession() {
     });
     channel.subscribe('session-end', function(msg){
       var ms = (msg.data && typeof msg.data.elapsedMs === 'number') ? msg.data.elapsedMs : 0;
-      log('apresentação encerrada pela maestrina — tempo ' + formatTime(ms));
+      log('apresentação encerrada pelo apresentador — tempo ' + formatTime(ms));
       cancelPreparation();
       stopHeartbeat();
       stopStateRequests();
@@ -1649,7 +1649,7 @@ function joinSession() {
     }
     document.getElementById('viewerBarCode').textContent = code;
     document.getElementById('waitingCode').textContent = 'Código: ' + code;
-    document.getElementById('waitingText').textContent = 'Aguardando a maestrina iniciar...';
+    document.getElementById('waitingText').textContent = 'Aguardando o apresentador iniciar...';
     showScreen('waiting');
     setPresenterOnline(null);
     loadMusicas(function(ok){
@@ -1691,10 +1691,10 @@ function setPresenterOnline(online) {
     pill.classList.remove('online', 'offline');
     if (online === true) {
       pill.classList.add('online');
-      pillText.textContent = 'Maestrina online';
+      pillText.textContent = 'Apresentador online';
     } else if (online === false) {
       pill.classList.add('offline');
-      pillText.textContent = 'Maestrina offline';
+      pillText.textContent = 'Apresentador offline';
     } else {
       pillText.textContent = 'Conectando';
     }
@@ -1713,7 +1713,7 @@ function startStateRequests() {
     log('state-request tentativa ' + stateRequestAttempts);
     if (stateRequestAttempts >= 8) {
       stopStateRequests();
-      document.getElementById('waitingText').innerHTML = 'Nenhum slide recebido.<br>Verifique se a maestrina iniciou e se o código é o mesmo.';
+      document.getElementById('waitingText').innerHTML = 'Nenhum slide recebido.<br>Verifique se o apresentador iniciou e se o código é o mesmo.';
       log('Sincronização falhou após 8 tentativas');
     }
     updateDiag();
