@@ -85,9 +85,9 @@
       "extensao": "jpg"
     },
       {
-  "nome": "Natal de Joinville",
-  "pdf": "musicas/natal-joinville.pdf"
-  "paginas": 14
+    "nome": "Natal de Joinville",
+    "pdf": "musicas/natal-joinville.pdf",
+    "paginas": 14
 }
   ]
 }
