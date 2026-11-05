@@ -76,6 +76,8 @@
     border-radius:999px; padding:11px 22px;
     font-size:14px; font-weight:600; letter-spacing:.3px;
     display:flex; align-items:center; gap:8px;
+    position:relative;
+    z-index:901;
   }
   .prep-badge .spin {
     width:14px; height:14px; border:2px solid #3a3a48; border-top-color:#e8b44a;
@@ -812,6 +814,8 @@ function cancelPreparation() {
   setNavEnabled(true);
 }
 function setPrepOverlay(show) {
+  if (show) document.body.classList.add('preparing');
+  else document.body.classList.remove('preparing');
   var p = document.getElementById('presenterPrep');
   var v = document.getElementById('viewerPrep');
   if (p) { if (show) p.classList.add('show'); else p.classList.remove('show'); }
