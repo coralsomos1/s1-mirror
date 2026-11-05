@@ -37,7 +37,7 @@
   .last-code {
     display:none; margin-top:6px; padding:12px 20px; border-radius:12px;
     background:#15151d; border:1px solid #2a2a36; text-align:center;
-    max-width:340px; width:100%;
+    max-width:340px; width:%;
   }
   .last-code.show { display:block; }
   .last-code-label { font-size:11px; color:#6a6a7a; text-transform:uppercase; letter-spacing:1.5px; margin-bottom:6px; }
@@ -58,7 +58,7 @@
     background:#000; position:relative;
   }
   .slide-canvas {
-    max-width:100%; max-height:100%; width:auto; height:auto;
+    max-width:%; max-height:%; width:auto; height:auto;
     object-fit:contain; display:block;
   }
   .slide-placeholder {
@@ -97,7 +97,7 @@
     padding:8px; aspect-ratio:16/9; display:flex; align-items:center;
     justify-content:center; overflow:hidden;
   }
-  .mirror-preview canvas { max-width:100%; max-height:100%; object-fit:contain; display:block; }
+  .mirror-preview canvas { max-width:%; max-height:%; object-fit:contain; display:block; }
   .mirror-next-num {
     font-size:11px; color:#6a6a7a; text-align:center; margin-top:2px;
   }
@@ -110,7 +110,7 @@
     padding:11px 12px; display:flex; flex-direction:column; gap:7px;
   }
   .music-select {
-    width:100%; min-height:40px; border-radius:9px;
+    width:%; min-height:40px; border-radius:9px;
     background:#1c1c26; border:1px solid #2a2a36; color:#f2f2f5;
     font-size:13px; font-weight:600; font-family:inherit; padding:0 10px;
     cursor:pointer;
@@ -134,7 +134,7 @@
     text-align:center; line-height:1;
   }
   .timer-reset-btn {
-    width:100%; min-height:36px; border-radius:9px;
+    width:%; min-height:36px; border-radius:9px;
     background:#3a2f14; border:1px solid #6b5520; color:#e8b44a;
     font-size:12px; font-weight:700; letter-spacing:1px;
     cursor:pointer; font-family:inherit;
@@ -235,10 +235,10 @@
   .conn-pill.online { color:#3ddc84; border-color:#1e4a33; }
   .conn-pill.offline { color:#e5484d; border-color:#4a1e20; }
   #join { align-items:center; justify-content:center; padding:24px; gap:16px; overflow-y:auto; }
-  .field-group { width:100%; max-width:300px; display:flex; flex-direction:column; gap:7px; }
+  .field-group { width:%; max-width:300px; display:flex; flex-direction:column; gap:7px; }
   .field-label { font-size:11px; color:#8a8a99; text-transform:uppercase; letter-spacing:1.5px; }
   .name-input {
-    width:100%; min-height:56px; background:#15151d;
+    width:%; min-height:56px; background:#15151d;
     border:1.5px solid #2a2a36; border-radius:14px; color:#f2f2f5;
     font-size:17px; font-weight:600; letter-spacing:1px; text-align:center;
     text-transform:uppercase; font-family:inherit; padding:0 14px;
@@ -246,7 +246,7 @@
   .name-input:focus { outline:none; border-color:#e8b44a; }
   .name-input::placeholder { color:#4a4a5a; letter-spacing:1px; }
   .code-input {
-    width:100%; min-height:76px; background:#15151d;
+    width:%; min-height:76px; background:#15151d;
     border:1.5px solid #2a2a36; border-radius:14px; color:#e8b44a;
     font-size:38px; font-weight:700; letter-spacing:12px; text-align:center;
     text-transform:uppercase; font-family:inherit; padding-left:12px;
@@ -273,7 +273,7 @@
   .end-overlay.open { display:flex; }
   .end-card {
     background:#12121a; border:1px solid #2a2a36; border-radius:20px;
-    padding:28px 24px; width:100%; max-width:400px;
+    padding:28px 24px; width:%; max-width:400px;
     display:flex; flex-direction:column; gap:16px; text-align:center;
   }
   .end-title { font-size:20px; font-weight:700; }
@@ -291,7 +291,7 @@
   }
   .end-actions { display:flex; flex-direction:column; gap:10px; margin-top:4px; }
   .end-btn {
-    width:100%; min-height:52px; border-radius:13px; border:none;
+    width:%; min-height:52px; border-radius:13px; border:none;
     font-size:15px; font-weight:700; cursor:pointer; font-family:inherit;
     letter-spacing:.5px;
   }
@@ -320,7 +320,7 @@
     font-variant-numeric:tabular-nums; letter-spacing:2px;
   }
   #diag {
-    position:fixed; inset:0; background:#08080c; z-index:100; display:none;
+    position:fixed; inset:0; background:#08080c; z-index:; display:none;
     flex-direction:column; padding:16px; overflow-y:auto; font-size:12px;
   }
   #diag.open { display:flex; }
@@ -363,7 +363,7 @@
   @media (max-width:760px) {
     .presenter-body { flex-direction:column; }
     .mirror-panel {
-      width:100%; border-left:none; border-top:1px solid #1e1e28;
+      width:%; border-left:none; border-top:1px solid #1e1e28;
       flex-direction:row; align-items:flex-start; gap:10px; padding:10px 14px;
       max-height:180px; overflow-y:auto;
     }
@@ -584,8 +584,8 @@ var API_KEY = 'VEgT6Q.8-6OmA:cpAVi0_Gtfdj7FpD9Sg7TkW40fBBw7295Tj7hz7XkPE';
 var BASE_URL = 'https://coralsomos1.github.io/s1-mirror/';
 /* Caminho do PDF.js dentro do repositório */
 var PDFJS_DIR = 'pdfjs/';
-/* Tempo de preparação visual: 0,1 s por slide */
-var PREP_PER_SLIDE_MS = 100;
+/* Tempo de preparação visual: 0,15 s por slide */
+var PREP_PER_SLIDE_MS = 150;
 /* Pausa no primeiro slide antes de liberar o controle */
 var PREP_HOLD_FIRST_MS = 900;
 /* =========================================================
