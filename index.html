@@ -2,1896 +2,298 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>S1 Mirror — Somos Um</title>
-<script src="https://cdn.ably.com/lib/ably.min-1.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>S1 Mirror</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
-  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-  body {
-    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-    background: radial-gradient(circle at 50% 0%, #16161f 0%, #0a0a0f 70%);
-    color:#f2f2f5; min-height:100vh; overflow:hidden;
-  }
-  .screen { display:none; width:100%; height:100vh; height:100dvh; }
-  .screen.active { display:flex; flex-direction:column; }
-  #home { align-items:center; justify-content:center; padding:24px; gap:14px; }
-  .logo { font-size:clamp(38px,9vw,64px); font-weight:700; letter-spacing:-2px; }
-  .logo span { color:#e8b44a; }
-  .tagline { color:#8a8a99; font-size:15px; letter-spacing:2px; text-transform:uppercase; margin-bottom:26px; }
-  .btn {
-    width:100%; max-width:340px; min-height:56px; border:none; border-radius:14px;
-    font-size:17px; font-weight:600; cursor:pointer; font-family:inherit;
-  }
-  .btn-primary { background:#e8b44a; color:#12121a; }
-  .btn-secondary { background:transparent; color:#f2f2f5; border:1.5px solid #33333f; }
-  .btn-ghost { background:#1c1c26; color:#c9c9d4; border:1px solid #2a2a36; }
-  .status-bar {
-    position:fixed; bottom:16px; left:0; right:0; text-align:center;
-    font-size:12px; color:#6a6a7a; display:flex; align-items:center; justify-content:center; gap:7px;
-  }
-  .dot { width:8px; height:8px; border-radius:50%; background:#555; }
-  .dot.green { background:#3ddc84; }
-  .dot.yellow { background:#e8b44a; }
-  .dot.red { background:#e5484d; }
-  .last-code {
-    display:none; margin-top:6px; padding:12px 20px; border-radius:12px;
-    background:#15151d; border:1px solid #2a2a36; text-align:center;
-    max-width:340px; width:100%;
-  }
-  .last-code.show { display:block; }
-  .last-code-label { font-size:11px; color:#6a6a7a; text-transform:uppercase; letter-spacing:1.5px; margin-bottom:6px; }
-  .last-code-value { font-size:26px; font-weight:700; color:#e8b44a; letter-spacing:8px; padding-left:8px; }
-  .last-code-hint { font-size:11px; color:#6a6a7a; margin-top:6px; }
-  #code-screen { align-items:center; justify-content:center; padding:24px; gap:22px; }
-  .label { font-size:13px; color:#8a8a99; text-transform:uppercase; letter-spacing:2px; }
-  .code-display {
-    font-size:clamp(56px,16vw,96px); font-weight:700; letter-spacing:14px;
-    color:#e8b44a; padding-left:14px;
-  }
-  .hint { color:#8a8a99; font-size:14px; text-align:center; max-width:320px; line-height:1.5; }
-  #presenter, #viewer { position:relative; }
-  .presenter-body { flex:1; display:flex; min-height:0; }
-  .slide-area {
-    flex:1; display:flex; align-items:center; justify-content:center;
-    padding:clamp(10px,2vw,28px); min-width:0; overflow:hidden;
-    background:#000; position:relative;
-  }
-  .slide-img {
-    max-width:100%; max-height:100%; width:auto; height:auto;
-    object-fit:contain; display:block;
-  }
-  .slide-placeholder {
-    color:#4a4a5a; font-size:14px; text-align:center; padding:30px;
-    line-height:1.6;
-  }
-  .prep-overlay {
-    position:absolute; inset:0; display:none;
-    align-items:flex-end; justify-content:center;
-    padding-bottom:28px; pointer-events:none; z-index:5;
-  }
-  .prep-overlay.show { display:flex; }
-  .prep-badge {
-    background:rgba(20,20,28,.94); border:1px solid #2a2a36;
-    border-radius:999px; padding:11px 22px;
-    font-size:14px; font-weight:600; letter-spacing:.3px;
-    display:flex; align-items:center; gap:8px;
-  }
-  .prep-badge .spin {
-    width:14px; height:14px; border:2px solid #3a3a48; border-top-color:#e8b44a;
-    border-radius:50%; animation:spin .8s linear infinite;
-  }
-  @keyframes spin { to { transform:rotate(360deg); } }
-  .mirror-panel {
-    width:clamp(230px,27vw,350px); flex-shrink:0;
-    background:#0d0d14; border-left:1px solid #1e1e28;
-    display:flex; flex-direction:column; padding:16px; gap:12px;
-    overflow-y:auto;
-  }
-  .mirror-label {
-    font-size:10px; color:#6a6a7a; text-transform:uppercase;
-    letter-spacing:1.5px; font-weight:600;
-  }
-  .mirror-preview {
-    background:#15151d; border:1px solid #2a2a36; border-radius:12px;
-    padding:8px; aspect-ratio:16/9; display:flex; align-items:center;
-    justify-content:center; overflow:hidden;
-  }
-  .mirror-preview img { max-width:100%; max-height:100%; object-fit:contain; display:block; }
-  .mirror-next-num {
-    font-size:11px; color:#6a6a7a; text-align:center; margin-top:2px;
-  }
-  .mirror-empty {
-    color:#4a4a5a; font-size:12px; text-align:center; padding:20px 8px;
-    font-style:italic;
-  }
-  .music-block {
-    background:#15151d; border:1px solid #2a2a36; border-radius:12px;
-    padding:11px 12px; display:flex; flex-direction:column; gap:7px;
-  }
-  .music-select {
-    width:100%; min-height:40px; border-radius:9px;
-    background:#1c1c26; border:1px solid #2a2a36; color:#f2f2f5;
-    font-size:13px; font-weight:600; font-family:inherit; padding:0 10px;
-    cursor:pointer;
-  }
-  .music-select:focus { outline:none; border-color:#e8b44a; }
-  .music-progress {
-    font-size:11px; color:#6a6a7a; text-align:center;
-    font-variant-numeric:tabular-nums;
-  }
-  .timer-block {
-    background:#15151d; border:1px solid #2a2a36; border-radius:12px;
-    padding:12px; display:flex; flex-direction:column; gap:9px;
-  }
-  .timer-block-label {
-    font-size:10px; color:#6a6a7a; text-transform:uppercase;
-    letter-spacing:1.5px; font-weight:600;
-  }
-  .timer-block-value {
-    font-size:clamp(26px,3vw,34px); font-weight:700; color:#e8b44a;
-    font-variant-numeric:tabular-nums; letter-spacing:2px;
-    text-align:center; line-height:1;
-  }
-  .timer-reset-btn {
-    width:100%; min-height:36px; border-radius:9px;
-    background:#3a2f14; border:1px solid #6b5520; color:#e8b44a;
-    font-size:12px; font-weight:700; letter-spacing:1px;
-    cursor:pointer; font-family:inherit;
-    display:flex; align-items:center; justify-content:center; gap:6px;
-  }
-  .timer-reset-btn:active { background:#4a3c1a; border-color:#8a6f2a; }
-  .timer-reset-btn .ico { font-size:14px; line-height:1; }
-  .members-block {
-    margin-top:6px; padding-top:12px; border-top:1px solid #1e1e28;
-    display:flex; flex-direction:column; gap:8px; flex:1; min-height:0;
-  }
-  .members-head {
-    display:flex; align-items:center; justify-content:space-between; gap:8px;
-  }
-  .members-count {
-    font-size:11px; font-weight:700; color:#3ddc84;
-    background:#132a1e; border:1px solid #1e4a33; border-radius:10px;
-    padding:2px 8px;
-  }
-  .members-list {
-    display:flex; flex-direction:column; gap:5px; overflow-y:auto;
-    max-height:200px; padding-right:2px;
-  }
-  .member-item {
-    display:flex; align-items:center; gap:8px;
-    background:#15151d; border:1px solid #24242f; border-radius:9px;
-    padding:7px 10px; font-size:12px; font-weight:600;
-    color:#e8e8f0; letter-spacing:.5px;
-  }
-  .member-item .dot { width:6px; height:6px; flex-shrink:0; }
-  .members-empty {
-    font-size:11px; color:#4a4a5a; font-style:italic; padding:8px 2px;
-  }
-  .presenter-bar {
-    display:flex; align-items:center; gap:10px; flex-wrap:wrap;
-    padding:10px 14px; background:#0f0f16; border-bottom:1px solid #1e1e28;
-    flex-shrink:0;
-  }
-  .bar-code {
-    display:flex; align-items:center; gap:8px;
-    background:#15151d; border:1px solid #2a2a36; border-radius:10px;
-    padding:7px 12px;
-  }
-  .bar-code-label { font-size:10px; color:#6a6a7a; text-transform:uppercase; letter-spacing:1.2px; }
-  .bar-code-value { font-size:17px; font-weight:700; color:#e8b44a; letter-spacing:4px; }
-  .bar-viewers {
-    display:flex; align-items:center; gap:7px;
-    background:#15151d; border:1px solid #2a2a36; border-radius:10px;
-    padding:7px 12px; font-size:13px; color:#c9c9d4;
-  }
-  .bar-viewers-num { font-weight:700; color:#3ddc84; font-size:15px; }
-  .bar-spacer { flex:1; }
-  .finish-btn {
-    background:#e5484d; border:1px solid #b8383c; color:#fff;
-    padding:0 18px; min-height:44px; border-radius:11px;
-    font-size:13px; font-weight:700; letter-spacing:1px;
-    cursor:pointer; font-family:inherit; flex-shrink:0;
-  }
-  .finish-btn:active { background:#c93c40; }
-  .controls {
-    display:flex; align-items:center; justify-content:center; gap:14px;
-    padding:14px 18px calc(14px + env(safe-area-inset-bottom));
-    background:#0f0f16; border-top:1px solid #1e1e28;
-    flex-shrink:0;
-  }
-  .ctrl-btn {
-    background:#1c1c26; border:1px solid #2a2a36; color:#f2f2f5;
-    min-height:48px; padding:0 20px; border-radius:12px; font-size:15px;
-    font-weight:600; cursor:pointer; font-family:inherit;
-  }
-  .ctrl-btn:disabled { opacity:.35; cursor:default; }
-  .counter { font-size:15px; color:#8a8a99; min-width:64px; text-align:center; }
-  .icon-btn {
-    width:44px; height:44px; border-radius:11px; background:rgba(28,28,38,.85);
-    border:1px solid #2a2a36; color:#c9c9d4; font-size:17px; cursor:pointer;
-    display:flex; align-items:center; justify-content:center; flex-shrink:0;
-  }
-  .icon-btn:active { background:#2a2a36; }
-  .viewer-bar {
-    display:flex; align-items:center; gap:10px;
-    padding:10px 14px; background:#0f0f16; border-bottom:1px solid #1e1e28;
-    flex-shrink:0;
-  }
-  .viewer-bar-code { font-size:12px; color:#6a6a7a; letter-spacing:1px; }
-  .viewer-bar-code b { color:#e8b44a; letter-spacing:3px; font-size:14px; }
-  .exit-btn {
-    margin-left:auto; background:#1c1c26; border:1px solid #2a2a36; color:#c9c9d4;
-    padding:9px 16px; border-radius:10px; font-size:13px; font-weight:600;
-    cursor:pointer; font-family:inherit; min-height:40px;
-  }
-  .conn-pill {
-    display:flex; align-items:center; gap:6px;
-    padding:6px 11px; border-radius:20px; font-size:11px; font-weight:600;
-    background:#15151d; border:1px solid #2a2a36; color:#8a8a99;
-    white-space:nowrap;
-  }
-  .conn-pill .dot { width:7px; height:7px; }
-  .conn-pill.online { color:#3ddc84; border-color:#1e4a33; }
-  .conn-pill.offline { color:#e5484d; border-color:#4a1e20; }
-  #join { align-items:center; justify-content:center; padding:24px; gap:16px; overflow-y:auto; }
-  .field-group { width:100%; max-width:300px; display:flex; flex-direction:column; gap:7px; }
-  .field-label { font-size:11px; color:#8a8a99; text-transform:uppercase; letter-spacing:1.5px; }
-  .name-input {
-    width:100%; min-height:56px; background:#15151d;
-    border:1.5px solid #2a2a36; border-radius:14px; color:#f2f2f5;
-    font-size:17px; font-weight:600; letter-spacing:1px; text-align:center;
-    text-transform:uppercase; font-family:inherit; padding:0 14px;
-  }
-  .name-input:focus { outline:none; border-color:#e8b44a; }
-  .name-input::placeholder { color:#4a4a5a; letter-spacing:1px; }
-  .code-input {
-    width:100%; min-height:76px; background:#15151d;
-    border:1.5px solid #2a2a36; border-radius:14px; color:#e8b44a;
-    font-size:38px; font-weight:700; letter-spacing:12px; text-align:center;
-    text-transform:uppercase; font-family:inherit; padding-left:12px;
-  }
-  .code-input:focus { outline:none; border-color:#e8b44a; }
-  .join-last { display:none; font-size:13px; color:#8a8a99; text-align:center; }
-  .join-last.show { display:block; }
-  .join-last b { color:#e8b44a; letter-spacing:3px; font-size:15px; }
-  #waiting { align-items:center; justify-content:center; padding:24px; gap:20px; text-align:center; }
-  .spinner {
-    width:44px; height:44px; border:3px solid #2a2a36; border-top-color:#e8b44a;
-    border-radius:50%; animation:spin .9s linear infinite;
-  }
-  .offline-banner {
-    display:none; background:#e5484d; color:#fff; padding:10px 16px;
-    font-size:13px; text-align:center; font-weight:600; flex-shrink:0;
-  }
-  .offline-banner.show { display:block; }
-  .end-overlay {
-    position:fixed; inset:0; background:rgba(6,6,10,.92);
-    z-index:150; display:none; align-items:center; justify-content:center;
-    padding:24px; backdrop-filter:blur(6px);
-  }
-  .end-overlay.open { display:flex; }
-  .end-card {
-    background:#12121a; border:1px solid #2a2a36; border-radius:20px;
-    padding:28px 24px; width:100%; max-width:400px;
-    display:flex; flex-direction:column; gap:16px; text-align:center;
-  }
-  .end-title { font-size:20px; font-weight:700; }
-  .end-sub { font-size:13px; color:#8a8a99; line-height:1.5; }
-  .end-time-box {
-    background:#15151d; border:1px solid #2a2a36; border-radius:14px;
-    padding:16px; display:flex; flex-direction:column; gap:6px;
-  }
-  .end-time-label {
-    font-size:10px; color:#6a6a7a; text-transform:uppercase; letter-spacing:1.5px;
-  }
-  .end-time-value {
-    font-size:34px; font-weight:700; color:#e8b44a;
-    font-variant-numeric:tabular-nums; letter-spacing:2px;
-  }
-  .end-actions { display:flex; flex-direction:column; gap:10px; margin-top:4px; }
-  .end-btn {
-    width:100%; min-height:52px; border-radius:13px; border:none;
-    font-size:15px; font-weight:700; cursor:pointer; font-family:inherit;
-    letter-spacing:.5px;
-  }
-  .end-btn-danger { background:#e5484d; color:#fff; }
-  .end-btn-danger:active { background:#c93c40; }
-  .end-btn-safe { background:#1c1c26; color:#f2f2f5; border:1px solid #2a2a36; }
-  .end-btn-safe:active { background:#262632; }
-  #ended {
-    align-items:center; justify-content:center; padding:24px; gap:18px; text-align:center;
-  }
-  .ended-icon {
-    width:64px; height:64px; border-radius:50%; background:#132a1e;
-    border:1px solid #1e4a33; display:flex; align-items:center;
-    justify-content:center; font-size:28px; color:#3ddc84;
-  }
-  .ended-title { font-size:24px; font-weight:700; }
-  .ended-time-box {
-    background:#15151d; border:1px solid #2a2a36; border-radius:14px;
-    padding:16px 28px; display:flex; flex-direction:column; gap:6px; margin-top:6px;
-  }
-  .ended-time-label {
-    font-size:10px; color:#6a6a7a; text-transform:uppercase; letter-spacing:1.5px;
-  }
-  .ended-time-value {
-    font-size:30px; font-weight:700; color:#e8b44a;
-    font-variant-numeric:tabular-nums; letter-spacing:2px;
-  }
-  #diag {
-    position:fixed; inset:0; background:#08080c; z-index:100; display:none;
-    flex-direction:column; padding:16px; overflow-y:auto; font-size:12px;
-  }
-  #diag.open { display:flex; }
-  .diag-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
-  .diag-title { font-size:16px; font-weight:700; color:#e8b44a; }
-  .diag-section { margin-bottom:16px; }
-  .diag-section h4 {
-    font-size:11px; text-transform:uppercase; letter-spacing:1.5px;
-    color:#6a6a7a; margin-bottom:7px; border-bottom:1px solid #1e1e28; padding-bottom:5px;
-  }
-  .diag-row { display:flex; justify-content:space-between; padding:4px 0; gap:12px; }
-  .diag-row span:first-child { color:#8a8a99; flex-shrink:0; }
-  .diag-row span:last-child { color:#e8e8f0; text-align:right; word-break:break-all; font-family:ui-monospace,monospace; }
-  .diag-list {
-    font-family:ui-monospace,monospace; font-size:11px; color:#9a9aa8;
-    background:#0f0f16; border-radius:8px; padding:9px; max-height:170px; overflow-y:auto;
-    line-height:1.6; white-space:pre-wrap; word-break:break-all;
-  }
-  .diag-actions { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
-  .diag-btn {
-    background:#1c1c26; border:1px solid #2a2a36; color:#c9c9d4; padding:9px 14px;
-    border-radius:9px; font-size:12px; cursor:pointer; font-family:inherit;
-  }
-  .red { color:#e5484d !important; }
-  .green { color:#3ddc84 !important; }
-  .error-banner {
-    position:fixed; top:0; left:0; right:0; background:#e5484d; color:#fff;
-    padding:11px 16px; font-size:13px; text-align:center; z-index:200; display:none;
-  }
-  .error-banner.show { display:block; }
-  .preload-indicator {
-    position:fixed; bottom:16px; right:16px; z-index:180;
-    background:#15151d; border:1px solid #2a2a36; border-radius:10px;
-    padding:9px 14px; font-size:12px; font-weight:600; color:#e8b44a;
-    display:none; align-items:center; gap:8px;
-    font-variant-numeric:tabular-nums;
-  }
-  .preload-indicator.show { display:flex; }
-  .fs-hide { display:none !important; }
-  @media (max-width:760px) {
-    .presenter-body { flex-direction:column; }
-    .mirror-panel {
-      width:100%; border-left:none; border-top:1px solid #1e1e28;
-      flex-direction:row; align-items:flex-start; gap:10px; padding:10px 14px;
-      max-height:180px; overflow-y:auto;
-    }
-    .mirror-panel .mirror-label { display:none; }
-    .mirror-preview { aspect-ratio:auto; padding:6px; flex:1; min-height:64px; }
-    .mirror-next-num { margin:0; white-space:nowrap; }
-    .music-block { padding:8px 10px; min-width:130px; }
-    .music-select { min-height:34px; font-size:12px; }
-    .timer-block { padding:8px 10px; min-width:110px; }
-    .timer-block-label { display:none; }
-    .timer-block-value { font-size:20px; }
-    .timer-reset-btn { min-height:30px; font-size:10px; }
-    .members-block { margin:0; padding:0; border:none; flex:1; }
-    .members-list { max-height:80px; }
-    .preload-indicator { bottom:10px; right:10px; font-size:11px; padding:7px 11px; }
-  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #000; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #fff; }
+  #app { position: relative; width: 100%; height: 100%; }
+
+  /* TELA DE LISTA */
+  #lista { position: absolute; inset: 0; overflow-y: auto; padding: 20px 16px 100px; background: #0a0a0a; }
+  #lista h1 { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+  #lista .sub { font-size: 13px; color: #888; margin-bottom: 20px; }
+  .item { display: flex; align-items: center; justify-content: space-between; padding: 16px; background: #161616; border-radius: 12px; margin-bottom: 10px; cursor: pointer; transition: background .15s; }
+  .item:active { background: #222; }
+  .item .nome { font-size: 16px; font-weight: 500; }
+  .item .meta { font-size: 12px; color: #777; margin-top: 3px; }
+  .item .badge { font-size: 10px; padding: 3px 8px; border-radius: 20px; background: #1e3a5f; color: #6db3f2; font-weight: 600; }
+  .item .badge.img { background: #2d2d1e; color: #d4c46a; }
+
+  /* PLAYER */
+  #player { position: absolute; inset: 0; display: none; background: #000; }
+  #player.on { display: block; }
+  #stage { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  #stage canvas, #stage img { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
+  #stage img { width: 100%; height: 100%; object-fit: contain; }
+
+  /* BARRA SUPERIOR */
+  #topbar { position: absolute; top: 0; left: 0; right: 0; padding: 12px 16px; display: flex; align-items: center; gap: 12px; background: linear-gradient(to bottom, rgba(0,0,0,.85), transparent); z-index: 10; transition: opacity .3s; }
+  #topbar.hide { opacity: 0; pointer-events: none; }
+  #btnVoltar { background: rgba(255,255,255,.12); border: none; color: #fff; width: 38px; height: 38px; border-radius: 50%; font-size: 18px; cursor: pointer; flex-shrink: 0; }
+  #titulo { font-size: 15px; font-weight: 500; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #contador { font-size: 13px; color: #aaa; font-variant-numeric: tabular-nums; }
+
+  /* CONTROLES INFERIORES */
+  #bottombar { position: absolute; bottom: 0; left: 0; right: 0; padding: 16px; display: flex; align-items: center; justify-content: center; gap: 20px; background: linear-gradient(to top, rgba(0,0,0,.85), transparent); z-index: 10; transition: opacity .3s; }
+  #bottombar.hide { opacity: 0; pointer-events: none; }
+  .navbtn { background: rgba(255,255,255,.12); border: none; color: #fff; width: 52px; height: 52px; border-radius: 50%; font-size: 22px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .navbtn:active { background: rgba(255,255,255,.25); }
+  .navbtn:disabled { opacity: .25; }
+
+  /* LOADING */
+  #loading { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; background: #000; z-index: 20; }
+  #loading.on { display: flex; }
+  .spinner { width: 36px; height: 36px; border: 3px solid rgba(255,255,255,.15); border-top-color: #fff; border-radius: 50%; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  #erro { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; padding: 30px; text-align: center; z-index: 25; background: #000; }
+  #erro.on { display: flex; }
+  #erro p { color: #f66; font-size: 14px; line-height: 1.5; }
 </style>
 </head>
 <body>
-<div class="error-banner" id="errorBanner"></div>
-<div class="preload-indicator" id="preloadIndicator">Carregando slides...</div>
+<div id="app">
 
-<div class="screen active" id="home">
-  <div class="logo">S1 <span>Mirror</span></div>
-  <div class="tagline">Somos Um</div>
-  <button class="btn btn-primary" onclick="startPresenter()">Apresentar</button>
-  <button class="btn btn-secondary" onclick="goToJoin()">Assistir</button>
-  <div class="last-code" id="homeLastCode">
-    <div class="last-code-label">Último código usado</div>
-    <div class="last-code-value" id="homeLastCodeValue">----</div>
-    <div class="last-code-hint">Toque em "Assistir" para entrar novamente</div>
+  <div id="lista">
+    <h1>S1 Mirror</h1>
+    <div class="sub" id="subtitulo">Carregando...</div>
+    <div id="itens"></div>
   </div>
-  <div class="status-bar">
-    <div class="dot" id="homeDot"></div>
-    <span id="homeStatus">Inicializando...</span>
-  </div>
-</div>
 
-<div class="screen" id="code-screen">
-  <div class="label">Código da sessão</div>
-  <div class="code-display" id="sessionCode">----</div>
-  <div class="hint">Compartilhe este código com o coral</div>
-  <button class="btn btn-ghost" style="max-width:300px" onclick="copyCode()">Copiar código</button>
-  <button class="btn btn-primary" style="max-width:300px" onclick="enterPresenterMode()">Iniciar apresentação</button>
-  <button class="btn btn-ghost" style="max-width:300px" onclick="cancelPresenterSetup()">Voltar</button>
-</div>
+  <div id="player">
+    <div id="stage"></div>
+    <div id="topbar">
+      <button id="btnVoltar">←</button>
+      <div id="titulo"></div>
+      <div id="contador"></div>
+    </div>
+    <div id="bottombar">
+      <button class="navbtn" id="btnPrev">‹</button>
+      <button class="navbtn" id="btnNext">›</button>
+    </div>
+    <div id="loading"><div class="spinner"></div></div>
+    <div id="erro"><p id="erroTxt"></p></div>
+  </div>
 
-<div class="screen" id="join">
-  <div class="field-group">
-    <div class="field-label">Seu nome</div>
-    <input class="name-input" id="nameInput" maxlength="18" autocomplete="off" placeholder="DIGITE SEU NOME">
-  </div>
-  <div class="field-group">
-    <div class="field-label">Código da sessão</div>
-    <input class="code-input" id="joinInput" maxlength="4" autocomplete="off" autocapitalize="characters" placeholder="----">
-  </div>
-  <div class="join-last" id="joinLast">Último código usado: <b id="joinLastValue">----</b></div>
-  <button class="btn btn-primary" style="max-width:300px" onclick="joinSession()">Entrar</button>
-  <button class="btn btn-ghost" style="max-width:300px" onclick="showScreen('home')">Voltar</button>
-</div>
-
-<div class="screen" id="waiting">
-  <div class="spinner"></div>
-  <div class="hint" id="waitingText">Aguardando a maestrina iniciar...</div>
-  <div class="hint" id="waitingCode" style="color:#e8b44a;font-weight:600"></div>
-  <button class="btn btn-ghost" style="max-width:300px" onclick="leaveSession()">Sair</button>
-</div>
-
-<div class="screen" id="presenter">
-  <div class="presenter-bar" id="presenterBar">
-    <div class="bar-code">
-      <span class="bar-code-label">Código</span>
-      <span class="bar-code-value" id="barCodeValue">----</span>
-    </div>
-    <div class="bar-viewers">
-      <span class="bar-viewers-num" id="barViewersNum">0</span>
-      <span id="barViewersLabel">conectados</span>
-    </div>
-    <div class="bar-spacer"></div>
-    <button class="icon-btn" onclick="toggleFullscreen()" title="Tela cheia">⛶</button>
-    <button class="icon-btn" onclick="toggleDiag()" title="Diagnóstico">⚙</button>
-    <button class="finish-btn" onclick="openEndPanel()">FINALIZAR</button>
-  </div>
-  <div class="presenter-body">
-    <div class="slide-area" id="presenterSlide">
-      <div class="slide-placeholder">Carregando músicas...</div>
-      <div class="prep-overlay" id="presenterPrep">
-        <div class="prep-badge"><span class="spin"></span> Carregando slides...</div>
-      </div>
-    </div>
-    <div class="mirror-panel" id="mirrorPanel">
-      <div class="mirror-label">A seguir</div>
-      <div class="mirror-preview" id="mirrorPreview">
-        <div class="mirror-empty">—</div>
-      </div>
-      <div class="mirror-next-num" id="mirrorNextNum">—</div>
-      <div class="music-block">
-        <div class="mirror-label">Música</div>
-        <select class="music-select" id="musicSelect" onchange="changeMusic(this.value)">
-          <option value="">Carregando...</option>
-        </select>
-        <div class="music-progress" id="musicProgress">—</div>
-      </div>
-      <div class="timer-block">
-        <div class="timer-block-label">Tempo de apresentação</div>
-        <div class="timer-block-value" id="barTimerValue">00:00</div>
-        <button class="timer-reset-btn" onclick="resetTimerClick()">
-          <span class="ico">↺</span> ZERAR
-        </button>
-      </div>
-      <div class="members-block">
-        <div class="members-head">
-          <div class="mirror-label">Coralistas ativos</div>
-          <div class="members-count" id="membersCount">0</div>
-        </div>
-        <div class="members-list" id="membersList">
-          <div class="members-empty">Ninguém conectado ainda</div>
-        </div>
-      </div>
-    </div>
-  </div>
-  <div class="controls" id="presenterControls">
-    <button class="ctrl-btn" id="btnPrev" onclick="prevSlide()">◀ Anterior</button>
-    <div class="counter" id="presenterCounter">1 / 1</div>
-    <button class="ctrl-btn" id="btnNext" onclick="nextSlide()">Próximo ▶</button>
-  </div>
-</div>
-
-<div class="screen" id="viewer">
-  <div class="offline-banner" id="offlineBanner">Apresentação encerrada</div>
-  <div class="viewer-bar" id="viewerBar">
-    <div class="viewer-bar-code">Código: <b id="viewerBarCode">----</b></div>
-    <div class="conn-pill" id="connPill">
-      <div class="dot"></div>
-      <span id="connPillText">Conectando</span>
-    </div>
-    <button class="exit-btn" onclick="leaveSession()">Sair</button>
-    <button class="icon-btn" onclick="toggleFullscreen()" title="Tela cheia" style="width:40px;height:40px">⛶</button>
-    <button class="icon-btn" onclick="toggleDiag()" title="Diagnóstico" style="width:40px;height:40px">⚙</button>
-  </div>
-  <div class="slide-area" id="viewerSlide">
-    <div class="slide-placeholder">Aguardando...</div>
-    <div class="prep-overlay" id="viewerPrep">
-      <div class="prep-badge"><span class="spin"></span> Carregando slides...</div>
-    </div>
-  </div>
-</div>
-
-<div class="screen" id="ended">
-  <div class="ended-icon">✓</div>
-  <div class="ended-title">Apresentação encerrada</div>
-  <div class="ended-time-box">
-    <div class="ended-time-label">Tempo de apresentação</div>
-    <div class="ended-time-value" id="endedTimeValue">00:00</div>
-  </div>
-  <button class="btn btn-ghost" style="max-width:300px;margin-top:8px" onclick="leaveSession()">Voltar ao início</button>
-</div>
-
-<div class="end-overlay" id="endOverlay">
-  <div class="end-card">
-    <div class="end-title">Finalizar apresentação</div>
-    <div class="end-sub">Escolha o que fazer com a sessão atual</div>
-    <div class="end-time-box">
-      <div class="end-time-label">Tempo de apresentação</div>
-      <div class="end-time-value" id="endPanelTime">00:00</div>
-    </div>
-    <div class="end-actions">
-      <button class="end-btn end-btn-danger" onclick="endPresentation()">ENCERRAR APRESENTAÇÃO</button>
-      <button class="end-btn end-btn-safe" onclick="closeEndPanel()">RETOMAR APRESENTAÇÃO</button>
-    </div>
-  </div>
-</div>
-
-<div id="diag">
-  <div class="diag-head">
-    <div class="diag-title">Diagnóstico</div>
-    <button class="diag-btn" onclick="toggleDiag()">Fechar</button>
-  </div>
-  <div class="diag-section">
-    <h4>Transporte</h4>
-    <div class="diag-row"><span>Tipo</span><span id="dTransport">—</span></div>
-    <div class="diag-row"><span>Biblioteca</span><span id="dLib">—</span></div>
-    <div class="diag-row"><span>Host</span><span id="dHost">—</span></div>
-  </div>
-  <div class="diag-section">
-    <h4>Conexão</h4>
-    <div class="diag-row"><span>Estado</span><span id="dState">—</span></div>
-    <div class="diag-row"><span>Client ID</span><span id="dClient">—</span></div>
-    <div class="diag-row"><span>Canal</span><span id="dChannel">—</span></div>
-    <div class="diag-row"><span>Papel</span><span id="dRole">—</span></div>
-    <div class="diag-row"><span>Meu nome</span><span id="dMyName">—</span></div>
-    <div class="diag-row"><span>Membros no canal</span><span id="dMembers">—</span></div>
-    <div class="diag-row"><span>Coralistas ativos</span><span id="dViewers">—</span></div>
-    <div class="diag-row"><span>Tela cheia</span><span id="dFullscreen">—</span></div>
-    <div class="diag-row"><span>Wake Lock</span><span id="dWake">—</span></div>
-  </div>
-  <div class="diag-section">
-    <h4>Músicas</h4>
-    <div class="diag-row"><span>Total carregado</span><span id="dMusicCount">0</span></div>
-    <div class="diag-row"><span>Música atual</span><span id="dMusicCurrent">—</span></div>
-    <div class="diag-row"><span>Slides em cache</span><span id="dCache">0</span></div>
-    <div class="diag-row"><span>Slide atual</span><span id="dSlide">—</span></div>
-    <div class="diag-row"><span>Tempo</span><span id="dElapsed">—</span></div>
-    <div class="diag-row"><span>Recebidas</span><span id="dRecv">0</span></div>
-    <div class="diag-row"><span>Enviadas</span><span id="dSent">0</span></div>
-  </div>
-  <div class="diag-section">
-    <h4>Teste de eco</h4>
-    <div class="diag-actions">
-      <button class="diag-btn" onclick="runEchoTest()">Testar eco</button>
-    </div>
-    <div class="diag-row"><span>Resultado</span><span id="dEcho">Não executado</span></div>
-  </div>
-  <div class="diag-section">
-    <h4>Log de eventos</h4>
-    <div class="diag-list" id="dLog">Nenhum evento registrado.</div>
-    <div class="diag-actions">
-      <button class="diag-btn" onclick="copyDiag()">Copiar diagnóstico</button>
-    </div>
-  </div>
 </div>
 
 <script>
-/* =========================================================
-   CONFIGURAÇÃO — edite apenas se necessário
-   ========================================================= */
-var API_KEY = 'VEgT6Q.8-6OmA:cpAVi0_Gtfdj7FpD9Sg7TkW40fBBw7295Tj7hz7XkPE';
-var BASE_URL = 'https://coralsomos1.github.io/s1-mirror/';
+// ============ CONFIG ============
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-/* Tempo de preparação visual: 0,4 s por slide */
-var PREP_PER_SLIDE_MS = 400;
-/* Pausa no primeiro slide antes de liberar o controle */
-var PREP_HOLD_FIRST_MS = 900;
+let musicas = [];
+let atual = null;          // objeto da música aberta
+let paginas = [];          // array de páginas (imagens ou páginas do PDF)
+let indice = 0;            // página atual
+let pdfDoc = null;
+let renderizando = false;
+let escala = 1.5;
 
-/* =========================================================
-   Estado global
-   ========================================================= */
-var ably = null;
-var channel = null;
-var currentScreen = 'home';
-var role = null;
-var sessionCode = '';
-var recvCount = 0;
-var sentCount = 0;
-var eventLog = [];
-var echoResult = 'Não executado';
-var stateRequestTimer = null;
-var stateRequestAttempts = 0;
-var myClientId = '';
-var myName = '';
-var viewerCount = 0;
-var presencePollTimer = null;
-var wakeLock = null;
-var presenterOnline = null;
-var startTime = 0;
-var elapsedMs = 0;
-var timerInterval = null;
-var isPaused = false;
-var memberMap = {};
-var heartbeatTimer = null;
-var cleanupTimer = null;
+const $ = id => document.getElementById(id);
+const stage = $('stage');
+const topbar = $('topbar');
+const bottombar = $('bottombar');
 
-/* músicas e slides */
-var musicas = [];
-var currentMusicIndex = 0;
-var currentSlide = 0;
-var slideCount = 0;
-
-/* cache de pré-carregamento */
-var preloadCache = {};
-
-/* estado da preparação visual */
-var isPreparing = false;
-var prepTimer = null;
-
-var CODE_TTL_MS = 60 * 60 * 1000;
-var NAME_TTL_MS = 60 * 60 * 1000;
-var HEARTBEAT_INTERVAL = 4000;
-var MEMBER_TIMEOUT = 10000;
-
-/* =========================================================
-   URL DAS IMAGENS
-   ========================================================= */
-function slideUrl(musicIndex, slideIndex) {
-  var m = musicas[musicIndex];
-  if (!m) return '';
-  var ext = m.extensao || 'jpg';
-  var num = ('0' + (slideIndex + 1)).slice(-2);
-  return BASE_URL + m.pasta + '/' + num + '.' + ext;
-}
-
-function currentMusic() {
-  return musicas[currentMusicIndex] || null;
-}
-
-/* =========================================================
-   CARREGAR musicas.json
-   ========================================================= */
-function loadMusicas(callback) {
-  var url = BASE_URL + 'musicas.json?t=' + Date.now();
-  fetch(url)
-    .then(function(r){
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      return r.json();
-    })
-    .then(function(data){
-      musicas = (data && data.musicas) ? data.musicas : [];
-      log('musicas.json carregado — ' + musicas.length + ' música(s)');
-      if (callback) callback(true);
-    })
-    .catch(function(e){
-      log('ERRO ao carregar musicas.json: ' + e.message);
-      musicas = [];
-      if (callback) callback(false);
-    });
-}
-
-/* =========================================================
-   PRÉ-CARREGAMENTO EM PARALELO
-   Baixa todas as imagens de uma vez, sem exibir nada.
-   ========================================================= */
-function preloadMusic(musicIndex) {
-  var m = musicas[musicIndex];
-  if (!m) return;
-  var total = m.total || 1;
-  var pending = 0;
-  var started = 0;
-  showPreloadIndicator(true, 0, total);
-
-  for (var i = 0; i < total; i++) {
-    var url = slideUrl(musicIndex, i);
-    if (!url) continue;
-    if (preloadCache[url] === 'done') continue;
-    started++;
-    pending++;
-    (function(u){
-      var img = new Image();
-      img.onload = img.onerror = function(){
-        pending--;
-        var done = total - pending;
-        preloadCache[u] = 'done';
-        showPreloadIndicator(pending > 0, done, total);
-        if (pending === 0) {
-          log('Pré-carregamento concluído: ' + m.titulo);
-          updateDiag();
-        }
-      };
-      img.src = u;
-    })(url);
-    preloadCache[url] = 'loading';
-  }
-
-  if (started === 0) {
-    showPreloadIndicator(false, total, total);
-    log('Música já em cache: ' + m.titulo);
+// ============ CARREGAR LISTA ============
+async function carregarLista() {
+  try {
+    const r = await fetch('musicas.json?v=' + Date.now());
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    musicas = await r.json();
+    if (!Array.isArray(musicas)) musicas = musicas.musicas || [];
+    renderLista();
+  } catch (e) {
+    $('subtitulo').textContent = 'Erro ao carregar musicas.json';
+    console.error(e);
   }
 }
 
-function showPreloadIndicator(show, done, total) {
-  var el = document.getElementById('preloadIndicator');
-  if (!el) return;
-  if (show) {
-    el.classList.add('show');
-    el.textContent = 'Carregando slides... ' + done + '/' + total;
-  } else {
-    el.classList.remove('show');
-  }
-}
-
-function countCached() {
-  var n = 0;
-  for (var k in preloadCache) {
-    if (preloadCache.hasOwnProperty(k) && preloadCache[k] === 'done') n++;
-  }
-  return n;
-}
-
-/* =========================================================
-   PREPARAÇÃO VISUAL — 0,4 s por slide
-   Passa cada slide na tela para forçar a decodificação.
-   Sincronizada: o apresentador publica prep-start e todos
-   os aparelhos executam a mesma passagem.
-   ========================================================= */
-function startPreparation(musicIndex, onDone) {
-  var m = musicas[musicIndex];
-  if (!m) { if (onDone) onDone(); return; }
-
-  isPreparing = true;
-  setPrepOverlay(true);
-  setNavEnabled(false);
-
-  var total = m.total || 1;
-  var i = 0;
-
-  function step() {
-    if (!isPreparing) return;
-
-    if (i >= total) {
-      /* volta ao primeiro slide e segura antes de liberar */
-      currentSlide = 0;
-      renderSlideForRole();
-      updateCounter();
-      prepTimer = setTimeout(function(){
-        isPreparing = false;
-        setPrepOverlay(false);
-        setNavEnabled(true);
-        if (onDone) onDone();
-      }, PREP_HOLD_FIRST_MS);
-      return;
-    }
-
-    currentSlide = i;
-    renderSlideForRole();
-    updateCounter();
-    i++;
-    prepTimer = setTimeout(step, PREP_PER_SLIDE_MS);
-  }
-
-  step();
-}
-
-function cancelPreparation() {
-  if (prepTimer) { clearTimeout(prepTimer); prepTimer = null; }
-  isPreparing = false;
-  setPrepOverlay(false);
-  setNavEnabled(true);
-}
-
-function setPrepOverlay(show) {
-  var p = document.getElementById('presenterPrep');
-  var v = document.getElementById('viewerPrep');
-  if (p) { if (show) p.classList.add('show'); else p.classList.remove('show'); }
-  if (v) { if (show) v.classList.add('show'); else v.classList.remove('show'); }
-}
-
-function setNavEnabled(enabled) {
-  var prev = document.getElementById('btnPrev');
-  var next = document.getElementById('btnNext');
-  if (prev) prev.disabled = !enabled;
-  if (next) next.disabled = !enabled;
-}
-
-function renderSlideForRole() {
-  if (role === 'presenter') renderPresenterSlide();
-  else renderViewerSlide();
-}
-
-/* =========================================================
-   CRONÔMETRO
-   ========================================================= */
-function formatTime(ms) {
-  var total = Math.floor(ms / 1000);
-  var h = Math.floor(total / 3600);
-  var m = Math.floor((total % 3600) / 60);
-  var s = total % 60;
-  var mm = ('0' + m).slice(-2);
-  var ss = ('0' + s).slice(-2);
-  if (h > 0) return h + ':' + mm + ':' + ss;
-  return mm + ':' + ss;
-}
-
-function startTimer() {
-  if (timerInterval) return;
-  startTime = Date.now() - elapsedMs;
-  timerInterval = setInterval(function(){
-    if (isPaused) return;
-    elapsedMs = Date.now() - startTime;
-    var el = document.getElementById('barTimerValue');
-    if (el) el.textContent = formatTime(elapsedMs);
-  }, 1000);
-}
-
-function stopTimer() {
-  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
-}
-
-function resetTimer() {
-  stopTimer();
-  startTime = 0;
-  elapsedMs = 0;
-  isPaused = false;
-  var el = document.getElementById('barTimerValue');
-  if (el) el.textContent = '00:00';
-}
-
-function resetTimerClick() {
-  elapsedMs = 0;
-  startTime = Date.now();
-  var el = document.getElementById('barTimerValue');
-  if (el) el.textContent = '00:00';
-  if (!timerInterval) startTimer();
-  log('Cronômetro zerado');
-}
-
-function getElapsed() {
-  if (timerInterval && !isPaused) return Date.now() - startTime;
-  return elapsedMs;
-}
-
-/* =========================================================
-   TELA CHEIA
-   ========================================================= */
-function toggleFullscreen() {
-  var el = document.documentElement;
-  var isFs = document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
-  if (!isFs) {
-    var req = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
-    if (req) {
-      var p = req.call(el);
-      if (p && p.catch) p.catch(function(e){ log('Tela cheia recusada: ' + e.message); });
-    } else {
-      showError('Este navegador não suporta tela cheia.');
-    }
-  } else {
-    var exit = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
-    if (exit) exit.call(document);
-  }
-}
-
-function onFullscreenChange() {
-  var isFs = !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
-  var bar = document.getElementById('presenterBar');
-  var controls = document.getElementById('presenterControls');
-  var vbar = document.getElementById('viewerBar');
-  if (isFs) {
-    if (bar) bar.classList.add('fs-hide');
-    if (controls) controls.classList.add('fs-hide');
-    if (vbar) vbar.classList.add('fs-hide');
-    log('Tela cheia ativada');
-  } else {
-    if (bar) bar.classList.remove('fs-hide');
-    if (controls) controls.classList.remove('fs-hide');
-    if (vbar) vbar.classList.remove('fs-hide');
-    log('Tela cheia desativada');
-  }
-  updateDiag();
-}
-
-document.addEventListener('fullscreenchange', onFullscreenChange);
-document.addEventListener('webkitfullscreenchange', onFullscreenChange);
-document.addEventListener('msfullscreenchange', onFullscreenChange);
-
-/* =========================================================
-   WAKE LOCK — mantém a tela acesa
-   ========================================================= */
-function requestWakeLock() {
-  if (!('wakeLock' in navigator)) {
-    log('Wake Lock não suportado neste navegador');
-    return;
-  }
-  navigator.wakeLock.request('screen').then(function(lock) {
-    wakeLock = lock;
-    log('Wake Lock ativo — tela não apaga');
-    lock.addEventListener('release', function(){
-      log('Wake Lock liberado');
-      wakeLock = null;
-      updateDiag();
-    });
-    updateDiag();
-  }).catch(function(e) {
-    log('Wake Lock falhou: ' + e.message);
-    updateDiag();
+function renderLista() {
+  $('subtitulo').textContent = musicas.length + ' músicas';
+  const box = $('itens');
+  box.innerHTML = '';
+  musicas.forEach((m, i) => {
+    const total = m.pdf ? (m.paginas || 'PDF') : (m.total || m.slides || '?');
+    const el = document.createElement('div');
+    el.className = 'item';
+    el.innerHTML =
+      '<div><div class="nome">' + (m.nome || m.titulo || 'Sem nome') + '</div>' +
+      '<div class="meta">' + total + (m.pdf ? ' páginas' : ' slides') + '</div></div>' +
+      '<div class="badge ' + (m.pdf ? '' : 'img') + '">' + (m.pdf ? 'PDF' : 'IMG') + '</div>';
+    el.onclick = () => abrir(i);
+    box.appendChild(el);
   });
 }
 
-function releaseWakeLock() {
-  if (wakeLock) {
-    try { wakeLock.release(); } catch(e) {}
-    wakeLock = null;
-  }
-}
-
-document.addEventListener('visibilitychange', function(){
-  if (document.visibilityState === 'visible' && role) {
-    requestWakeLock();
-  }
-});
-
-/* =========================================================
-   CÓDIGO E NOME SALVOS
-   ========================================================= */
-function saveLastCode(code) {
-  try {
-    localStorage.setItem('s1_last_code', code);
-    localStorage.setItem('s1_last_code_ts', String(Date.now()));
-  } catch(e) {}
-}
-
-function getLastCode() {
-  try {
-    var code = localStorage.getItem('s1_last_code');
-    var ts = parseInt(localStorage.getItem('s1_last_code_ts') || '0', 10);
-    if (!code || !ts) return '';
-    if (Date.now() - ts > CODE_TTL_MS) {
-      localStorage.removeItem('s1_last_code');
-      localStorage.removeItem('s1_last_code_ts');
-      return '';
-    }
-    return code;
-  } catch(e) { return ''; }
-}
-
-function saveName(name) {
-  try {
-    localStorage.setItem('s1_name', name);
-    localStorage.setItem('s1_name_ts', String(Date.now()));
-  } catch(e) {}
-}
-
-function getSavedName() {
-  try {
-    var n = localStorage.getItem('s1_name');
-    var ts = parseInt(localStorage.getItem('s1_name_ts') || '0', 10);
-    if (!n || !ts) return '';
-    if (Date.now() - ts > NAME_TTL_MS) {
-      localStorage.removeItem('s1_name');
-      localStorage.removeItem('s1_name_ts');
-      return '';
-    }
-    return n;
-  } catch(e) { return ''; }
-}
-
-function refreshLastCodeUI() {
-  var last = getLastCode();
-  var homeBox = document.getElementById('homeLastCode');
-  var homeVal = document.getElementById('homeLastCodeValue');
-  if (homeBox && homeVal) {
-    if (last) { homeVal.textContent = last; homeBox.classList.add('show'); }
-    else { homeBox.classList.remove('show'); }
-  }
-  var joinBox = document.getElementById('joinLast');
-  var joinVal = document.getElementById('joinLastValue');
-  if (joinBox && joinVal) {
-    if (last) { joinVal.textContent = last; joinBox.classList.add('show'); }
-    else { joinBox.classList.remove('show'); }
-  }
-}
-
-function goToJoin() {
-  refreshLastCodeUI();
-  var input = document.getElementById('joinInput');
-  if (input) input.value = '';
-  var nameInput = document.getElementById('nameInput');
-  if (nameInput) nameInput.value = getSavedName();
-  showScreen('join');
-}
-
-/* =========================================================
-   NAVEGAÇÃO E LOG
-   ========================================================= */
-function showScreen(name) {
-  var all = document.querySelectorAll('.screen');
-  for (var i = 0; i < all.length; i++) all[i].classList.remove('active');
-  var el = document.getElementById(name);
-  if (el) el.classList.add('active');
-  currentScreen = name;
-}
-
-function toggleDiag() {
-  document.getElementById('diag').classList.toggle('open');
-  updateDiag();
-}
-
-function log(msg) {
-  var d = new Date();
-  var t = ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2)+':'+('0'+d.getSeconds()).slice(-2);
-  eventLog.unshift(t + ' · ' + msg);
-  if (eventLog.length > 40) eventLog.pop();
-  updateDiag();
-}
-
-function showError(msg) {
-  var b = document.getElementById('errorBanner');
-  b.textContent = msg;
-  b.classList.add('show');
-  setTimeout(function(){ b.classList.remove('show'); }, 9000);
-}
-
-function setDot(color, text) {
-  var dot = document.getElementById('homeDot');
-  var st = document.getElementById('homeStatus');
-  if (dot) dot.className = 'dot ' + color;
-  if (st) st.textContent = text;
-}
-
-/* =========================================================
-   DIAGNÓSTICO
-   ========================================================= */
-function updateDiag() {
-  var libOk = (typeof Ably !== 'undefined');
-  var dT = document.getElementById('dTransport');
-  var dL = document.getElementById('dLib');
-  if (dT) dT.textContent = 'Ably Realtime';
-  if (dL) {
-    dL.textContent = libOk ? 'carregada (ok)' : 'NÃO CARREGADA';
-    dL.className = libOk ? 'green' : 'red';
-  }
-  var host = '—', state = '—';
-  if (ably) {
-    try { host = ably.connection.connectionManager.host || '—'; } catch(e) {}
-    state = ably.connection.state || '—';
-  }
-  var dH = document.getElementById('dHost'); if (dH) dH.textContent = host;
-  var dS = document.getElementById('dState'); if (dS) dS.textContent = state;
-  var dC = document.getElementById('dClient'); if (dC) dC.textContent = myClientId || '—';
-  var dCh = document.getElementById('dChannel'); if (dCh) dCh.textContent = channel ? channel.name : '—';
-  var dR = document.getElementById('dRole'); if (dR) dR.textContent = role || '—';
-  var dN = document.getElementById('dMyName'); if (dN) dN.textContent = myName || '—';
-  var dV = document.getElementById('dViewers'); if (dV) dV.textContent = viewerCount;
-  var dMC = document.getElementById('dMusicCount'); if (dMC) dMC.textContent = musicas.length;
-  var dMCur = document.getElementById('dMusicCurrent');
-  if (dMCur) {
-    var cm = currentMusic();
-    dMCur.textContent = cm ? cm.titulo : '—';
-  }
-  var dCache = document.getElementById('dCache'); if (dCache) dCache.textContent = countCached();
-  var dSl = document.getElementById('dSlide'); if (dSl) dSl.textContent = (currentSlide + 1) + ' / ' + slideCount;
-  var dEl = document.getElementById('dElapsed'); if (dEl) dEl.textContent = formatTime(getElapsed());
-  var dRe = document.getElementById('dRecv'); if (dRe) dRe.textContent = recvCount;
-  var dSe = document.getElementById('dSent'); if (dSe) dSe.textContent = sentCount;
-  var dEc = document.getElementById('dEcho'); if (dEc) dEc.textContent = echoResult;
-  var dLo = document.getElementById('dLog'); if (dLo) dLo.textContent = eventLog.length ? eventLog.join('\n') : 'Nenhum evento registrado.';
-  var isFs = !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
-  var dF = document.getElementById('dFullscreen');
-  if (dF) { dF.textContent = isFs ? 'ativa' : 'inativa'; dF.className = isFs ? 'green' : ''; }
-  var dW = document.getElementById('dWake');
-  if (dW) { dW.textContent = wakeLock ? 'ativo' : ('wakeLock' in navigator ? 'inativo' : 'não suportado'); dW.className = wakeLock ? 'green' : ''; }
-  if (channel) {
-    try {
-      channel.presence.get(function(err, members) {
-        var dM = document.getElementById('dMembers');
-        if (!dM) return;
-        if (!err && members) {
-          var ids = [];
-          for (var i = 0; i < members.length; i++) ids.push(members[i].clientId);
-          dM.textContent = members.length + ' (' + ids.join(', ') + ')';
-        } else if (err) {
-          dM.textContent = 'erro: ' + err.message;
-        }
-      });
-    } catch(e) {}
-  }
-}
-
-function copyDiag() {
-  var cm = currentMusic();
-  var txt = 'TRANSPORTE: Ably Realtime\n' +
-    'Biblioteca: ' + (typeof Ably !== 'undefined' ? 'carregada (ok)' : 'NÃO CARREGADA') + '\n' +
-    'Host: ' + (ably ? (ably.connection.connectionManager.host || '—') : '—') + '\n' +
-    'Estado: ' + (ably ? ably.connection.state : '—') + '\n' +
-    'Client ID: ' + (myClientId || '—') + '\n' +
-    'Nome: ' + (myName || '—') + '\n' +
-    'Canal: ' + (channel ? channel.name : '—') + '\n' +
-    'Papel: ' + (role || '—') + '\n' +
-    'Coralistas ativos: ' + viewerCount + '\n' +
-    'Músicas: ' + musicas.length + '\n' +
-    'Música atual: ' + (cm ? cm.titulo : '—') + '\n' +
-    'Slides em cache: ' + countCached() + '\n' +
-    'Slide: ' + (currentSlide + 1) + '/' + slideCount + '\n' +
-    'Tempo: ' + formatTime(getElapsed()) + '\n' +
-    'Recebidas: ' + recvCount + '\n' +
-    'Enviadas: ' + sentCount + '\n' +
-    'Eco: ' + echoResult + '\n\nLOG:\n' + eventLog.join('\n');
-  navigator.clipboard.writeText(txt).then(function(){ log('Diagnóstico copiado'); });
-}
-
-/* =========================================================
-   ABLY
-   ========================================================= */
-function initAbly() {
-  if (typeof Ably === 'undefined') {
-    showError('ERRO: A biblioteca do Ably não carregou. Verifique a internet e recarregue.');
-    log('ERRO: biblioteca Ably ausente');
-    return false;
-  }
-  if (ably) return true;
-  myClientId = 's1-' + Math.random().toString(36).slice(2, 10);
-  try {
-    ably = new Ably.Realtime({
-      key: API_KEY,
-      clientId: myClientId,
-      echoMessages: true,
-      disconnectedRetryTimeout: 5000,
-      suspendedRetryTimeout: 8000
-    });
-  } catch(e) {
-    showError('Erro ao criar cliente Ably: ' + e.message);
-    log('ERRO ao criar cliente: ' + e.message);
-    return false;
-  }
-  ably.connection.on('connected', function(){ log('Conexão: connected'); setDot('green','Conectado'); updateDiag(); });
-  ably.connection.on('connecting', function(){ log('Conexão: connecting'); setDot('yellow','Conectando...'); });
-  ably.connection.on('disconnected', function(){ log('Conexão: disconnected'); setDot('yellow','Desconectado'); });
-  ably.connection.on('suspended', function(){ log('Conexão: suspended'); setDot('yellow','Suspenso'); });
-  ably.connection.on('failed', function(s){
-    var r = (s && s.reason && s.reason.message) ? s.reason.message : 'motivo desconhecido';
-    log('Conexão: FAILED — ' + r);
-    setDot('red','Falhou');
-    showError('Falha na conexão com o Ably: ' + r);
-  });
-  log('Cliente Ably criado — clientId ' + myClientId);
-  return true;
-}
-
-function genCode() {
-  var chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
-  var c = '';
-  for (var i = 0; i < 4; i++) c += chars.charAt(Math.floor(Math.random() * chars.length));
-  return c;
-}
-
-/* =========================================================
-   APRESENTADOR
-   ========================================================= */
-function startPresenter() {
-  try {
-    if (!initAbly()) return;
-    sessionCode = genCode();
-    role = 'presenter';
-    document.getElementById('sessionCode').textContent = sessionCode;
-    showScreen('code-screen');
-    log('Sessão criada: ' + sessionCode);
-  } catch(e) {
-    showError('Erro ao iniciar: ' + e.message);
-    log('ERRO startPresenter: ' + e.message);
-  }
-}
-
-function cancelPresenterSetup() {
-  sessionCode = '';
-  role = null;
-  showScreen('home');
-  log('Criação de sessão cancelada');
-}
-
-function copyCode() {
-  navigator.clipboard.writeText(sessionCode).then(function(){ log('Código copiado'); });
-}
-
-function enterPresenterMode() {
-  try {
-    if (!ably) { showError('Ably não inicializado. Recarregue a página.'); return; }
-    var channelName = 's1-' + sessionCode;
-    channel = ably.channels.get(channelName);
-    memberMap = {};
-
-    channel.subscribe('state-request', function(){
-      log('state-request recebido — respondendo');
-      publishSlide();
-      updateViewerCount();
-    });
-    channel.subscribe('viewer-ready', function(){
-      log('viewer-ready recebido — respondendo');
-      publishSlide();
-      updateViewerCount();
-    });
-    channel.subscribe('echo-test', function(msg){
-      log('echo recebido de ' + (msg.clientId || '?'));
-    });
-    channel.subscribe('heartbeat', function(msg){
-      if (msg.clientId && msg.clientId !== myClientId) {
-        var nm = (msg.data && msg.data.name) ? String(msg.data.name).toUpperCase() : '';
-        memberMap[msg.clientId] = { name: nm, ts: Date.now() };
-        renderMembers();
-      }
-    });
-
-    log('subscribe(heartbeat) em ' + channelName);
-
-    try {
-      channel.presence.enter();
-      channel.presence.subscribe('enter', function(m){
-        log('presence enter: ' + m.clientId);
-        if (m.clientId !== myClientId && !memberMap[m.clientId]) {
-          memberMap[m.clientId] = { name: '', ts: Date.now() };
-        }
-        publishSlide();
-        updateViewerCount();
-      });
-      channel.presence.subscribe('leave', function(m){
-        log('presence leave: ' + m.clientId);
-        delete memberMap[m.clientId];
-        renderMembers();
-        updateViewerCount();
-      });
-      log('presence ativo');
-    } catch(pe) {
-      log('presence falhou (não crítico): ' + pe.message);
-    }
-
-    document.getElementById('barCodeValue').textContent = sessionCode;
-    showScreen('presenter');
-    renderMembers();
-    resetTimer();
-    startTimer();
-
-    loadMusicas(function(ok){
-      if (!ok) {
-        document.getElementById('presenterSlide').innerHTML =
-          '<div class="slide-placeholder">Não foi possível carregar o musicas.json.<br>Verifique se o arquivo existe na raiz do repositório.</div>';
-        return;
-      }
-      if (musicas.length === 0) {
-        document.getElementById('presenterSlide').innerHTML =
-          '<div class="slide-placeholder">Nenhuma música encontrada no musicas.json.</div>';
-        return;
-      }
-      buildMusicSelect();
-      currentMusicIndex = 0;
-      currentSlide = 0;
-      slideCount = musicas[0].total || 1;
-      renderPresenterSlide();
-      renderMirror();
-      updateCounter();
-      preloadMusic(0);
-      publishSlide();
-    });
-
-    setTimeout(function(){ updateViewerCount(); }, 500);
-    startPresencePoll();
-    startMemberCleanup();
-    requestWakeLock();
-    updateDiag();
-  } catch(e) {
-    showError('Erro ao iniciar apresentação: ' + e.message);
-    log('ERRO enterPresenterMode: ' + e.message);
-  }
-}
-
-function buildMusicSelect() {
-  var sel = document.getElementById('musicSelect');
-  if (!sel) return;
-  var html = '';
-  for (var i = 0; i < musicas.length; i++) {
-    html += '<option value="' + i + '">' + escapeHtml(musicas[i].titulo) + '</option>';
-  }
-  sel.innerHTML = html;
-  sel.value = '0';
-}
-
-/* =========================================================
-   TROCA DE MÚSICA — dispara pré-carregamento + preparação
-   ========================================================= */
-function changeMusic(index) {
-  var idx = parseInt(index, 10);
-  if (isNaN(idx) || !musicas[idx]) return;
-
-  cancelPreparation();
-
-  currentMusicIndex = idx;
-  currentSlide = 0;
-  slideCount = musicas[idx].total || 1;
-
-  renderPresenterSlide();
-  renderMirror();
-  updateCounter();
-
-  /* 1) pré-carregamento em paralelo (rápido) */
-  preloadMusic(idx);
-
-  /* 2) avisa todos os aparelhos para preparar */
-  publishPrepStart(idx);
-
-  /* 3) preparação visual local */
-  startPreparation(idx, function(){
-    publishSlide();
-  });
-
-  log('Música alterada: ' + musicas[idx].titulo);
-}
-
-function publishPrepStart(musicIndex) {
-  if (!channel) return;
-  try {
-    channel.publish('prep-start', {
-      music: musicIndex,
-      total: musicas[musicIndex] ? (musicas[musicIndex].total || 1) : 1,
-      perSlide: PREP_PER_SLIDE_MS
-    });
-    sentCount++;
-    log('prep-start publicado: música ' + musicIndex);
-  } catch(e) {
-    log('ERRO ao publicar prep-start: ' + e.message);
-  }
-}
-
-function renderPresenterSlide() {
-  var el = document.getElementById('presenterSlide');
-  if (!el) return;
-  var url = slideUrl(currentMusicIndex, currentSlide);
-  var overlay = document.getElementById('presenterPrep');
-  var keepOverlay = overlay ? overlay.outerHTML : '';
-  if (!url) {
-    el.innerHTML = '<div class="slide-placeholder">Sem slide</div>' + keepOverlay;
-    return;
-  }
-  el.innerHTML = '<img class="slide-img" src="' + url + '" alt="Slide ' + (currentSlide + 1) + '">' + keepOverlay;
-}
-
-function renderViewerSlide() {
-  var el = document.getElementById('viewerSlide');
-  if (!el) return;
-  var url = slideUrl(currentMusicIndex, currentSlide);
-  var overlay = document.getElementById('viewerPrep');
-  var keepOverlay = overlay ? overlay.outerHTML : '';
-  if (!url) {
-    el.innerHTML = '<div class="slide-placeholder">Aguardando...</div>' + keepOverlay;
-    return;
-  }
-  el.innerHTML = '<img class="slide-img" src="' + url + '" alt="Slide ' + (currentSlide + 1) + '">' + keepOverlay;
-}
-
-function renderMirror() {
-  var preview = document.getElementById('mirrorPreview');
-  var num = document.getElementById('mirrorNextNum');
-  if (!preview) return;
-  var nextIndex = currentSlide + 1;
-  if (nextIndex >= slideCount) {
-    preview.innerHTML = '<div class="mirror-empty">Fim da música</div>';
-    if (num) num.textContent = '—';
-    return;
-  }
-  var url = slideUrl(currentMusicIndex, nextIndex);
-  preview.innerHTML = '<img src="' + url + '" alt="Próximo slide">';
-  if (num) num.textContent = 'Slide ' + (nextIndex + 1) + ' de ' + slideCount;
-}
-
-function updateCounter() {
-  var c = document.getElementById('presenterCounter');
-  if (c) c.textContent = (currentSlide + 1) + ' / ' + slideCount;
-  var p = document.getElementById('musicProgress');
-  if (p) {
-    var m = currentMusic();
-    p.textContent = m ? (m.titulo + ' · ' + (currentSlide + 1) + '/' + slideCount) : '—';
-  }
-}
-
-function startPresencePoll() {
-  stopPresencePoll();
-  presencePollTimer = setInterval(function(){
-    if (role === 'presenter' && channel) updateViewerCount();
-  }, 2000);
-}
-
-function stopPresencePoll() {
-  if (presencePollTimer) { clearInterval(presencePollTimer); presencePollTimer = null; }
-}
-
-function startMemberCleanup() {
-  stopMemberCleanup();
-  cleanupTimer = setInterval(function(){
-    if (role !== 'presenter') return;
-    var now = Date.now();
-    var removed = 0;
-    for (var id in memberMap) {
-      if (memberMap.hasOwnProperty(id)) {
-        if (now - memberMap[id].ts > MEMBER_TIMEOUT) {
-          delete memberMap[id];
-          removed++;
-        }
-      }
-    }
-    if (removed > 0) {
-      log('Coralista inativo removido: ' + removed);
-      renderMembers();
-      applyViewerCount(countActiveMembers());
-    }
-  }, 5000);
-}
-
-function stopMemberCleanup() {
-  if (cleanupTimer) { clearInterval(cleanupTimer); cleanupTimer = null; }
-}
-
-function countActiveMembers() {
-  var n = 0;
-  for (var id in memberMap) {
-    if (memberMap.hasOwnProperty(id) && id !== myClientId) n++;
-  }
-  return n;
-}
-
-function updateViewerCount() {
-  if (!channel) return;
-  try {
-    channel.presence.get(function(err, members){
-      if (!err && members) {
-        var now = Date.now();
-        for (var i = 0; i < members.length; i++) {
-          var cid = members[i].clientId;
-          if (cid !== myClientId && !memberMap[cid]) {
-            memberMap[cid] = { name: '', ts: now };
-          }
-        }
-      }
-      applyViewerCount(countActiveMembers());
-      renderMembers();
-    });
-  } catch(e) {
-    applyViewerCount(countActiveMembers());
-    renderMembers();
-  }
-}
-
-function applyViewerCount(n) {
-  viewerCount = n;
-  var num = document.getElementById('barViewersNum');
-  var lbl = document.getElementById('barViewersLabel');
-  if (num) num.textContent = n;
-  if (lbl) lbl.textContent = n === 1 ? 'conectado' : 'conectados';
-  updateDiag();
-}
-
-function renderMembers() {
-  var list = document.getElementById('membersList');
-  var countEl = document.getElementById('membersCount');
-  if (!list) return;
-  var names = [];
-  for (var id in memberMap) {
-    if (memberMap.hasOwnProperty(id) && id !== myClientId) {
-      var nm = memberMap[id].name;
-      if (nm) names.push(nm);
-    }
-  }
-  names.sort(function(a, b){ return a.localeCompare(b, 'pt-BR'); });
-  if (countEl) countEl.textContent = names.length;
-  if (names.length === 0) {
-    list.innerHTML = '<div class="members-empty">Ninguém conectado ainda</div>';
-    return;
-  }
-  var html = '';
-  for (var i = 0; i < names.length; i++) {
-    html += '<div class="member-item"><div class="dot green"></div>' + escapeHtml(names[i]) + '</div>';
-  }
-  list.innerHTML = html;
-}
-
-function escapeHtml(s) {
-  return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-function publishSlide() {
-  if (!channel) return;
-  try {
-    channel.publish('slide', {
-      music: currentMusicIndex,
-      index: currentSlide,
-      total: slideCount
-    });
-    sentCount++;
-    log('slide publicado: música ' + currentMusicIndex + ', slide ' + (currentSlide + 1));
-    updateDiag();
-  } catch(e) {
-    log('ERRO ao publicar slide: ' + e.message);
-  }
-}
-
-function nextSlide() {
-  if (isPreparing) return;
-  if (currentSlide < slideCount - 1) {
-    currentSlide++;
-    renderPresenterSlide();
-    renderMirror();
-    updateCounter();
-    publishSlide();
-  }
-}
-
-function prevSlide() {
-  if (isPreparing) return;
-  if (currentSlide > 0) {
-    currentSlide--;
-    renderPresenterSlide();
-    renderMirror();
-    updateCounter();
-    publishSlide();
-  }
-}
-
-/* =========================================================
-   PAINEL DE FINALIZAR
-   ========================================================= */
-function openEndPanel() {
-  var t = document.getElementById('endPanelTime');
-  if (t) t.textContent = formatTime(getElapsed());
-  var ov = document.getElementById('endOverlay');
-  if (ov) ov.classList.add('open');
-  log('Painel de finalização aberto');
-}
-
-function closeEndPanel() {
-  var ov = document.getElementById('endOverlay');
-  if (ov) ov.classList.remove('open');
-  log('Apresentação retomada');
-}
-
-function endPresentation() {
-  var finalMs = getElapsed();
-  var finalText = formatTime(finalMs);
-  closeEndPanel();
-  stopTimer();
-  try {
-    if (channel) {
-      channel.publish('session-end', { ts: Date.now(), elapsedMs: finalMs });
-      log('session-end publicado — tempo ' + finalText);
-    }
-  } catch(e) {}
-  var t = document.getElementById('endedTimeValue');
-  if (t) t.textContent = finalText;
-  stopStateRequests();
-  stopPresencePoll();
-  stopMemberCleanup();
-  stopHeartbeat();
-  releaseWakeLock();
-  try {
-    if (channel) { channel.presence.leave(); channel.detach(); }
-  } catch(e) {}
-  channel = null;
-  role = null;
-  sessionCode = '';
-  currentSlide = 0;
-  recvCount = 0;
-  sentCount = 0;
-  viewerCount = 0;
-  memberMap = {};
-  setPresenterOnline(null);
-  showScreen('ended');
-  log('Apresentação encerrada — tempo ' + finalText);
-}
-
-/* =========================================================
-   ESPECTADOR (CORALISTA)
-   ========================================================= */
-function joinSession() {
-  try {
-    var nameInput = document.getElementById('nameInput');
-    var input = document.getElementById('joinInput');
-    var name = (nameInput.value || '').trim().toUpperCase();
-    var code = (input.value || '').trim().toUpperCase();
-
-    if (name.length < 2) { showError('Digite seu nome para entrar.'); nameInput.focus(); return; }
-    if (code.length !== 4) { showError('Digite o código de 4 caracteres.'); input.focus(); return; }
-    if (!initAbly()) return;
-
-    myName = name;
-    sessionCode = code;
-    role = 'viewer';
-    saveLastCode(code);
-    saveName(name);
-    memberMap = {};
-
-    var channelName = 's1-' + code;
-    channel = ably.channels.get(channelName);
-
-    /* slide normal */
-    channel.subscribe('slide', function(msg){
-      recvCount++;
-      if (msg.data && typeof msg.data.index === 'number') {
-        if (isPreparing) return;
-        currentMusicIndex = (typeof msg.data.music === 'number') ? msg.data.music : 0;
-        currentSlide = msg.data.index;
-        slideCount = msg.data.total || 1;
-        renderViewerSlide();
-        showScreen('viewer');
-        stopStateRequests();
-        setPresenterOnline(true);
-        log('slide recebido: música ' + currentMusicIndex + ', slide ' + (currentSlide + 1));
-      }
-      updateDiag();
-    });
-
-    /* PREPARAÇÃO SINCRONIZADA — o coralista faz a mesma passagem */
-    channel.subscribe('prep-start', function(msg){
-      recvCount++;
-      var idx = (msg.data && typeof msg.data.music === 'number') ? msg.data.music : 0;
-      if (!musicas[idx]) {
-        log('prep-start recebido, mas música ' + idx + ' não está carregada');
-        return;
-      }
-      log('prep-start recebido: música ' + idx);
-      cancelPreparation();
-      currentMusicIndex = idx;
-      currentSlide = 0;
-      slideCount = musicas[idx].total || 1;
-      showScreen('viewer');
-      setPresenterOnline(true);
-      stopStateRequests();
-      preloadMusic(idx);
-      startPreparation(idx, function(){
-        log('Preparação concluída no receptor');
-      });
-      updateDiag();
-    });
-
-    channel.subscribe('session-end', function(msg){
-      var ms = (msg.data && typeof msg.data.elapsedMs === 'number') ? msg.data.elapsedMs : 0;
-      log('apresentação encerrada pela maestrina — tempo ' + formatTime(ms));
-      cancelPreparation();
-      stopHeartbeat();
-      stopStateRequests();
-      setPresenterOnline(false);
-      var t = document.getElementById('endedTimeValue');
-      if (t) t.textContent = formatTime(ms);
-      showScreen('ended');
-    });
-
-    channel.subscribe('echo-test', function(msg){
-      if (msg.clientId !== myClientId) log('echo de outro cliente: ' + msg.clientId);
-    });
-
-    log('subscribe(slide, prep-start) em ' + channelName);
-
-    try {
-      channel.presence.enter();
-      channel.presence.subscribe('leave', function(m){
-        if (m.clientId !== myClientId) {
-          log('apresentador saiu');
-          setPresenterOnline(false);
-        }
-      });
-      channel.presence.subscribe('enter', function(m){
-        if (m.clientId !== myClientId) {
-          log('apresentador presente');
-          setPresenterOnline(true);
-        }
-      });
-      log('presence ativo');
-    } catch(pe) {
-      log('presence falhou (não crítico): ' + pe.message);
-    }
-
-    document.getElementById('viewerBarCode').textContent = code;
-    document.getElementById('waitingCode').textContent = 'Código: ' + code;
-    document.getElementById('waitingText').textContent = 'Aguardando a maestrina iniciar...';
-    showScreen('waiting');
-    setPresenterOnline(null);
-
-    loadMusicas(function(ok){
-      if (!ok) log('viewer: musicas.json não carregou');
-    });
-
-    startStateRequests();
-    startHeartbeat();
-    requestWakeLock();
-    updateDiag();
-  } catch(e) {
-    showError('Erro ao entrar: ' + e.message);
-    log('ERRO joinSession: ' + e.message);
-  }
-}
-
-function startHeartbeat() {
-  stopHeartbeat();
-  var send = function() {
-    if (!channel || role !== 'viewer') return;
-    try {
-      channel.publish('heartbeat', { ts: Date.now(), name: myName });
-    } catch(e) {}
-  };
-  send();
-  heartbeatTimer = setInterval(send, HEARTBEAT_INTERVAL);
-}
-
-function stopHeartbeat() {
-  if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
-}
-
-function setPresenterOnline(online) {
-  presenterOnline = online;
-  var banner = document.getElementById('offlineBanner');
-  var pill = document.getElementById('connPill');
-  var pillText = document.getElementById('connPillText');
-  if (banner) {
-    if (online === false) banner.classList.add('show');
-    else banner.classList.remove('show');
-  }
-  if (pill && pillText) {
-    pill.classList.remove('online', 'offline');
-    if (online === true) {
-      pill.classList.add('online');
-      pillText.textContent = 'Maestrina online';
-    } else if (online === false) {
-      pill.classList.add('offline');
-      pillText.textContent = 'Maestrina offline';
-    } else {
-      pillText.textContent = 'Conectando';
-    }
-  }
-}
-
-function startStateRequests() {
-  stopStateRequests();
-  stateRequestAttempts = 0;
-  var tick = function() {
-    if (!channel) return;
-    stateRequestAttempts++;
-    try {
-      channel.publish('state-request', { code: sessionCode, from: myClientId });
-      sentCount++;
-    } catch(e) {}
-    log('state-request tentativa ' + stateRequestAttempts);
-    if (stateRequestAttempts >= 8) {
-      stopStateRequests();
-      document.getElementById('waitingText').innerHTML = 'Nenhum slide recebido.<br>Verifique se a maestrina iniciou e se o código é o mesmo.';
-      log('Sincronização falhou após 8 tentativas');
-    }
-    updateDiag();
-  };
-  tick();
-  stateRequestTimer = setInterval(tick, 2200);
-}
-
-function stopStateRequests() {
-  if (stateRequestTimer) { clearInterval(stateRequestTimer); stateRequestTimer = null; }
-}
-
-function leaveSession() {
-  cancelPreparation();
-  stopStateRequests();
-  stopPresencePoll();
-  stopMemberCleanup();
-  stopHeartbeat();
-  stopTimer();
-  releaseWakeLock();
-  try {
-    if (channel) { channel.presence.leave(); channel.detach(); }
-  } catch(e) {}
-  channel = null;
-  role = null;
-  sessionCode = '';
-  currentSlide = 0;
-  currentMusicIndex = 0;
-  recvCount = 0;
-  sentCount = 0;
-  viewerCount = 0;
-  memberMap = {};
-  resetTimer();
-  setPresenterOnline(null);
-  showPreloadIndicator(false, 0, 0);
-  var input = document.getElementById('joinInput');
-  if (input) input.value = '';
-  refreshLastCodeUI();
-  showScreen('home');
-  log('Sessão encerrada');
-}
-
-function runEchoTest() {
-  if (!channel) { echoResult = 'Conecte-se a um canal primeiro'; updateDiag(); return; }
-  echoResult = 'Testando...';
-  updateDiag();
-  var ts = Date.now();
-  var got = false;
-  var handler = function(msg) {
-    if (msg.data && msg.data.ts === ts) {
-      got = true;
-      echoResult = 'Eco OK — o Ably está entregando mensagens neste canal';
-      log('Eco OK');
-      updateDiag();
-      try { channel.unsubscribe('echo-test', handler); } catch(e) {}
-    }
-  };
-  channel.subscribe('echo-test', handler);
-  channel.publish('echo-test', { ts: ts, clientId: myClientId });
-  sentCount++;
-  log('subscribe(echo-test) em ' + channel.name);
-  setTimeout(function(){
-    if (!got) {
-      echoResult = 'Eco FALHOU — nenhuma mensagem retornou';
-      log('Eco FALHOU');
-      updateDiag();
-      try { channel.unsubscribe('echo-test', handler); } catch(e) {}
-    }
-  }, 5000);
-}
-
-/* =========================================================
-   EVENTOS DE TECLADO E TOQUE
-   ========================================================= */
-document.addEventListener('keydown', function(e){
-  if (currentScreen !== 'presenter') return;
-  if (e.key === 'Escape') {
-    var ov = document.getElementById('endOverlay');
-    if (ov && ov.classList.contains('open')) { closeEndPanel(); return; }
-  }
-  if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); nextSlide(); }
-  if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); prevSlide(); }
-  if (e.key === 'f' || e.key === 'F') { e.preventDefault(); toggleFullscreen(); }
-});
-
-var touchStartX = 0;
-document.addEventListener('touchstart', function(e){ touchStartX = e.changedTouches[0].clientX; }, {passive:true});
-document.addEventListener('touchend', function(e){
-  if (currentScreen !== 'presenter') return;
-  var dx = e.changedTouches[0].clientX - touchStartX;
-  if (dx < -50) nextSlide();
-  if (dx > 50) prevSlide();
-}, {passive:true});
-
-document.getElementById('joinInput').addEventListener('input', function(e){
-  e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4);
-});
-document.getElementById('joinInput').addEventListener('keydown', function(e){
-  if (e.key === 'Enter') joinSession();
-});
-document.getElementById('nameInput').addEventListener('input', function(e){
-  e.target.value = e.target.value.toUpperCase().slice(0, 18);
-});
-document.getElementById('nameInput').addEventListener('keydown', function(e){
-  if (e.key === 'Enter') document.getElementById('joinInput').focus();
-});
-
-window.addEventListener('load', function(){
-  if (typeof Ably === 'undefined') {
-    showError('ERRO: A biblioteca do Ably não carregou. Verifique a internet e recarregue.');
-    setDot('red', 'Biblioteca ausente');
-    log('ERRO: biblioteca Ably ausente no carregamento');
+// ============ ABRIR MÚSICA ============
+async function abrir(i) {
+  atual = musicas[i];
+  indice = 0;
+  pdfDoc = null;
+  paginas = [];
+
+  $('lista').style.display = 'none';
+  $('player').classList.add('on');
+  $('titulo').textContent = atual.nome || atual.titulo || '';
+  $('erro').classList.remove('on');
+  $('contador').textContent = '';
+
+  if (atual.pdf) {
+    await abrirPDF(atual.pdf);
   } else {
-    setDot('yellow', 'Pronto');
-    log('Biblioteca Ably carregada (ok)');
+    abrirImagens();
   }
-  refreshLastCodeUI();
-  updateDiag();
+}
+
+// ============ MODO PDF ============
+async function abrirPDF(caminho) {
+  $('loading').classList.add('on');
+  try {
+    const task = pdfjsLib.getDocument(caminho);
+    pdfDoc = await task.promise;
+    paginas = Array.from({ length: pdfDoc.numPages }, (_, i) => i + 1);
+    $('loading').classList.remove('on');
+    await renderPDF(0);
+    atualizarContador();
+  } catch (e) {
+    $('loading').classList.remove('on');
+    mostrarErro('Não foi possível abrir o PDF: ' + caminho);
+    console.error(e);
+  }
+}
+
+async function renderPDF(idx) {
+  if (!pdfDoc || renderizando) return;
+  renderizando = true;
+  try {
+    const page = await pdfDoc.getPage(idx + 1);
+    const vp1 = page.getViewport({ scale: 1 });
+    const dispW = stage.clientWidth || window.innerWidth;
+    const dispH = stage.clientHeight || window.innerHeight;
+    const s = Math.min(dispW / vp1.width, dispH / vp1.height) * (window.devicePixelRatio || 1);
+    const vp = page.getViewport({ scale: s });
+
+    let canvas = stage.querySelector('canvas');
+    if (!canvas) {
+      canvas = document.createElement('canvas');
+      stage.innerHTML = '';
+      stage.appendChild(canvas);
+    }
+    canvas.width = vp.width;
+    canvas.height = vp.height;
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+    canvas.style.objectFit = 'contain';
+
+    const ctx = canvas.getContext('2d');
+    await page.render({ canvasContext: ctx, viewport: vp }).promise;
+  } catch (e) {
+    console.error(e);
+  }
+  renderizando = false;
+}
+
+// ============ MODO IMAGENS ============
+function abrirImagens() {
+  const pasta = atual.pasta || atual.id || '';
+  const total = atual.total || atual.slides || 0;
+  if (!total) { mostrarErro('Total de slides não definido no musicas.json'); return; }
+  paginas = Array.from({ length: total }, (_, i) => i + 1);
+  stage.innerHTML = '';
+  const img = document.createElement('img');
+  img.id = 'slideImg';
+  img.onerror = () => mostrarErro('Imagem não encontrada: ' + img.src);
+  stage.appendChild(img);
+  mostrarImagem(0);
+  atualizarContador();
+}
+
+function mostrarImagem(idx) {
+  const pasta = atual.pasta || atual.id || '';
+  const img = $('slideImg');
+  if (!img) return;
+  img.src = pasta + '/' + (idx + 1) + '.jpg';
+}
+
+// ============ NAVEGAÇÃO ============
+function irPara(novo) {
+  if (!paginas.length) return;
+  novo = Math.max(0, Math.min(paginas.length - 1, novo));
+  if (novo === indice) return;
+  indice = novo;
+  if (atual.pdf) renderPDF(indice);
+  else mostrarImagem(indice);
+  atualizarContador();
+}
+
+function atualizarContador() {
+  $('contador').textContent = (indice + 1) + ' / ' + paginas.length;
+  $('btnPrev').disabled = indice === 0;
+  $('btnNext').disabled = indice >= paginas.length - 1;
+}
+
+function mostrarErro(msg) {
+  $('erroTxt').textContent = msg;
+  $('erro').classList.add('on');
+}
+
+// ============ FECHAR ============
+function fechar() {
+  $('player').classList.remove('on');
+  $('lista').style.display = 'block';
+  stage.innerHTML = '';
+  pdfDoc = null;
+  paginas = [];
+  atual = null;
+}
+
+// ============ EVENTOS ============
+$('btnVoltar').onclick = fechar;
+$('btnPrev').onclick = () => irPara(indice - 1);
+$('btnNext').onclick = () => irPara(indice + 1);
+
+// Teclado
+document.addEventListener('keydown', e => {
+  if (!$('player').classList.contains('on')) return;
+  if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); irPara(indice + 1); }
+  if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); irPara(indice - 1); }
+  if (e.key === 'Escape') fechar();
 });
+
+// Swipe
+let touchX = 0, touchY = 0;
+stage.addEventListener('touchstart', e => {
+  touchX = e.changedTouches[0].screenX;
+  touchY = e.changedTouches[0].screenY;
+}, { passive: true });
+
+stage.addEventListener('touchend', e => {
+  const dx = e.changedTouches[0].screenX - touchX;
+  const dy = e.changedTouches[0].screenY - touchY;
+  if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)) return;
+  if (dx < 0) irPara(indice + 1);
+  else irPara(indice - 1);
+}, { passive: true });
+
+// Toque simples mostra/esconde barras
+let tapTimer = null;
+stage.addEventListener('click', () => {
+  clearTimeout(tapTimer);
+  tapTimer = setTimeout(() => {
+    topbar.classList.toggle('hide');
+    bottombar.classList.toggle('hide');
+  }, 200);
+});
+
+// Re-render ao girar tela
+window.addEventListener('resize', () => {
+  if (atual && atual.pdf && pdfDoc) renderPDF(indice);
+});
+
+// ============ INICIAR ============
+carregarLista();
 </script>
 </body>
 </html>
