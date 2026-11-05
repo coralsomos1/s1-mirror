@@ -83,6 +83,11 @@
       "pasta": "musicas/all-i-want-for-christmas-is-you",
       "total": 7,
       "extensao": "jpg"
-    }
+    },
+      {
+  "nome": "Natal de Joinville",
+  "pdf": "pdfs/NATAL_JOINVILLE.pdf",
+  "paginas": 14
+}
   ]
 }
