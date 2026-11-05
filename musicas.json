@@ -1,93 +1,67 @@
-{
-  "musicas": [
-    {
-      "id": "a-todos-um-bom-natal",
-      "titulo": "A Todos um Bom Natal",
-      "pasta": "musicas/a-todos-um-bom-natal",
-      "total": 11,
-      "extensao": "jpg"
-    },
-    {
-      "id": "bate-o-sino",
-      "titulo": "Bate o Sino",
-      "pasta": "musicas/bate-o-sino",
-      "total": 15,
-      "extensao": "jpg"
-    },
-    {
-      "id": "happily-ever-after",
-      "titulo": "Happily Ever After",
-      "pasta": "musicas/happily-ever-after",
-      "total": 12,
-      "extensao": "jpg"
-    },
-    {
-      "id": "holy-forever",
-      "titulo": "Holy Forever",
-      "pasta": "musicas/holy-forever",
-      "total": 10,
-      "extensao": "jpg"
-    },
-    {
-      "id": "natal-de-joinville",
-      "titulo": "Natal de Joinville",
-      "pasta": "musicas/natal-de-joinville",
-      "total": 14,
-      "extensao": "jpg"
-    },
-    {
-      "id": "silent-night",
-      "titulo": "Silent Night",
-      "pasta": "musicas/silent-night",
-      "total": 5,
-      "extensao": "jpg"
-    },
-    {
-      "id": "the-magic",
-      "titulo": "The Magic",
-      "pasta": "musicas/the-magic",
-      "total": 7,
-      "extensao": "jpg"
-    },
-    {
-      "id": "jingle-bells-rock",
-      "titulo": "Jingle Bells Rock",
-      "pasta": "musicas/jingle-bells-rock",
-      "total": 10,
-      "extensao": "jpg"
-    },
-    {
-      "id": "feliz-navidad",
-      "titulo": "Feliz Navidad",
-      "pasta": "musicas/feliz-navidad",
-      "total": 13,
-      "extensao": "jpg"
-    },
-    {
-      "id": "carol-of-the-bells",
-      "titulo": "Carol of the Bells",
-      "pasta": "musicas/carol-of-the-bells",
-      "total": 24,
-      "extensao": "jpg"
-    },
-    {
-      "id": "holly-jolly-jingle",
-      "titulo": "Holly Jolly Jingle",
-      "pasta": "musicas/holly-jolly-jingle",
-      "total": 17,
-      "extensao": "jpg"
-    },
-    {
-      "id": "all-i-want-for-christmas-is-you",
-      "titulo": "All I Want for Christmas Is You",
-      "pasta": "musicas/all-i-want-for-christmas-is-you",
-      "total": 7,
-      "extensao": "jpg"
-    },
-      {
+[
+  {
+    "nome": "Holly Jolly Jingle",
+    "pdf": "musicas/holly-jolly-jingle.pdf",
+    "paginas": 17
+  },
+  {
+    "nome": "Bate o Sino",
+    "pdf": "musicas/bate-o-sino.pdf",
+    "paginas": 15
+  },
+  {
+    "nome": "All I Want for Christmas Is You",
+    "pdf": "musicas/all-i-want-for-christmas-is-you.pdf",
+    "paginas": 7
+  },
+  {
+    "nome": "The Magic",
+    "pdf": "musicas/the-magic.pdf",
+    "paginas": 7
+  },
+  {
+    "nome": "A Todos um Bom Natal",
+    "pdf": "musicas/a-todos-um-bom-natal.pdf",
+    "paginas": 11
+  },
+  {
+    "nome": "Carol of the Bells",
+    "pdf": "musicas/carol-of-the-bells.pdf",
+    "paginas": 24
+  },
+  {
+    "nome": "Jingle Bells Rock",
+    "pdf": "musicas/jingle-bells-rock.pdf",
+    "paginas": 10
+  },
+  {
+    "nome": "Feliz Navidad",
+    "pdf": "musicas/feliz-navidad.pdf",
+    "paginas": 13
+  },
+  {
+    "nome": "Silent Night",
+    "pdf": "musicas/silent-night.pdf",
+    "paginas": 5
+  },
+  {
+    "nome": "Holy Forever",
+    "pdf": "musicas/holy-forever.pdf",
+    "paginas": 10
+  },
+  {
+    "nome": "Happily Ever After",
+    "pdf": "musicas/happily-ever-after.pdf",
+    "paginas": 12
+  },
+  {
     "nome": "Natal de Joinville",
-    "pdf": "musicas/natal-joinville.pdf",
+    "pdf": "musicas/natal-de-joinville.pdf",
     "paginas": 14
-}
-  ]
-}
+  },
+  {
+    "nome": "Vem Que Está Chegando o Natal",
+    "pdf": "musicas/vem-que-esta-chegando-o-natal.pdf",
+    "paginas": 10
+  }
+]
