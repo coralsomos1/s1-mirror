@@ -278,20 +278,12 @@
   .join-last { display:none; font-size:13px; color:#8a8a99; text-align:center; }
   .join-last.show { display:block; }
   .join-last b { color:#e8b44a; letter-spacing:3px; font-size:15px; }
-  #waiting { align-items:center; justify-content:center; padding:0; gap:0; text-align:center; position:relative; }
-  .waiting-img {
-    max-width:100%; max-height:100%; width:auto; height:auto;
-    object-fit:contain; display:block;
+  #waiting { align-items:center; justify-content:center; padding:24px; gap:14px; text-align:center; position:relative; background:#000; }
+  .waiting-msg {
+    color:#8a8a99; font-size:15px; line-height:1.6; max-width:320px;
   }
-  .waiting-overlay {
-    position:absolute; bottom:0; left:0; right:0;
-    padding:20px 24px calc(20px + env(safe-area-inset-bottom));
-    display:flex; flex-direction:column; align-items:center; gap:10px;
-    background:linear-gradient(to top, rgba(6,6,10,.92), rgba(6,6,10,0));
-  }
-  .spinner {
-    width:36px; height:36px; border:3px solid #2a2a36; border-top-color:#e8b44a;
-    border-radius:50%; animation:spin .9s linear infinite;
+  .waiting-code {
+    color:#e8b44a; font-weight:600; font-size:14px; letter-spacing:1px;
   }
   .offline-banner {
     display:none; background:#e5484d; color:#fff; padding:10px 16px;
@@ -455,13 +447,9 @@
   <button class="btn btn-ghost" style="max-width:300px" onclick="showScreen('home')">Voltar</button>
 </div>
 <div class="screen" id="waiting">
-  <img class="waiting-img" id="waitingOpening" src="imagens/apresentacao/imagem-de-abertura.jpg" alt="Abertura">
-  <div class="waiting-overlay">
-    <div class="spinner"></div>
-    <div class="hint" id="waitingText">Aguardando apresentação...</div>
-    <div class="hint" id="waitingCode" style="color:#e8b44a;font-weight:600"></div>
-    <button class="btn btn-ghost" style="max-width:300px" onclick="leaveSession()">Sair</button>
-  </div>
+  <div class="waiting-msg" id="waitingText">Aguardando apresentação...</div>
+  <div class="waiting-code" id="waitingCode"></div>
+  <button class="btn btn-ghost" style="max-width:300px" onclick="leaveSession()">Sair</button>
 </div>
 <div class="screen" id="presenter">
   <div class="presenter-bar" id="presenterBar">
@@ -541,7 +529,7 @@
     <button class="icon-btn" onclick="toggleDiag()" title="Diagnóstico" style="width:40px;height:40px">⚙</button>
   </div>
   <div class="slide-area" id="viewerSlide">
-    <img class="opening-img" id="viewerOpening" src="imagens/apresentacao/imagem-de-abertura.jpg" alt="Abertura">
+    <img class="opening-img" id="viewerOpening" src="imagens/intervalo/guardando-letra.gif" alt="Intervalo" style="display:none">
     <div class="prep-overlay" id="viewerPrep">
       <img class="prep-img" id="viewerPrepImg" src="imagens/apresentacao/carregando-arquivo-pdf.gif" alt="Carregando">
     </div>
@@ -628,12 +616,12 @@ var BASE_URL = 'https://coralsomos1.github.io/s1-mirror/';
 var PDFJS_DIR = 'pdfjs/';
 var OPENING_IMG = 'imagens/apresentacao/imagem-de-abertura.jpg';
 var LOADING_IMG = 'imagens/apresentacao/carregando-arquivo-pdf.gif';
+var INTERVAL_IMG = 'imagens/intervalo/guardando-letra.gif';
 var PREP_PER_SLIDE_MS = 150;
 var PREP_HOLD_FIRST_MS = 900;
 var PDF_CHUNK_SIZE = 24576;
 var PDF_CHUNK_DELAY = 100;
 var CODE_TTL_MS = 60 * 60 * 1000;
-var NAME_TTL_MS = 60 * 60 * 1000;
 var HEARTBEAT_INTERVAL = 4000;
 var MEMBER_TIMEOUT = 10000;
 /* =========================================================
@@ -671,6 +659,7 @@ var pdfCache = {};
 var isPreparing = false;
 var prepTimer = null;
 var hasActiveMusic = false;
+var sessionStarted = false;
 var extraPdfs = {};
 var extraPdfCounter = 0;
 var extraPdfSentTo = {};
@@ -805,23 +794,28 @@ function renderPageTo(doc, pageNum, container, isPreview) {
   });
 }
 /* =========================================================
-   IMAGEM DE ABERTURA
+   IMAGENS DE ESTADO
    ========================================================= */
-function showOpeningImage(which) {
-  var el = document.getElementById(which === 'presenter' ? 'presenterOpening' : 'viewerOpening');
-  var area = document.getElementById(which === 'presenter' ? 'presenterSlide' : 'viewerSlide');
-  if (!el || !area) return;
+function showStateImage(which, imgPath) {
+  var areaId = which === 'presenter' ? 'presenterSlide' : 'viewerSlide';
+  var imgId = which === 'presenter' ? 'presenterOpening' : 'viewerOpening';
+  var area = document.getElementById(areaId);
+  var el = document.getElementById(imgId);
+  if (!area || !el) return;
   area.querySelectorAll('.slide-canvas, .slide-placeholder').forEach(function(n){ n.remove(); });
   el.style.display = 'block';
-  el.src = BASE_URL + OPENING_IMG + '?t=' + Date.now();
+  el.src = BASE_URL + imgPath + '?t=' + Date.now();
 }
-function hideOpeningImage(which) {
-  var el = document.getElementById(which === 'presenter' ? 'presenterOpening' : 'viewerOpening');
+function hideStateImage(which) {
+  var imgId = which === 'presenter' ? 'presenterOpening' : 'viewerOpening';
+  var el = document.getElementById(imgId);
   if (el) el.style.display = 'none';
 }
-function showWaitingImage() {
-  var el = document.getElementById('waitingOpening');
-  if (el) el.src = BASE_URL + OPENING_IMG + '?t=' + Date.now();
+function showOpeningImage(which) {
+  showStateImage(which, OPENING_IMG);
+}
+function showIntervalImage(which) {
+  showStateImage(which, INTERVAL_IMG);
 }
 /* =========================================================
    PRELOAD
@@ -1072,19 +1066,12 @@ function getLastCode() {
 function saveName(name) {
   try {
     localStorage.setItem('s1_name', name);
-    localStorage.setItem('s1_name_ts', String(Date.now()));
   } catch(e) {}
 }
 function getSavedName() {
   try {
     var n = localStorage.getItem('s1_name');
-    var ts = parseInt(localStorage.getItem('s1_name_ts') || '0', 10);
-    if (!n || !ts) return '';
-    if (Date.now() - ts > NAME_TTL_MS) {
-      localStorage.removeItem('s1_name');
-      localStorage.removeItem('s1_name_ts');
-      return '';
-    }
+    if (!n) return '';
     return n;
   } catch(e) { return ''; }
 }
@@ -1144,7 +1131,7 @@ function setDot(color, text) {
   if (dot) dot.className = 'dot ' + color;
   if (st) st.textContent = text;
 }
-/* =========================================================
+ /* =========================================================
    DIAGNOSTICO
    ========================================================= */
 function updateDiag() {
@@ -1517,14 +1504,15 @@ function enterPresenterMode() {
     channel = ably.channels.get(channelName);
     memberMap = {};
     extraPdfSentTo = {};
+    sessionStarted = false;
     channel.subscribe('state-request', function(){
       log('state-request recebido - respondendo');
-      publishSlide();
+      publishCurrentState();
       updateViewerCount();
     });
     channel.subscribe('viewer-ready', function(){
       log('viewer-ready recebido - respondendo');
-      publishSlide();
+      publishCurrentState();
       updateViewerCount();
     });
     channel.subscribe('echo-test', function(msg){
@@ -1545,7 +1533,7 @@ function enterPresenterMode() {
         if (m.clientId !== myClientId && !memberMap[m.clientId]) {
           memberMap[m.clientId] = { name: '', ts: Date.now() };
         }
-        publishSlide();
+        publishCurrentState();
         updateViewerCount();
       });
       channel.presence.subscribe('leave', function(m){
@@ -1587,6 +1575,15 @@ function enterPresenterMode() {
     log('ERRO enterPresenterMode: ' + e.message);
   }
 }
+function publishCurrentState() {
+  if (!channel) return;
+  if (!sessionStarted) return;
+  if (!hasActiveMusic) {
+    publishInterval();
+    return;
+  }
+  publishSlide();
+}
 function buildMusicSelect() {
   var sel = document.getElementById('musicSelect');
   if (!sel) return;
@@ -1621,18 +1618,24 @@ function changeMusic(index) {
     currentSlide = 0;
     slideCount = 0;
     setNavEnabled(false);
-    showOpeningImage('presenter');
+    if (sessionStarted) {
+      showIntervalImage('presenter');
+      publishInterval();
+      log('Item vazio - imagem de intervalo');
+    } else {
+      showOpeningImage('presenter');
+      log('Item vazio - imagem de abertura');
+    }
     document.getElementById('mirrorPreview').innerHTML = '<div class="mirror-empty">—</div>';
     document.getElementById('mirrorNextNum').textContent = '—';
     updateCounter();
-    publishIdle();
-    log('Musica desmarcada - imagem de abertura');
     return;
   }
   var idx = parseInt(index, 10);
   if (isNaN(idx) || !musicas[idx]) return;
   cancelPreparation();
-  hideOpeningImage('presenter');
+  hideStateImage('presenter');
+  sessionStarted = true;
   hasActiveMusic = true;
   currentMusicIndex = idx;
   currentSlide = 0;
@@ -1647,12 +1650,12 @@ function changeMusic(index) {
   });
   log('Musica alterada: ' + musicas[idx].nome);
 }
-function publishIdle() {
+function publishInterval() {
   if (!channel) return;
   try {
-    channel.publish('idle', { ts: Date.now() });
+    channel.publish('interval', { ts: Date.now() });
     sentCount++;
-    log('idle publicado');
+    log('interval publicado');
   } catch(e) {}
 }
 function publishPrepStart(musicIndex) {
@@ -1673,7 +1676,7 @@ function publishPrepStart(musicIndex) {
 function renderPresenterSlide() {
   var el = document.getElementById('presenterSlide');
   if (!el) return;
-  hideOpeningImage('presenter');
+  hideStateImage('presenter');
   var overlay = document.getElementById('presenterPrep');
   var keepOverlay = overlay ? overlay.outerHTML : '';
   getPdf(currentMusicIndex, function(doc){
@@ -1688,7 +1691,7 @@ function renderPresenterSlide() {
 function renderViewerSlide() {
   var el = document.getElementById('viewerSlide');
   if (!el) return;
-  hideOpeningImage('viewer');
+  hideStateImage('viewer');
   var overlay = document.getElementById('viewerPrep');
   var keepOverlay = overlay ? overlay.outerHTML : '';
   getPdf(currentMusicIndex, function(doc){
@@ -1909,7 +1912,7 @@ function escapeHtml(s) {
 }
 function publishSlide() {
   if (!channel) return;
-  if (!hasActiveMusic) { publishIdle(); return; }
+  if (!hasActiveMusic) { publishInterval(); return; }
   try {
     channel.publish('slide', {
       music: currentMusicIndex,
@@ -1997,6 +2000,7 @@ function endPresentation() {
   orphanChunks = {};
   pendingExtraAction = null;
   hasActiveMusic = false;
+  sessionStarted = false;
   currentMusicIndex = -999;
   setPresenterOnline(null);
   showScreen('ended');
@@ -2008,6 +2012,7 @@ function endPresentation() {
 function applyPrepStart(idx) {
   log('prep-start aplicado: musica ' + idx);
   cancelPreparation();
+  sessionStarted = true;
   hasActiveMusic = true;
   currentMusicIndex = idx;
   currentSlide = 0;
@@ -2023,6 +2028,7 @@ function applyPrepStart(idx) {
 }
 function applySlide(musicIdx, index, total) {
   if (isPreparing) return;
+  sessionStarted = true;
   hasActiveMusic = true;
   currentMusicIndex = musicIdx;
   currentSlide = index;
@@ -2033,16 +2039,18 @@ function applySlide(musicIdx, index, total) {
   setPresenterOnline(true);
   log('slide aplicado: musica ' + musicIdx + ', slide ' + (currentSlide + 1));
 }
-function applyIdle() {
+function applyInterval() {
   cancelPreparation();
+  sessionStarted = true;
   hasActiveMusic = false;
   currentMusicIndex = -999;
   currentSlide = 0;
   slideCount = 0;
-  showWaitingImage();
-  showScreen('waiting');
+  stopStateRequests();
   setPresenterOnline(true);
-  log('estado idle recebido - imagem de abertura');
+  showIntervalImage('viewer');
+  showScreen('viewer');
+  log('interval recebido - imagem de intervalo');
 }
 function joinSession() {
   try {
@@ -2064,6 +2072,7 @@ function joinSession() {
     orphanChunks = {};
     pendingExtraAction = null;
     hasActiveMusic = false;
+    sessionStarted = false;
     currentMusicIndex = -999;
     var channelName = 's1-' + code;
     channel = ably.channels.get(channelName);
@@ -2103,9 +2112,9 @@ function joinSession() {
       }
       applyPrepStart(idx);
     });
-    channel.subscribe('idle', function(){
+    channel.subscribe('interval', function(){
       recvCount++;
-      applyIdle();
+      applyInterval();
       updateDiag();
     });
     channel.subscribe('extra-pdf-meta', function(msg){
@@ -2131,7 +2140,7 @@ function joinSession() {
     channel.subscribe('echo-test', function(msg){
       if (msg.clientId !== myClientId) log('echo de outro cliente: ' + msg.clientId);
     });
-    log('subscribe(slide, prep-start, idle, extra-pdf) em ' + channelName);
+    log('subscribe(slide, prep-start, interval, extra-pdf) em ' + channelName);
     try {
       channel.presence.enter();
       channel.presence.subscribe('leave', function(m){
@@ -2153,7 +2162,6 @@ function joinSession() {
     document.getElementById('viewerBarCode').textContent = code;
     document.getElementById('waitingCode').textContent = 'Codigo: ' + code;
     document.getElementById('waitingText').textContent = 'Aguardando apresentacao...';
-    showWaitingImage();
     showScreen('waiting');
     setPresenterOnline(null);
     loadMusicas(function(ok){
@@ -2209,6 +2217,7 @@ function startStateRequests() {
   stateRequestAttempts = 0;
   var tick = function() {
     if (!channel) return;
+    if (sessionStarted) { stopStateRequests(); return; }
     stateRequestAttempts++;
     try {
       channel.publish('state-request', { code: sessionCode, from: myClientId });
@@ -2217,8 +2226,7 @@ function startStateRequests() {
     log('state-request tentativa ' + stateRequestAttempts);
     if (stateRequestAttempts >= 8) {
       stopStateRequests();
-      document.getElementById('waitingText').innerHTML = 'Nenhum slide recebido.<br>Verifique se a apresentacao foi iniciada e se o codigo e o mesmo.';
-      log('Sincronizacao falhou apos 8 tentativas');
+      log('Sincronizacao sem resposta apos 8 tentativas');
     }
     updateDiag();
   };
@@ -2245,6 +2253,7 @@ function leaveSession() {
   currentSlide = 0;
   currentMusicIndex = -999;
   hasActiveMusic = false;
+  sessionStarted = false;
   recvCount = 0;
   sentCount = 0;
   viewerCount = 0;
