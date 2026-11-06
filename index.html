@@ -37,7 +37,7 @@
   .last-code {
     display:none; margin-top:6px; padding:12px 20px; border-radius:12px;
     background:#15151d; border:1px solid #2a2a36; text-align:center;
-    max-width:340px; width:%;
+    max-width:340px; width:100%;
   }
   .last-code.show { display:block; }
   .last-code-label { font-size:11px; color:#6a6a7a; text-transform:uppercase; letter-spacing:1.5px; margin-bottom:6px; }
@@ -58,7 +58,7 @@
     background:#000; position:relative;
   }
   .slide-canvas {
-    max-width:%; max-height:%; width:auto; height:auto;
+    max-width:100%; max-height:100%; width:auto; height:auto;
     object-fit:contain; display:block;
   }
   .slide-placeholder {
@@ -67,23 +67,26 @@
   }
   .prep-overlay {
     position:absolute; inset:0; display:none;
-    align-items:flex-end; justify-content:center;
-    padding-bottom:28px; pointer-events:none; z-index:5;
+    align-items:center; justify-content:center;
+    background:rgba(229,72,77,.20);
+    pointer-events:none; z-index:5;
   }
   .prep-overlay.show { display:flex; }
   .prep-badge {
-    background:rgba(0,0,0,.90); border:1px solid #2a2a36;
+    background:rgba(20,20,28,.94); border:1px solid #2a2a36;
     border-radius:999px; padding:11px 22px;
     font-size:14px; font-weight:600; letter-spacing:.3px;
     display:flex; align-items:center; gap:8px;
-    position:relative;
-    z-index:901;
   }
   .prep-badge .spin {
     width:14px; height:14px; border:2px solid #3a3a48; border-top-color:#e8b44a;
     border-radius:50%; animation:spin .8s linear infinite;
   }
   @keyframes spin { to { transform:rotate(360deg); } }
+  .opening-img {
+    max-width:100%; max-height:100%; width:auto; height:auto;
+    object-fit:contain; display:block;
+  }
   .mirror-panel {
     width:clamp(230px,27vw,350px); flex-shrink:0;
     background:#0d0d14; border-left:1px solid #1e1e28;
@@ -99,7 +102,7 @@
     padding:8px; aspect-ratio:16/9; display:flex; align-items:center;
     justify-content:center; overflow:hidden;
   }
-  .mirror-preview canvas { max-width:%; max-height:%; object-fit:contain; display:block; }
+  .mirror-preview canvas { max-width:100%; max-height:100%; object-fit:contain; display:block; }
   .mirror-next-num {
     font-size:11px; color:#6a6a7a; text-align:center; margin-top:2px;
   }
@@ -112,7 +115,7 @@
     padding:11px 12px; display:flex; flex-direction:column; gap:7px;
   }
   .music-select {
-    width:%; min-height:40px; border-radius:9px;
+    width:100%; min-height:40px; border-radius:9px;
     background:#1c1c26; border:1px solid #2a2a36; color:#f2f2f5;
     font-size:13px; font-weight:600; font-family:inherit; padding:0 10px;
     cursor:pointer;
@@ -136,7 +139,7 @@
     text-align:center; line-height:1;
   }
   .timer-reset-btn {
-    width:%; min-height:36px; border-radius:9px;
+    width:100%; min-height:36px; border-radius:9px;
     background:#3a2f14; border:1px solid #6b5520; color:#e8b44a;
     font-size:12px; font-weight:700; letter-spacing:1px;
     cursor:pointer; font-family:inherit;
@@ -237,10 +240,10 @@
   .conn-pill.online { color:#3ddc84; border-color:#1e4a33; }
   .conn-pill.offline { color:#e5484d; border-color:#4a1e20; }
   #join { align-items:center; justify-content:center; padding:24px; gap:16px; overflow-y:auto; }
-  .field-group { width:%; max-width:300px; display:flex; flex-direction:column; gap:7px; }
+  .field-group { width:100%; max-width:300px; display:flex; flex-direction:column; gap:7px; }
   .field-label { font-size:11px; color:#8a8a99; text-transform:uppercase; letter-spacing:1.5px; }
   .name-input {
-    width:%; min-height:56px; background:#15151d;
+    width:100%; min-height:56px; background:#15151d;
     border:1.5px solid #2a2a36; border-radius:14px; color:#f2f2f5;
     font-size:17px; font-weight:600; letter-spacing:1px; text-align:center;
     text-transform:uppercase; font-family:inherit; padding:0 14px;
@@ -248,7 +251,7 @@
   .name-input:focus { outline:none; border-color:#e8b44a; }
   .name-input::placeholder { color:#4a4a5a; letter-spacing:1px; }
   .code-input {
-    width:%; min-height:76px; background:#15151d;
+    width:100%; min-height:76px; background:#15151d;
     border:1.5px solid #2a2a36; border-radius:14px; color:#e8b44a;
     font-size:38px; font-weight:700; letter-spacing:12px; text-align:center;
     text-transform:uppercase; font-family:inherit; padding-left:12px;
@@ -275,7 +278,7 @@
   .end-overlay.open { display:flex; }
   .end-card {
     background:#12121a; border:1px solid #2a2a36; border-radius:20px;
-    padding:28px 24px; width:%; max-width:400px;
+    padding:28px 24px; width:100%; max-width:400px;
     display:flex; flex-direction:column; gap:16px; text-align:center;
   }
   .end-title { font-size:20px; font-weight:700; }
@@ -293,7 +296,7 @@
   }
   .end-actions { display:flex; flex-direction:column; gap:10px; margin-top:4px; }
   .end-btn {
-    width:%; min-height:52px; border-radius:13px; border:none;
+    width:100%; min-height:52px; border-radius:13px; border:none;
     font-size:15px; font-weight:700; cursor:pointer; font-family:inherit;
     letter-spacing:.5px;
   }
@@ -322,7 +325,7 @@
     font-variant-numeric:tabular-nums; letter-spacing:2px;
   }
   #diag {
-    position:fixed; inset:0; background:#08080c; z-index:; display:none;
+    position:fixed; inset:0; background:#08080c; z-index:100; display:none;
     flex-direction:column; padding:16px; overflow-y:auto; font-size:12px;
   }
   #diag.open { display:flex; }
@@ -365,7 +368,7 @@
   @media (max-width:760px) {
     .presenter-body { flex-direction:column; }
     .mirror-panel {
-      width:%; border-left:none; border-top:1px solid #1e1e28;
+      width:100%; border-left:none; border-top:1px solid #1e1e28;
       flex-direction:row; align-items:flex-start; gap:10px; padding:10px 14px;
       max-height:180px; overflow-y:auto;
     }
@@ -425,7 +428,7 @@
 </div>
 <div class="screen" id="waiting">
   <div class="spinner"></div>
-  <div class="hint" id="waitingText">Aguardando o apresentador iniciar...</div>
+  <div class="hint" id="waitingText">Aguardando apresentação...</div>
   <div class="hint" id="waitingCode" style="color:#e8b44a;font-weight:600"></div>
   <button class="btn btn-ghost" style="max-width:300px" onclick="leaveSession()">Sair</button>
 </div>
@@ -446,7 +449,7 @@
   </div>
   <div class="presenter-body">
     <div class="slide-area" id="presenterSlide">
-      <div class="slide-placeholder">Carregando músicas...</div>
+      <img class="opening-img" id="presenterOpening" src="imagem/apresentacao/imagem-de-abertura.jpg" alt="Abertura">
       <div class="prep-overlay" id="presenterPrep">
         <div class="prep-badge"><span class="spin"></span> Carregando slides...</div>
       </div>
@@ -501,7 +504,7 @@
     <button class="icon-btn" onclick="toggleDiag()" title="Diagnóstico" style="width:40px;height:40px">⚙</button>
   </div>
   <div class="slide-area" id="viewerSlide">
-    <div class="slide-placeholder">Aguardando...</div>
+    <img class="opening-img" id="viewerOpening" src="imagem/apresentacao/imagem-de-abertura.jpg" alt="Abertura">
     <div class="prep-overlay" id="viewerPrep">
       <div class="prep-badge"><span class="spin"></span> Carregando slides...</div>
     </div>
@@ -586,6 +589,8 @@ var API_KEY = 'VEgT6Q.8-6OmA:cpAVi0_Gtfdj7FpD9Sg7TkW40fBBw7295Tj7hz7XkPE';
 var BASE_URL = 'https://coralsomos1.github.io/s1-mirror/';
 /* Caminho do PDF.js dentro do repositório */
 var PDFJS_DIR = 'pdfjs/';
+/* Imagem de abertura */
+var OPENING_IMG = 'imagem/apresentacao/imagem-de-abertura.jpg';
 /* Tempo de preparação visual: 0,2 s por slide */
 var PREP_PER_SLIDE_MS = 200;
 /* Pausa no primeiro slide antes de liberar o controle */
@@ -739,6 +744,21 @@ function renderPageTo(doc, pageNum, container, isPreview) {
   });
 }
 /* =========================================================
+   IMAGEM DE ABERTURA
+   ========================================================= */
+function showOpeningImage(which) {
+  var el = document.getElementById(which === 'presenter' ? 'presenterOpening' : 'viewerOpening');
+  var area = document.getElementById(which === 'presenter' ? 'presenterSlide' : 'viewerSlide');
+  if (!el || !area) return;
+  area.querySelectorAll('.slide-canvas, .slide-placeholder').forEach(function(n){ n.remove(); });
+  el.style.display = 'block';
+  el.src = BASE_URL + OPENING_IMG + '?t=' + Date.now();
+}
+function hideOpeningImage(which) {
+  var el = document.getElementById(which === 'presenter' ? 'presenterOpening' : 'viewerOpening');
+  if (el) el.style.display = 'none';
+}
+/* =========================================================
    PRÉ-CARREGAMENTO — baixa o PDF da música
    ========================================================= */
 function preloadMusic(musicIndex) {
@@ -775,7 +795,7 @@ function countCached() {
   return n;
 }
 /* =========================================================
-   PREPARAÇÃO VISUAL — 0,4 s por slide
+   PREPARAÇÃO VISUAL — 0,2 s por slide
    ========================================================= */
 function startPreparation(musicIndex, onDone) {
   var m = musicas[musicIndex];
@@ -814,8 +834,6 @@ function cancelPreparation() {
   setNavEnabled(true);
 }
 function setPrepOverlay(show) {
-  if (show) document.body.classList.add('preparing');
-  else document.body.classList.remove('preparing');
   var p = document.getElementById('presenterPrep');
   var v = document.getElementById('viewerPrep');
   if (p) { if (show) p.classList.add('show'); else p.classList.remove('show'); }
@@ -1244,6 +1262,7 @@ function enterPresenterMode() {
     }
     document.getElementById('barCodeValue').textContent = sessionCode;
     showScreen('presenter');
+    showOpeningImage('presenter');
     renderMembers();
     resetTimer();
     startTimer();
@@ -1262,11 +1281,9 @@ function enterPresenterMode() {
       currentMusicIndex = 0;
       currentSlide = 0;
       slideCount = totalPagesOf(0);
-      renderPresenterSlide();
       renderMirror();
       updateCounter();
       preloadMusic(0);
-      publishSlide();
     });
     setTimeout(function(){ updateViewerCount(); }, 500);
     startPresencePoll();
@@ -1295,6 +1312,7 @@ function changeMusic(index) {
   var idx = parseInt(index, 10);
   if (isNaN(idx) || !musicas[idx]) return;
   cancelPreparation();
+  hideOpeningImage('presenter');
   currentMusicIndex = idx;
   currentSlide = 0;
   slideCount = totalPagesOf(idx);
@@ -1325,6 +1343,7 @@ function publishPrepStart(musicIndex) {
 function renderPresenterSlide() {
   var el = document.getElementById('presenterSlide');
   if (!el) return;
+  hideOpeningImage('presenter');
   var overlay = document.getElementById('presenterPrep');
   var keepOverlay = overlay ? overlay.outerHTML : '';
   getPdf(currentMusicIndex, function(doc){
@@ -1339,6 +1358,7 @@ function renderPresenterSlide() {
 function renderViewerSlide() {
   var el = document.getElementById('viewerSlide');
   if (!el) return;
+  hideOpeningImage('viewer');
   var overlay = document.getElementById('viewerPrep');
   var keepOverlay = overlay ? overlay.outerHTML : '';
   getPdf(currentMusicIndex, function(doc){
@@ -1620,7 +1640,7 @@ function joinSession() {
     });
     channel.subscribe('session-end', function(msg){
       var ms = (msg.data && typeof msg.data.elapsedMs === 'number') ? msg.data.elapsedMs : 0;
-      log('apresentação encerrada pelo apresentador — tempo ' + formatTime(ms));
+      log('apresentação encerrada pela maestrina — tempo ' + formatTime(ms));
       cancelPreparation();
       stopHeartbeat();
       stopStateRequests();
@@ -1653,7 +1673,7 @@ function joinSession() {
     }
     document.getElementById('viewerBarCode').textContent = code;
     document.getElementById('waitingCode').textContent = 'Código: ' + code;
-    document.getElementById('waitingText').textContent = 'Aguardando o apresentador iniciar...';
+    document.getElementById('waitingText').textContent = 'Aguardando apresentação...';
     showScreen('waiting');
     setPresenterOnline(null);
     loadMusicas(function(ok){
@@ -1695,10 +1715,10 @@ function setPresenterOnline(online) {
     pill.classList.remove('online', 'offline');
     if (online === true) {
       pill.classList.add('online');
-      pillText.textContent = 'Apresentador online';
+      pillText.textContent = 'Maestrina online';
     } else if (online === false) {
       pill.classList.add('offline');
-      pillText.textContent = 'Apresentador offline';
+      pillText.textContent = 'Maestrina offline';
     } else {
       pillText.textContent = 'Conectando';
     }
@@ -1717,7 +1737,7 @@ function startStateRequests() {
     log('state-request tentativa ' + stateRequestAttempts);
     if (stateRequestAttempts >= 8) {
       stopStateRequests();
-      document.getElementById('waitingText').innerHTML = 'Nenhum slide recebido.<br>Verifique se o apresentador iniciou e se o código é o mesmo.';
+      document.getElementById('waitingText').innerHTML = 'Nenhum slide recebido.<br>Verifique se a apresentação foi iniciada e se o código é o mesmo.';
       log('Sincronização falhou após 8 tentativas');
     }
     updateDiag();
