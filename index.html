@@ -661,6 +661,7 @@ var prepTimer = null;
 var hasActiveMusic = false;
 var sessionStarted = false;
 var showingInterval = false;
+var renderGeneration = 0;
 var extraPdfs = {};
 var extraPdfCounter = 0;
 var extraPdfSentTo = {};
@@ -803,6 +804,7 @@ function showStateImage(which, imgPath) {
   var area = document.getElementById(areaId);
   var el = document.getElementById(imgId);
   if (!area || !el) return;
+  renderGeneration++;
   area.querySelectorAll('.slide-canvas, .slide-placeholder').forEach(function(n){ n.remove(); });
   el.style.display = 'block';
   el.src = BASE_URL + imgPath + '?t=' + Date.now();
@@ -1694,10 +1696,13 @@ function renderPresenterSlide() {
   var el = document.getElementById('presenterSlide');
   if (!el) return;
   if (showingInterval) return;
+  var myGen = ++renderGeneration;
   hideStateImage('presenter');
   var overlay = document.getElementById('presenterPrep');
   var keepOverlay = overlay ? overlay.outerHTML : '';
   getPdf(currentMusicIndex, function(doc){
+    if (showingInterval) return;
+    if (myGen !== renderGeneration) return;
     if (!doc) {
       el.innerHTML = '<div class="slide-placeholder">Sem PDF</div>' + keepOverlay;
       return;
@@ -1710,10 +1715,13 @@ function renderViewerSlide() {
   var el = document.getElementById('viewerSlide');
   if (!el) return;
   if (showingInterval) return;
+  var myGen = ++renderGeneration;
   hideStateImage('viewer');
   var overlay = document.getElementById('viewerPrep');
   var keepOverlay = overlay ? overlay.outerHTML : '';
   getPdf(currentMusicIndex, function(doc){
+    if (showingInterval) return;
+    if (myGen !== renderGeneration) return;
     if (!doc) {
       el.innerHTML = '<div class="slide-placeholder">Aguardando...</div>' + keepOverlay;
       return;
