@@ -60,16 +60,17 @@
   .slide-canvas {
     max-width:100%; max-height:100%; width:auto; height:auto;
     object-fit:contain; display:block;
+    position:relative; z-index:1;
   }
   .slide-placeholder {
     color:#4a4a5a; font-size:14px; text-align:center; padding:30px;
-    line-height:1.6;
+    line-height:1.6; position:relative; z-index:1;
   }
   .prep-overlay {
     position:absolute; inset:0; display:none;
     align-items:center; justify-content:center;
     background:rgba(229,72,77,.20);
-    pointer-events:none; z-index:5;
+    pointer-events:none; z-index:50;
   }
   .prep-overlay.show { display:flex; }
   .prep-badge {
@@ -77,6 +78,7 @@
     border-radius:999px; padding:11px 22px;
     font-size:14px; font-weight:600; letter-spacing:.3px;
     display:flex; align-items:center; gap:8px;
+    position:relative; z-index:51;
   }
   .prep-badge .spin {
     width:14px; height:14px; border:2px solid #3a3a48; border-top-color:#e8b44a;
@@ -85,7 +87,7 @@
   @keyframes spin { to { transform:rotate(360deg); } }
   .opening-img {
     max-width:100%; max-height:100%; width:auto; height:auto;
-    object-fit:contain; display:block;
+    object-fit:contain; display:block; position:relative; z-index:1;
   }
   .mirror-panel {
     width:clamp(230px,27vw,350px); flex-shrink:0;
@@ -123,6 +125,30 @@
   .music-select:focus { outline:none; border-color:#e8b44a; }
   .music-progress {
     font-size:11px; color:#6a6a7a; text-align:center;
+    font-variant-numeric:tabular-nums;
+  }
+  .open-pdf-btn {
+    width:100%; min-height:38px; border-radius:9px;
+    background:#1c1c26; border:1px solid #2a2a36; color:#c9c9d4;
+    font-size:12px; font-weight:700; letter-spacing:.5px;
+    cursor:pointer; font-family:inherit;
+    display:flex; align-items:center; justify-content:center; gap:6px;
+  }
+  .open-pdf-btn:active { background:#262632; }
+  .open-pdf-btn:disabled { opacity:.5; cursor:default; }
+  .pdf-progress-wrap {
+    display:none; flex-direction:column; gap:5px;
+  }
+  .pdf-progress-wrap.show { display:flex; }
+  .pdf-progress-bar {
+    height:6px; background:#24242f; border-radius:3px; overflow:hidden;
+  }
+  .pdf-progress-fill {
+    height:100%; width:0%; background:#e8b44a; border-radius:3px;
+    transition:width .15s linear;
+  }
+  .pdf-progress-text {
+    font-size:10px; color:#8a8a99; text-align:center;
     font-variant-numeric:tabular-nums;
   }
   .timer-block {
@@ -466,6 +492,12 @@
           <option value="">Carregando...</option>
         </select>
         <div class="music-progress" id="musicProgress">—</div>
+        <button class="open-pdf-btn" id="openPdfBtn" onclick="triggerPdfPicker()">+ Abrir PDF</button>
+        <input type="file" id="pdfPicker" accept="application/pdf,.pdf" style="display:none" onchange="handlePdfPicked(event)">
+        <div class="pdf-progress-wrap" id="pdfProgressWrap">
+          <div class="pdf-progress-bar"><div class="pdf-progress-fill" id="pdfProgressFill"></div></div>
+          <div class="pdf-progress-text" id="pdfProgressText">Enviando 0%</div>
+        </div>
       </div>
       <div class="timer-block">
         <div class="timer-block-label">Tempo de apresentação</div>
@@ -561,6 +593,7 @@
     <div class="diag-row"><span>Total carregado</span><span id="dMusicCount">0</span></div>
     <div class="diag-row"><span>Música atual</span><span id="dMusicCurrent">—</span></div>
     <div class="diag-row"><span>PDFs em cache</span><span id="dCache">0</span></div>
+    <div class="diag-row"><span>PDFs extras</span><span id="dExtraCount">0</span></div>
     <div class="diag-row"><span>Slide atual</span><span id="dSlide">—</span></div>
     <div class="diag-row"><span>Tempo</span><span id="dElapsed">—</span></div>
     <div class="diag-row"><span>Recebidas</span><span id="dRecv">0</span></div>
@@ -583,20 +616,22 @@
 </div>
 <script>
 /* =========================================================
-   CONFIGURAÇÃO — edite apenas se necessário
+   CONFIGURACAO
    ========================================================= */
 var API_KEY = 'VEgT6Q.8-6OmA:cpAVi0_Gtfdj7FpD9Sg7TkW40fBBw7295Tj7hz7XkPE';
 var BASE_URL = 'https://coralsomos1.github.io/s1-mirror/';
-/* Caminho do PDF.js dentro do repositório */
 var PDFJS_DIR = 'pdfjs/';
-/* Imagem de abertura */
 var OPENING_IMG = 'imagens/apresentacao/imagem-de-abertura.jpg';
-/* Tempo de preparação visual: 0,2 s por slide */
-var PREP_PER_SLIDE_MS = 200;
-/* Pausa no primeiro slide antes de liberar o controle */
+var PREP_PER_SLIDE_MS = 150;
 var PREP_HOLD_FIRST_MS = 900;
+var PDF_CHUNK_SIZE = 24576;
+var PDF_CHUNK_DELAY = 100;
+var CODE_TTL_MS = 60 * 60 * 1000;
+var NAME_TTL_MS = 60 * 60 * 1000;
+var HEARTBEAT_INTERVAL = 4000;
+var MEMBER_TIMEOUT = 10000;
 /* =========================================================
-   Estado global
+   ESTADO GLOBAL
    ========================================================= */
 var ably = null;
 var channel = null;
@@ -606,7 +641,7 @@ var sessionCode = '';
 var recvCount = 0;
 var sentCount = 0;
 var eventLog = [];
-var echoResult = 'Não executado';
+var echoResult = 'Nao executado';
 var stateRequestTimer = null;
 var stateRequestAttempts = 0;
 var myClientId = '';
@@ -622,29 +657,34 @@ var isPaused = false;
 var memberMap = {};
 var heartbeatTimer = null;
 var cleanupTimer = null;
-/* músicas e slides */
 var musicas = [];
 var currentMusicIndex = 0;
 var currentSlide = 0;
 var slideCount = 0;
-/* cache de PDFs carregados */
 var pdfCache = {};
-/* estado da preparação visual */
 var isPreparing = false;
 var prepTimer = null;
-var CODE_TTL_MS = 60 * 60 * 1000;
-var NAME_TTL_MS = 60 * 60 * 1000;
-var HEARTBEAT_INTERVAL = 4000;
-var MEMBER_TIMEOUT = 10000;
+/* PDFs extras */
+var extraPdfs = {};
+var extraPdfCounter = 0;
+var extraPdfSentTo = {};
+var pendingPdfChunks = {};
+var isSendingPdf = false;
 /* =========================================================
-   PDF.JS — configuração do worker
+   PDF.JS
    ========================================================= */
 if (typeof pdfjsLib !== 'undefined') {
   pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_DIR + 'pdf.worker.min.js';
 }
 /* =========================================================
-   URL DO PDF
+   MUSICAS
    ========================================================= */
+function isExtraIndex(idx) {
+  return typeof idx === 'number' && idx < 0;
+}
+function extraKey(idx) {
+  return 'extra' + idx;
+}
 function pdfUrl(musicIndex) {
   var m = musicas[musicIndex];
   if (!m) return '';
@@ -660,9 +700,6 @@ function totalPagesOf(musicIndex) {
   if (!m) return 1;
   return m.paginas || 1;
 }
-/* =========================================================
-   CARREGAR musicas.json (array direto)
-   ========================================================= */
 function loadMusicas(callback) {
   var url = BASE_URL + 'musicas.json?t=' + Date.now();
   fetch(url)
@@ -674,7 +711,7 @@ function loadMusicas(callback) {
       if (Array.isArray(data)) musicas = data;
       else if (data && Array.isArray(data.musicas)) musicas = data.musicas;
       else musicas = [];
-      log('musicas.json carregado — ' + musicas.length + ' música(s)');
+      log('musicas.json carregado - ' + musicas.length + ' musica(s)');
       if (callback) callback(true);
     })
     .catch(function(e){
@@ -684,31 +721,50 @@ function loadMusicas(callback) {
     });
 }
 /* =========================================================
-   CARREGAR PDF EM CACHE
+   PDF CACHE
    ========================================================= */
 function getPdf(musicIndex, callback) {
+  if (isExtraIndex(musicIndex)) {
+    var ex = extraPdfs[musicIndex];
+    if (!ex) { callback(null); return; }
+    if (ex.doc) { callback(ex.doc); return; }
+    if (!ex.bytes) { callback(null); return; }
+    if (typeof pdfjsLib === 'undefined') { callback(null); return; }
+    var task = pdfjsLib.getDocument({ data: ex.bytes.slice(0) });
+    task.promise.then(function(doc){
+      ex.doc = doc;
+      ex.paginas = doc.numPages;
+      log('PDF extra aberto: ' + ex.nome + ' (' + doc.numPages + ' paginas)');
+      updateDiag();
+      callback(doc);
+    }).catch(function(e){
+      log('ERRO ao abrir PDF extra: ' + e.message);
+      callback(null);
+    });
+    return;
+  }
   var url = pdfUrl(musicIndex);
   if (!url) { callback(null); return; }
   if (pdfCache[url]) { callback(pdfCache[url]); return; }
   if (typeof pdfjsLib === 'undefined') {
-    showError('PDF.js não carregou. Verifique a pasta pdfjs/.');
+    showError('PDF.js nao carregou. Verifique a pasta pdfjs/.');
     log('ERRO: pdfjsLib ausente');
     callback(null);
     return;
   }
   pdfjsLib.getDocument(url).promise.then(function(doc){
     pdfCache[url] = doc;
-    log('PDF carregado: ' + url + ' (' + doc.numPages + ' páginas)');
+    log('PDF carregado: ' + url + ' (' + doc.numPages + ' paginas)');
     updateDiag();
     callback(doc);
   }).catch(function(e){
     log('ERRO ao carregar PDF: ' + e.message);
-    showError('Não foi possível carregar o PDF: ' + (currentMusic() ? currentMusic().nome : ''));
+    showError('Nao foi possivel carregar o PDF: ' + (currentMusic() ? currentMusic().nome : ''));
     callback(null);
   });
 }
 /* =========================================================
-   RENDERIZAR PÁGINA DO PDF EM UM CONTAINER
+   RENDER
    ========================================================= */
 function renderPageTo(doc, pageNum, container, isPreview) {
   if (!doc || !container) return;
@@ -740,7 +796,7 @@ function renderPageTo(doc, pageNum, container, isPreview) {
     if (keepOverlay) container.insertAdjacentHTML('beforeend', keepOverlay);
     page.render({ canvasContext: ctx, viewport: scaled });
   }).catch(function(e){
-    log('ERRO ao renderizar página: ' + e.message);
+    log('ERRO ao renderizar pagina: ' + e.message);
   });
 }
 /* =========================================================
@@ -759,22 +815,29 @@ function hideOpeningImage(which) {
   if (el) el.style.display = 'none';
 }
 /* =========================================================
-   PRÉ-CARREGAMENTO — baixa o PDF da música
+   PRELOAD
    ========================================================= */
 function preloadMusic(musicIndex) {
+  if (isExtraIndex(musicIndex)) {
+    var ex = extraPdfs[musicIndex];
+    if (ex && ex.bytes && !ex.doc) {
+      getPdf(musicIndex, function(){});
+    }
+    return;
+  }
   var m = musicas[musicIndex];
   if (!m) return;
   var url = pdfUrl(musicIndex);
   if (!url) return;
   if (pdfCache[url]) {
     showPreloadIndicator(false, 0, 0);
-    log('PDF já em cache: ' + m.nome);
+    log('PDF ja em cache: ' + m.nome);
     return;
   }
   showPreloadIndicator(true, 0, 1);
   getPdf(musicIndex, function(doc){
     showPreloadIndicator(false, 0, 0);
-    if (doc) log('Pré-carregamento concluído: ' + m.nome);
+    if (doc) log('Pre-carregamento concluido: ' + m.nome);
   });
 }
 function showPreloadIndicator(show, done, total) {
@@ -794,8 +857,15 @@ function countCached() {
   }
   return n;
 }
+function countExtra() {
+  var n = 0;
+  for (var k in extraPdfs) {
+    if (extraPdfs.hasOwnProperty(k)) n++;
+  }
+  return n;
+}
 /* =========================================================
-   PREPARAÇÃO VISUAL — 0,2 s por slide
+   PREPARACAO VISUAL
    ========================================================= */
 function startPreparation(musicIndex, onDone) {
   var m = musicas[musicIndex];
@@ -850,7 +920,7 @@ function renderSlideForRole() {
   else renderViewerSlide();
 }
 /* =========================================================
-   CRONÔMETRO
+   CRONOMETRO
    ========================================================= */
 function formatTime(ms) {
   var total = Math.floor(ms / 1000);
@@ -889,7 +959,7 @@ function resetTimerClick() {
   var el = document.getElementById('barTimerValue');
   if (el) el.textContent = '00:00';
   if (!timerInterval) startTimer();
-  log('Cronômetro zerado');
+  log('Cronometro zerado');
 }
 function getElapsed() {
   if (timerInterval && !isPaused) return Date.now() - startTime;
@@ -907,7 +977,7 @@ function toggleFullscreen() {
       var p = req.call(el);
       if (p && p.catch) p.catch(function(e){ log('Tela cheia recusada: ' + e.message); });
     } else {
-      showError('Este navegador não suporta tela cheia.');
+      showError('Este navegador nao suporta tela cheia.');
     }
   } else {
     var exit = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
@@ -936,16 +1006,16 @@ document.addEventListener('fullscreenchange', onFullscreenChange);
 document.addEventListener('webkitfullscreenchange', onFullscreenChange);
 document.addEventListener('msfullscreenchange', onFullscreenChange);
 /* =========================================================
-   WAKE LOCK — mantém a tela acesa
+   WAKE LOCK
    ========================================================= */
 function requestWakeLock() {
   if (!('wakeLock' in navigator)) {
-    log('Wake Lock não suportado neste navegador');
+    log('Wake Lock nao suportado neste navegador');
     return;
   }
   navigator.wakeLock.request('screen').then(function(lock) {
     wakeLock = lock;
-    log('Wake Lock ativo — tela não apaga');
+    log('Wake Lock ativo - tela nao apaga');
     lock.addEventListener('release', function(){
       log('Wake Lock liberado');
       wakeLock = null;
@@ -969,7 +1039,7 @@ document.addEventListener('visibilitychange', function(){
   }
 });
 /* =========================================================
-   CÓDIGO E NOME SALVOS
+   CODIGO E NOME
    ========================================================= */
 function saveLastCode(code) {
   try {
@@ -1033,7 +1103,7 @@ function goToJoin() {
   showScreen('join');
 }
 /* =========================================================
-   NAVEGAÇÃO E LOG
+   NAVEGACAO E LOG
    ========================================================= */
 function showScreen(name) {
   var all = document.querySelectorAll('.screen');
@@ -1049,7 +1119,7 @@ function toggleDiag() {
 function log(msg) {
   var d = new Date();
   var t = ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2)+':'+('0'+d.getSeconds()).slice(-2);
-  eventLog.unshift(t + ' · ' + msg);
+  eventLog.unshift(t + ' - ' + msg);
   if (eventLog.length > 40) eventLog.pop();
   updateDiag();
 }
@@ -1066,7 +1136,7 @@ function setDot(color, text) {
   if (st) st.textContent = text;
 }
 /* =========================================================
-   DIAGNÓSTICO
+   DIAGNOSTICO
    ========================================================= */
 function updateDiag() {
   var libOk = (typeof Ably !== 'undefined');
@@ -1075,28 +1145,29 @@ function updateDiag() {
   var dL = document.getElementById('dLib');
   if (dT) dT.textContent = 'Ably Realtime' + (pdfOk ? ' + PDF.js' : ' (PDF.js ausente)');
   if (dL) {
-    dL.textContent = libOk ? 'carregada (ok)' : 'NÃO CARREGADA';
+    dL.textContent = libOk ? 'carregada (ok)' : 'NAO CARREGADA';
     dL.className = libOk ? 'green' : 'red';
   }
-  var host = '—', state = '—';
+  var host = '-', state = '-';
   if (ably) {
-    try { host = ably.connection.connectionManager.host || '—'; } catch(e) {}
-    state = ably.connection.state || '—';
+    try { host = ably.connection.connectionManager.host || '-'; } catch(e) {}
+    state = ably.connection.state || '-';
   }
   var dH = document.getElementById('dHost'); if (dH) dH.textContent = host;
   var dS = document.getElementById('dState'); if (dS) dS.textContent = state;
-  var dC = document.getElementById('dClient'); if (dC) dC.textContent = myClientId || '—';
-  var dCh = document.getElementById('dChannel'); if (dCh) dCh.textContent = channel ? channel.name : '—';
-  var dR = document.getElementById('dRole'); if (dR) dR.textContent = role || '—';
-  var dN = document.getElementById('dMyName'); if (dN) dN.textContent = myName || '—';
+  var dC = document.getElementById('dClient'); if (dC) dC.textContent = myClientId || '-';
+  var dCh = document.getElementById('dChannel'); if (dCh) dCh.textContent = channel ? channel.name : '-';
+  var dR = document.getElementById('dRole'); if (dR) dR.textContent = role || '-';
+  var dN = document.getElementById('dMyName'); if (dN) dN.textContent = myName || '-';
   var dV = document.getElementById('dViewers'); if (dV) dV.textContent = viewerCount;
   var dMC = document.getElementById('dMusicCount'); if (dMC) dMC.textContent = musicas.length;
   var dMCur = document.getElementById('dMusicCurrent');
   if (dMCur) {
     var cm = currentMusic();
-    dMCur.textContent = cm ? cm.nome : '—';
+    dMCur.textContent = cm ? cm.nome : '-';
   }
   var dCache = document.getElementById('dCache'); if (dCache) dCache.textContent = countCached();
+  var dEx = document.getElementById('dExtraCount'); if (dEx) dEx.textContent = countExtra();
   var dSl = document.getElementById('dSlide'); if (dSl) dSl.textContent = (currentSlide + 1) + ' / ' + slideCount;
   var dEl = document.getElementById('dElapsed'); if (dEl) dEl.textContent = formatTime(getElapsed());
   var dRe = document.getElementById('dRecv'); if (dRe) dRe.textContent = recvCount;
@@ -1107,7 +1178,7 @@ function updateDiag() {
   var dF = document.getElementById('dFullscreen');
   if (dF) { dF.textContent = isFs ? 'ativa' : 'inativa'; dF.className = isFs ? 'green' : ''; }
   var dW = document.getElementById('dWake');
-  if (dW) { dW.textContent = wakeLock ? 'ativo' : ('wakeLock' in navigator ? 'inativo' : 'não suportado'); dW.className = wakeLock ? 'green' : ''; }
+  if (dW) { dW.textContent = wakeLock ? 'ativo' : ('wakeLock' in navigator ? 'inativo' : 'nao suportado'); dW.className = wakeLock ? 'green' : ''; }
   if (channel) {
     try {
       channel.presence.get(function(err, members) {
@@ -1127,30 +1198,31 @@ function updateDiag() {
 function copyDiag() {
   var cm = currentMusic();
   var txt = 'TRANSPORTE: Ably Realtime + PDF.js\n' +
-    'Biblioteca: ' + (typeof Ably !== 'undefined' ? 'carregada (ok)' : 'NÃO CARREGADA') + '\n' +
-    'Host: ' + (ably ? (ably.connection.connectionManager.host || '—') : '—') + '\n' +
-    'Estado: ' + (ably ? ably.connection.state : '—') + '\n' +
-    'Client ID: ' + (myClientId || '—') + '\n' +
-    'Nome: ' + (myName || '—') + '\n' +
-    'Canal: ' + (channel ? channel.name : '—') + '\n' +
-    'Papel: ' + (role || '—') + '\n' +
+    'Biblioteca: ' + (typeof Ably !== 'undefined' ? 'carregada (ok)' : 'NAO CARREGADA') + '\n' +
+    'Host: ' + (ably ? (ably.connection.connectionManager.host || '-') : '-') + '\n' +
+    'Estado: ' + (ably ? ably.connection.state : '-') + '\n' +
+    'Client ID: ' + (myClientId || '-') + '\n' +
+    'Nome: ' + (myName || '-') + '\n' +
+    'Canal: ' + (channel ? channel.name : '-') + '\n' +
+    'Papel: ' + (role || '-') + '\n' +
     'Coralistas ativos: ' + viewerCount + '\n' +
-    'Músicas: ' + musicas.length + '\n' +
-    'Música atual: ' + (cm ? cm.nome : '—') + '\n' +
+    'Musicas: ' + musicas.length + '\n' +
+    'PDFs extras: ' + countExtra() + '\n' +
+    'Musica atual: ' + (cm ? cm.nome : '-') + '\n' +
     'PDFs em cache: ' + countCached() + '\n' +
     'Slide: ' + (currentSlide + 1) + '/' + slideCount + '\n' +
     'Tempo: ' + formatTime(getElapsed()) + '\n' +
     'Recebidas: ' + recvCount + '\n' +
     'Enviadas: ' + sentCount + '\n' +
     'Eco: ' + echoResult + '\n\nLOG:\n' + eventLog.join('\n');
-  navigator.clipboard.writeText(txt).then(function(){ log('Diagnóstico copiado'); });
+  navigator.clipboard.writeText(txt).then(function(){ log('Diagnostico copiado'); });
 }
 /* =========================================================
    ABLY
    ========================================================= */
 function initAbly() {
   if (typeof Ably === 'undefined') {
-    showError('ERRO: A biblioteca do Ably não carregou. Verifique a internet e recarregue.');
+    showError('ERRO: A biblioteca do Ably nao carregou. Verifique a internet e recarregue.');
     log('ERRO: biblioteca Ably ausente');
     return false;
   }
@@ -1169,17 +1241,17 @@ function initAbly() {
     log('ERRO ao criar cliente: ' + e.message);
     return false;
   }
-  ably.connection.on('connected', function(){ log('Conexão: connected'); setDot('green','Conectado'); updateDiag(); });
-  ably.connection.on('connecting', function(){ log('Conexão: connecting'); setDot('yellow','Conectando...'); });
-  ably.connection.on('disconnected', function(){ log('Conexão: disconnected'); setDot('yellow','Desconectado'); });
-  ably.connection.on('suspended', function(){ log('Conexão: suspended'); setDot('yellow','Suspenso'); });
+  ably.connection.on('connected', function(){ log('Conexao: connected'); setDot('green','Conectado'); updateDiag(); });
+  ably.connection.on('connecting', function(){ log('Conexao: connecting'); setDot('yellow','Conectando...'); });
+  ably.connection.on('disconnected', function(){ log('Conexao: disconnected'); setDot('yellow','Desconectado'); });
+  ably.connection.on('suspended', function(){ log('Conexao: suspended'); setDot('yellow','Suspenso'); });
   ably.connection.on('failed', function(s){
     var r = (s && s.reason && s.reason.message) ? s.reason.message : 'motivo desconhecido';
-    log('Conexão: FAILED — ' + r);
+    log('Conexao: FAILED - ' + r);
     setDot('red','Falhou');
-    showError('Falha na conexão com o Ably: ' + r);
+    showError('Falha na conexao com o Ably: ' + r);
   });
-  log('Cliente Ably criado — clientId ' + myClientId);
+  log('Cliente Ably criado - clientId ' + myClientId);
   return true;
 }
 function genCode() {
@@ -1187,6 +1259,183 @@ function genCode() {
   var c = '';
   for (var i = 0; i < 4; i++) c += chars.charAt(Math.floor(Math.random() * chars.length));
   return c;
+}
+/* =========================================================
+   PDF EXTRA - ENVIO
+   ========================================================= */
+function triggerPdfPicker() {
+  if (isSendingPdf) return;
+  var picker = document.getElementById('pdfPicker');
+  if (picker) picker.click();
+}
+function handlePdfPicked(ev) {
+  var file = ev.target.files && ev.target.files[0];
+  if (!file) return;
+  ev.target.value = '';
+  if (file.type && file.type.indexOf('pdf') === -1 && !/\.pdf$/i.test(file.name)) {
+    showError('Selecione um arquivo PDF.');
+    return;
+  }
+  var nome = file.name.replace(/\.pdf$/i, '');
+  if (nome.length > 40) nome = nome.slice(0, 40);
+  log('PDF escolhido: ' + file.name + ' (' + Math.round(file.size / 1024) + ' KB)');
+  var reader = new FileReader();
+  reader.onload = function(){
+    var dataUrl = reader.result;
+    var base64 = String(dataUrl).split(',')[1] || '';
+    if (!base64) { showError('Nao foi possivel ler o PDF.'); return; }
+    startExtraPdfSend(nome, base64);
+  };
+  reader.onerror = function(){
+    showError('Erro ao ler o arquivo PDF.');
+    log('ERRO FileReader');
+  };
+  reader.readAsDataURL(file);
+}
+function startExtraPdfSend(nome, base64) {
+  if (!channel) { showError('Sem conexao ativa.'); return; }
+  isSendingPdf = true;
+  var btn = document.getElementById('openPdfBtn');
+  if (btn) btn.disabled = true;
+  var wrap = document.getElementById('pdfProgressWrap');
+  var fill = document.getElementById('pdfProgressFill');
+  var txt = document.getElementById('pdfProgressText');
+  if (wrap) wrap.classList.add('show');
+  if (fill) fill.style.width = '0%';
+  if (txt) txt.textContent = 'Enviando 0%';
+  extraPdfCounter++;
+  var idx = -extraPdfCounter;
+  var total = Math.ceil(base64.length / PDF_CHUNK_SIZE);
+  var sent = 0;
+  var sendId = 'p' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
+  function updateProgress() {
+    var pct = Math.round((sent / total) * 100);
+    if (fill) fill.style.width = pct + '%';
+    if (txt) txt.textContent = 'Enviando ' + pct + '% (' + sent + '/' + total + ')';
+  }
+  function sendNext() {
+    if (sent >= total) {
+      try {
+        channel.publish('extra-pdf-meta', {
+          idx: idx,
+          nome: nome,
+          total: total,
+          sendId: sendId,
+          size: base64.length
+        });
+        sentCount++;
+        log('extra-pdf-meta publicado: ' + nome + ' (' + total + ' partes)');
+      } catch(e) {
+        log('ERRO ao publicar meta: ' + e.message);
+      }
+      finishSend();
+      return;
+    }
+    var start = sent * PDF_CHUNK_SIZE;
+    var chunk = base64.slice(start, start + PDF_CHUNK_SIZE);
+    try {
+      channel.publish('extra-pdf-chunk', {
+        idx: idx,
+        sendId: sendId,
+        seq: sent,
+        data: chunk
+      });
+      sentCount++;
+    } catch(e) {
+      log('ERRO ao enviar parte ' + sent + ': ' + e.message);
+    }
+    sent++;
+    updateProgress();
+    setTimeout(sendNext, PDF_CHUNK_DELAY);
+  }
+  function finishSend() {
+    isSendingPdf = false;
+    if (btn) btn.disabled = false;
+    setTimeout(function(){
+      if (wrap) wrap.classList.remove('show');
+    }, 1200);
+    addExtraMusicLocal(idx, nome, base64);
+    log('PDF extra adicionado: ' + nome + ' (indice ' + idx + ')');
+  }
+  sendNext();
+}
+function addExtraMusicLocal(idx, nome, base64) {
+  extraPdfs[idx] = { nome: nome, bytes: null, base64: base64, paginas: 1, doc: null };
+  var bin = base64ToBytes(base64);
+  extraPdfs[idx].bytes = bin;
+  musicas[idx] = { nome: nome, paginas: 1, extra: true };
+  getPdf(idx, function(doc){
+    if (doc) {
+      musicas[idx].paginas = doc.numPages;
+      extraPdfs[idx].paginas = doc.numPages;
+      log('PDF extra pronto: ' + nome + ' - ' + doc.numPages + ' paginas');
+    }
+    buildMusicSelect();
+    updateDiag();
+  });
+}
+function base64ToBytes(base64) {
+  var bin = atob(base64);
+  var len = bin.length;
+  var bytes = new Uint8Array(len);
+  for (var i = 0; i < len; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+/* =========================================================
+   PDF EXTRA - RECEBIMENTO (CORALISTA)
+   ========================================================= */
+function handleExtraPdfMeta(msg) {
+  var d = msg.data || {};
+  if (typeof d.idx !== 'number' || !d.nome) return;
+  var idx = d.idx;
+  if (extraPdfs[idx] && extraPdfs[idx].complete) {
+    log('PDF extra ja recebido: ' + d.nome);
+    return;
+  }
+  pendingPdfChunks[d.sendId] = {
+    idx: idx,
+    nome: d.nome,
+    total: d.total || 0,
+    parts: {},
+    received: 0
+  };
+  log('extra-pdf-meta recebido: ' + d.nome + ' (' + d.total + ' partes)');
+}
+function handleExtraPdfChunk(msg) {
+  var d = msg.data || {};
+  var sendId = d.sendId;
+  if (!sendId || typeof d.seq !== 'number') return;
+  var pending = pendingPdfChunks[sendId];
+  if (!pending) return;
+  if (pending.parts[d.seq] !== undefined) return;
+  pending.parts[d.seq] = d.data;
+  pending.received++;
+  if (pending.received >= pending.total) {
+    var full = '';
+    for (var i = 0; i < pending.total; i++) {
+      full += pending.parts[i] || '';
+    }
+    delete pendingPdfChunks[sendId];
+    var bytes = base64ToBytes(full);
+    extraPdfs[pending.idx] = {
+      nome: pending.nome,
+      bytes: bytes,
+      base64: full,
+      paginas: 1,
+      doc: null,
+      complete: true
+    };
+    musicas[pending.idx] = { nome: pending.nome, paginas: 1, extra: true };
+    log('PDF extra completo: ' + pending.nome + ' (' + Math.round(bytes.length / 1024) + ' KB)');
+    getPdf(pending.idx, function(doc){
+      if (doc) {
+        musicas[pending.idx].paginas = doc.numPages;
+        extraPdfs[pending.idx].paginas = doc.numPages;
+        log('PDF extra renderizavel: ' + pending.nome + ' - ' + doc.numPages + ' paginas');
+      }
+      updateDiag();
+    });
+  }
 }
 /* =========================================================
    APRESENTADOR
@@ -1198,7 +1447,7 @@ function startPresenter() {
     role = 'presenter';
     document.getElementById('sessionCode').textContent = sessionCode;
     showScreen('code-screen');
-    log('Sessão criada: ' + sessionCode);
+    log('Sessao criada: ' + sessionCode);
   } catch(e) {
     showError('Erro ao iniciar: ' + e.message);
     log('ERRO startPresenter: ' + e.message);
@@ -1208,24 +1457,25 @@ function cancelPresenterSetup() {
   sessionCode = '';
   role = null;
   showScreen('home');
-  log('Criação de sessão cancelada');
+  log('Criacao de sessao cancelada');
 }
 function copyCode() {
-  navigator.clipboard.writeText(sessionCode).then(function(){ log('Código copiado'); });
+  navigator.clipboard.writeText(sessionCode).then(function(){ log('Codigo copiado'); });
 }
 function enterPresenterMode() {
   try {
-    if (!ably) { showError('Ably não inicializado. Recarregue a página.'); return; }
+    if (!ably) { showError('Ably nao inicializado. Recarregue a pagina.'); return; }
     var channelName = 's1-' + sessionCode;
     channel = ably.channels.get(channelName);
     memberMap = {};
+    extraPdfSentTo = {};
     channel.subscribe('state-request', function(){
-      log('state-request recebido — respondendo');
+      log('state-request recebido - respondendo');
       publishSlide();
       updateViewerCount();
     });
     channel.subscribe('viewer-ready', function(){
-      log('viewer-ready recebido — respondendo');
+      log('viewer-ready recebido - respondendo');
       publishSlide();
       updateViewerCount();
     });
@@ -1253,12 +1503,13 @@ function enterPresenterMode() {
       channel.presence.subscribe('leave', function(m){
         log('presence leave: ' + m.clientId);
         delete memberMap[m.clientId];
+        delete extraPdfSentTo[m.clientId];
         renderMembers();
         updateViewerCount();
       });
       log('presence ativo');
     } catch(pe) {
-      log('presence falhou (não crítico): ' + pe.message);
+      log('presence falhou (nao critico): ' + pe.message);
     }
     document.getElementById('barCodeValue').textContent = sessionCode;
     showScreen('presenter');
@@ -1269,12 +1520,12 @@ function enterPresenterMode() {
     loadMusicas(function(ok){
       if (!ok) {
         document.getElementById('presenterSlide').innerHTML =
-          '<div class="slide-placeholder">Não foi possível carregar o musicas.json.<br>Verifique se o arquivo existe na raiz do repositório.</div>';
+          '<div class="slide-placeholder">Nao foi possivel carregar o musicas.json.<br>Verifique se o arquivo existe na raiz do repositorio.</div>';
         return;
       }
       if (musicas.length === 0) {
         document.getElementById('presenterSlide').innerHTML =
-          '<div class="slide-placeholder">Nenhuma música encontrada no musicas.json.</div>';
+          '<div class="slide-placeholder">Nenhuma musica encontrada no musicas.json.</div>';
         return;
       }
       buildMusicSelect();
@@ -1291,7 +1542,7 @@ function enterPresenterMode() {
     requestWakeLock();
     updateDiag();
   } catch(e) {
-    showError('Erro ao iniciar apresentação: ' + e.message);
+    showError('Erro ao iniciar apresentacao: ' + e.message);
     log('ERRO enterPresenterMode: ' + e.message);
   }
 }
@@ -1299,14 +1550,27 @@ function buildMusicSelect() {
   var sel = document.getElementById('musicSelect');
   if (!sel) return;
   var html = '';
+  var extras = [];
+  for (var k in musicas) {
+    if (musicas.hasOwnProperty(k) && isExtraIndex(parseInt(k, 10))) {
+      extras.push(parseInt(k, 10));
+    }
+  }
+  extras.sort(function(a, b){ return b - a; });
   for (var i = 0; i < musicas.length; i++) {
+    if (!musicas[i]) continue;
+    if (isExtraIndex(i)) continue;
     html += '<option value="' + i + '">' + escapeHtml(musicas[i].nome) + '</option>';
   }
+  for (var j = 0; j < extras.length; j++) {
+    var e = extras[j];
+    html += '<option value="' + e + '">[Extra] ' + escapeHtml(musicas[e].nome) + '</option>';
+  }
   sel.innerHTML = html;
-  sel.value = '0';
+  if (musicas[currentMusicIndex]) sel.value = String(currentMusicIndex);
 }
 /* =========================================================
-   TROCA DE MÚSICA — dispara pré-carregamento + preparação
+   TROCA DE MUSICA
    ========================================================= */
 function changeMusic(index) {
   var idx = parseInt(index, 10);
@@ -1324,7 +1588,7 @@ function changeMusic(index) {
   startPreparation(idx, function(){
     publishSlide();
   });
-  log('Música alterada: ' + musicas[idx].nome);
+  log('Musica alterada: ' + musicas[idx].nome);
 }
 function publishPrepStart(musicIndex) {
   if (!channel) return;
@@ -1332,10 +1596,11 @@ function publishPrepStart(musicIndex) {
     channel.publish('prep-start', {
       music: musicIndex,
       total: totalPagesOf(musicIndex),
-      perSlide: PREP_PER_SLIDE_MS
+      perSlide: PREP_PER_SLIDE_MS,
+      extra: isExtraIndex(musicIndex)
     });
     sentCount++;
-    log('prep-start publicado: música ' + musicIndex);
+    log('prep-start publicado: musica ' + musicIndex);
   } catch(e) {
     log('ERRO ao publicar prep-start: ' + e.message);
   }
@@ -1376,13 +1641,13 @@ function renderMirror() {
   if (!preview) return;
   var nextIndex = currentSlide + 1;
   if (nextIndex >= slideCount) {
-    preview.innerHTML = '<div class="mirror-empty">Fim da música</div>';
-    if (num) num.textContent = '—';
+    preview.innerHTML = '<div class="mirror-empty">Fim da musica</div>';
+    if (num) num.textContent = '-';
     return;
   }
   getPdf(currentMusicIndex, function(doc){
     if (!doc) {
-      preview.innerHTML = '<div class="mirror-empty">—</div>';
+      preview.innerHTML = '<div class="mirror-empty">-</div>';
       return;
     }
     var pageNum = Math.min(nextIndex + 1, doc.numPages);
@@ -1396,17 +1661,89 @@ function updateCounter() {
   var p = document.getElementById('musicProgress');
   if (p) {
     var m = currentMusic();
-    p.textContent = m ? (m.nome + ' · ' + (currentSlide + 1) + '/' + slideCount) : '—';
+    p.textContent = m ? (m.nome + ' - ' + (currentSlide + 1) + '/' + slideCount) : '-';
   }
 }
 function startPresencePoll() {
   stopPresencePoll();
   presencePollTimer = setInterval(function(){
-    if (role === 'presenter' && channel) updateViewerCount();
+    if (role === 'presenter' && channel) {
+      updateViewerCount();
+      checkNewViewers();
+    }
   }, 2000);
 }
 function stopPresencePoll() {
   if (presencePollTimer) { clearInterval(presencePollTimer); presencePollTimer = null; }
+}
+function checkNewViewers() {
+  if (role !== 'presenter') return;
+  if (!channel) return;
+  var hasExtra = false;
+  for (var k in extraPdfs) {
+    if (extraPdfs.hasOwnProperty(k)) { hasExtra = true; break; }
+  }
+  if (!hasExtra) return;
+  try {
+    channel.presence.get(function(err, members){
+      if (err || !members) return;
+      for (var i = 0; i < members.length; i++) {
+        var cid = members[i].clientId;
+        if (cid === myClientId) continue;
+        if (extraPdfSentTo[cid]) continue;
+        extraPdfSentTo[cid] = true;
+        resendExtrasTo(cid);
+      }
+    });
+  } catch(e) {}
+}
+function resendExtrasTo(clientId) {
+  var keys = [];
+  for (var k in extraPdfs) {
+    if (extraPdfs.hasOwnProperty(k)) keys.push(parseInt(k, 10));
+  }
+  if (keys.length === 0) return;
+  keys.sort(function(a, b){ return a - b; });
+  log('Reenviando ' + keys.length + ' PDF(s) extra para ' + clientId);
+  var ki = 0;
+  function nextPdf() {
+    if (ki >= keys.length) return;
+    var idx = keys[ki];
+    ki++;
+    var ex = extraPdfs[idx];
+    if (!ex || !ex.base64) { nextPdf(); return; }
+    sendExtraToClient(idx, ex.nome, ex.base64, clientId, nextPdf);
+  }
+  nextPdf();
+}
+function sendExtraToClient(idx, nome, base64, clientId, done) {
+  if (!channel) { if (done) done(); return; }
+  var total = Math.ceil(base64.length / PDF_CHUNK_SIZE);
+  var sent = 0;
+  var sendId = 'r' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
+  function step() {
+    if (sent >= total) {
+      try {
+        channel.publish('extra-pdf-meta', {
+          idx: idx, nome: nome, total: total, sendId: sendId, size: base64.length
+        });
+        sentCount++;
+      } catch(e) {}
+      if (done) done();
+      return;
+    }
+    var start = sent * PDF_CHUNK_SIZE;
+    var chunk = base64.slice(start, start + PDF_CHUNK_SIZE);
+    try {
+      channel.publish('extra-pdf-chunk', {
+        idx: idx, sendId: sendId, seq: sent, data: chunk
+      });
+      sentCount++;
+    } catch(e) {}
+    sent++;
+    setTimeout(step, PDF_CHUNK_DELAY);
+  }
+  step();
 }
 function startMemberCleanup() {
   stopMemberCleanup();
@@ -1418,6 +1755,7 @@ function startMemberCleanup() {
       if (memberMap.hasOwnProperty(id)) {
         if (now - memberMap[id].ts > MEMBER_TIMEOUT) {
           delete memberMap[id];
+          delete extraPdfSentTo[id];
           removed++;
         }
       }
@@ -1482,7 +1820,7 @@ function renderMembers() {
   names.sort(function(a, b){ return a.localeCompare(b, 'pt-BR'); });
   if (countEl) countEl.textContent = names.length;
   if (names.length === 0) {
-    list.innerHTML = '<div class="members-empty">Ninguém conectado ainda</div>';
+    list.innerHTML = '<div class="members-empty">Ninguem conectado ainda</div>';
     return;
   }
   var html = '';
@@ -1505,10 +1843,11 @@ function publishSlide() {
     channel.publish('slide', {
       music: currentMusicIndex,
       index: currentSlide,
-      total: slideCount
+      total: slideCount,
+      extra: isExtraIndex(currentMusicIndex)
     });
     sentCount++;
-    log('slide publicado: música ' + currentMusicIndex + ', slide ' + (currentSlide + 1));
+    log('slide publicado: musica ' + currentMusicIndex + ', slide ' + (currentSlide + 1));
     updateDiag();
   } catch(e) {
     log('ERRO ao publicar slide: ' + e.message);
@@ -1535,19 +1874,19 @@ function prevSlide() {
   }
 }
 /* =========================================================
-   PAINEL DE FINALIZAR
+   FINALIZAR
    ========================================================= */
 function openEndPanel() {
   var t = document.getElementById('endPanelTime');
   if (t) t.textContent = formatTime(getElapsed());
   var ov = document.getElementById('endOverlay');
   if (ov) ov.classList.add('open');
-  log('Painel de finalização aberto');
+  log('Painel de finalizacao aberto');
 }
 function closeEndPanel() {
   var ov = document.getElementById('endOverlay');
   if (ov) ov.classList.remove('open');
-  log('Apresentação retomada');
+  log('Apresentacao retomada');
 }
 function endPresentation() {
   var finalMs = getElapsed();
@@ -1557,7 +1896,7 @@ function endPresentation() {
   try {
     if (channel) {
       channel.publish('session-end', { ts: Date.now(), elapsedMs: finalMs });
-      log('session-end publicado — tempo ' + finalText);
+      log('session-end publicado - tempo ' + finalText);
     }
   } catch(e) {}
   var t = document.getElementById('endedTimeValue');
@@ -1578,12 +1917,16 @@ function endPresentation() {
   sentCount = 0;
   viewerCount = 0;
   memberMap = {};
+  extraPdfs = {};
+  extraPdfCounter = 0;
+  extraPdfSentTo = {};
+  pendingPdfChunks = {};
   setPresenterOnline(null);
   showScreen('ended');
-  log('Apresentação encerrada — tempo ' + finalText);
+  log('Apresentacao encerrada - tempo ' + finalText);
 }
 /* =========================================================
-   ESPECTADOR (CORALISTA)
+   CORALISTA
    ========================================================= */
 function joinSession() {
   try {
@@ -1592,7 +1935,7 @@ function joinSession() {
     var name = (nameInput.value || '').trim().toUpperCase();
     var code = (input.value || '').trim().toUpperCase();
     if (name.length < 2) { showError('Digite seu nome para entrar.'); nameInput.focus(); return; }
-    if (code.length !== 4) { showError('Digite o código de 4 caracteres.'); input.focus(); return; }
+    if (code.length !== 4) { showError('Digite o codigo de 4 caracteres.'); input.focus(); return; }
     if (!initAbly()) return;
     myName = name;
     sessionCode = code;
@@ -1600,6 +1943,8 @@ function joinSession() {
     saveLastCode(code);
     saveName(name);
     memberMap = {};
+    extraPdfs = {};
+    pendingPdfChunks = {};
     var channelName = 's1-' + code;
     channel = ably.channels.get(channelName);
     channel.subscribe('slide', function(msg){
@@ -1613,7 +1958,7 @@ function joinSession() {
         showScreen('viewer');
         stopStateRequests();
         setPresenterOnline(true);
-        log('slide recebido: música ' + currentMusicIndex + ', slide ' + (currentSlide + 1));
+        log('slide recebido: musica ' + currentMusicIndex + ', slide ' + (currentSlide + 1));
       }
       updateDiag();
     });
@@ -1621,10 +1966,10 @@ function joinSession() {
       recvCount++;
       var idx = (msg.data && typeof msg.data.music === 'number') ? msg.data.music : 0;
       if (!musicas[idx]) {
-        log('prep-start recebido, mas música ' + idx + ' não está carregada');
+        log('prep-start recebido, mas musica ' + idx + ' nao esta carregada');
         return;
       }
-      log('prep-start recebido: música ' + idx);
+      log('prep-start recebido: musica ' + idx);
       cancelPreparation();
       currentMusicIndex = idx;
       currentSlide = 0;
@@ -1634,13 +1979,22 @@ function joinSession() {
       stopStateRequests();
       preloadMusic(idx);
       startPreparation(idx, function(){
-        log('Preparação concluída no receptor');
+        log('Preparacao concluida no receptor');
       });
       updateDiag();
     });
+    channel.subscribe('extra-pdf-meta', function(msg){
+      recvCount++;
+      handleExtraPdfMeta(msg);
+      updateDiag();
+    });
+    channel.subscribe('extra-pdf-chunk', function(msg){
+      recvCount++;
+      handleExtraPdfChunk(msg);
+    });
     channel.subscribe('session-end', function(msg){
       var ms = (msg.data && typeof msg.data.elapsedMs === 'number') ? msg.data.elapsedMs : 0;
-      log('apresentação encerrada pela maestrina — tempo ' + formatTime(ms));
+      log('apresentacao encerrada pela maestrina - tempo ' + formatTime(ms));
       cancelPreparation();
       stopHeartbeat();
       stopStateRequests();
@@ -1652,7 +2006,7 @@ function joinSession() {
     channel.subscribe('echo-test', function(msg){
       if (msg.clientId !== myClientId) log('echo de outro cliente: ' + msg.clientId);
     });
-    log('subscribe(slide, prep-start) em ' + channelName);
+    log('subscribe(slide, prep-start, extra-pdf) em ' + channelName);
     try {
       channel.presence.enter();
       channel.presence.subscribe('leave', function(m){
@@ -1669,15 +2023,16 @@ function joinSession() {
       });
       log('presence ativo');
     } catch(pe) {
-      log('presence falhou (não crítico): ' + pe.message);
+      log('presence falhou (nao critico): ' + pe.message);
     }
     document.getElementById('viewerBarCode').textContent = code;
-    document.getElementById('waitingCode').textContent = 'Código: ' + code;
-    document.getElementById('waitingText').textContent = 'Aguardando apresentação...';
+    document.getElementById('waitingCode').textContent = 'Codigo: ' + code;
+    document.getElementById('waitingText').textContent = 'Aguardando apresentacao...';
+    showOpeningImage('viewer');
     showScreen('waiting');
     setPresenterOnline(null);
     loadMusicas(function(ok){
-      if (!ok) log('viewer: musicas.json não carregou');
+      if (!ok) log('viewer: musicas.json nao carregou');
     });
     startStateRequests();
     startHeartbeat();
@@ -1737,8 +2092,8 @@ function startStateRequests() {
     log('state-request tentativa ' + stateRequestAttempts);
     if (stateRequestAttempts >= 8) {
       stopStateRequests();
-      document.getElementById('waitingText').innerHTML = 'Nenhum slide recebido.<br>Verifique se a apresentação foi iniciada e se o código é o mesmo.';
-      log('Sincronização falhou após 8 tentativas');
+      document.getElementById('waitingText').innerHTML = 'Nenhum slide recebido.<br>Verifique se a apresentacao foi iniciada e se o codigo e o mesmo.';
+      log('Sincronizacao falhou apos 8 tentativas');
     }
     updateDiag();
   };
@@ -1768,14 +2123,23 @@ function leaveSession() {
   sentCount = 0;
   viewerCount = 0;
   memberMap = {};
+  extraPdfs = {};
+  extraPdfCounter = 0;
+  extraPdfSentTo = {};
+  pendingPdfChunks = {};
+  isSendingPdf = false;
   resetTimer();
   setPresenterOnline(null);
   showPreloadIndicator(false, 0, 0);
+  var wrap = document.getElementById('pdfProgressWrap');
+  if (wrap) wrap.classList.remove('show');
+  var btn = document.getElementById('openPdfBtn');
+  if (btn) btn.disabled = false;
   var input = document.getElementById('joinInput');
   if (input) input.value = '';
   refreshLastCodeUI();
   showScreen('home');
-  log('Sessão encerrada');
+  log('Sessao encerrada');
 }
 function runEchoTest() {
   if (!channel) { echoResult = 'Conecte-se a um canal primeiro'; updateDiag(); return; }
@@ -1786,7 +2150,7 @@ function runEchoTest() {
   var handler = function(msg) {
     if (msg.data && msg.data.ts === ts) {
       got = true;
-      echoResult = 'Eco OK — o Ably está entregando mensagens neste canal';
+      echoResult = 'Eco OK - o Ably esta entregando mensagens neste canal';
       log('Eco OK');
       updateDiag();
       try { channel.unsubscribe('echo-test', handler); } catch(e) {}
@@ -1798,7 +2162,7 @@ function runEchoTest() {
   log('subscribe(echo-test) em ' + channel.name);
   setTimeout(function(){
     if (!got) {
-      echoResult = 'Eco FALHOU — nenhuma mensagem retornou';
+      echoResult = 'Eco FALHOU - nenhuma mensagem retornou';
       log('Eco FALHOU');
       updateDiag();
       try { channel.unsubscribe('echo-test', handler); } catch(e) {}
@@ -1806,7 +2170,7 @@ function runEchoTest() {
   }, 5000);
 }
 /* =========================================================
-   EVENTOS DE TECLADO E TOQUE
+   EVENTOS
    ========================================================= */
 document.addEventListener('keydown', function(e){
   if (currentScreen !== 'presenter') return;
@@ -1840,11 +2204,11 @@ document.getElementById('nameInput').addEventListener('keydown', function(e){
 });
 window.addEventListener('load', function(){
   if (typeof Ably === 'undefined') {
-    showError('ERRO: A biblioteca do Ably não carregou. Verifique a internet e recarregue.');
+    showError('ERRO: A biblioteca do Ably nao carregou. Verifique a internet e recarregue.');
     setDot('red', 'Biblioteca ausente');
     log('ERRO: biblioteca Ably ausente no carregamento');
   } else if (typeof pdfjsLib === 'undefined') {
-    showError('ERRO: PDF.js não carregou. Verifique a pasta pdfjs/ no repositório.');
+    showError('ERRO: PDF.js nao carregou. Verifique a pasta pdfjs/ no repositorio.');
     setDot('red', 'PDF.js ausente');
     log('ERRO: pdfjsLib ausente no carregamento');
   } else {
