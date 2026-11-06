@@ -812,7 +812,7 @@ function renderPageTo(doc, pageNum, container, isPreview, expectedGen) {
   });
 }
 /* =========================================================
-   IMAGENS DE ESTADO
+   IMAGENS DE ESTADO (blindada)
    ========================================================= */
 function showStateImage(which, imgPath) {
   var areaId = which === 'presenter' ? 'presenterSlide' : 'viewerSlide';
@@ -820,15 +820,30 @@ function showStateImage(which, imgPath) {
   var area = document.getElementById(areaId);
   var el = document.getElementById(imgId);
   if (!area || !el) return;
+
   renderGeneration++;
-  var removed = area.querySelectorAll('.slide-canvas, .slide-placeholder').length;
-  area.querySelectorAll('.slide-canvas, .slide-placeholder').forEach(function(n){ n.remove(); });
-  if (!area.contains(el)) area.appendChild(el);
-  el.style.display = 'block';
-  el.style.visibility = 'visible';
-  el.style.zIndex = '2';
-  el.src = BASE_URL + imgPath + '?t=' + Date.now();
-  log('showStateImage(' + which + ') - ' + removed + ' canvas removido(s), src=' + imgPath);
+
+  var removed = 0;
+  try {
+    var nodes = area.querySelectorAll('.slide-canvas, .slide-placeholder');
+    removed = nodes.length;
+    for (var i = 0; i < nodes.length; i++) {
+      if (nodes[i].parentNode) nodes[i].parentNode.removeChild(nodes[i]);
+    }
+  } catch(e) {}
+
+  try {
+    if (!area.contains(el)) area.appendChild(el);
+    el.style.display = 'block';
+    el.style.visibility = 'visible';
+    el.style.zIndex = '2';
+    el.style.position = 'relative';
+    el.src = BASE_URL + imgPath + '?t=' + Date.now();
+  } catch(e) {}
+
+  try {
+    log('showStateImage(' + which + ') - ' + removed + ' canvas removido(s), src=' + imgPath);
+  } catch(e) {}
 }
 function hideStateImage(which) {
   var imgId = which === 'presenter' ? 'presenterOpening' : 'viewerOpening';
