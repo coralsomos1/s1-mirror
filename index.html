@@ -656,6 +656,7 @@ var currentMusicIndex = -999;
 var currentSlide = 0;
 var slideCount = 0;
 var pdfCache = {};
+var pdfLoading = {};
 var isPreparing = false;
 var prepTimer = null;
 var hasActiveMusic = false;
@@ -717,7 +718,7 @@ function loadMusicas(callback) {
     });
 }
 /* =========================================================
-   PDF CACHE
+   PDF CACHE (com fila para evitar downloads duplicados)
    ========================================================= */
 function getPdf(musicIndex, callback) {
   if (isExtraIndex(musicIndex)) {
@@ -742,29 +743,44 @@ function getPdf(musicIndex, callback) {
   var url = pdfUrl(musicIndex);
   if (!url) { callback(null); return; }
   if (pdfCache[url]) { callback(pdfCache[url]); return; }
+  if (pdfLoading[url]) {
+    pdfLoading[url].push(callback);
+    return;
+  }
   if (typeof pdfjsLib === 'undefined') {
     showError('PDF.js nao carregou. Verifique a pasta pdfjs/.');
     log('ERRO: pdfjsLib ausente');
     callback(null);
     return;
   }
+  pdfLoading[url] = [callback];
   pdfjsLib.getDocument(url).promise.then(function(doc){
     pdfCache[url] = doc;
     log('PDF carregado: ' + url + ' (' + doc.numPages + ' paginas)');
+    var waiters = pdfLoading[url] || [];
+    delete pdfLoading[url];
     updateDiag();
-    callback(doc);
+    for (var i = 0; i < waiters.length; i++) {
+      try { waiters[i](doc); } catch(e) {}
+    }
   }).catch(function(e){
     log('ERRO ao carregar PDF: ' + e.message);
     showError('Nao foi possivel carregar o PDF: ' + (currentMusic() ? currentMusic().nome : ''));
-    callback(null);
+    var waiters = pdfLoading[url] || [];
+    delete pdfLoading[url];
+    for (var i = 0; i < waiters.length; i++) {
+      try { waiters[i](null); } catch(e) {}
+    }
   });
 }
 /* =========================================================
-   RENDER
+   RENDER (com verificacao de geracao)
    ========================================================= */
-function renderPageTo(doc, pageNum, container, isPreview) {
+function renderPageTo(doc, pageNum, container, isPreview, expectedGen) {
   if (!doc || !container) return;
   doc.getPage(pageNum).then(function(page){
+    if (showingInterval) return;
+    if (expectedGen !== undefined && expectedGen !== null && expectedGen !== renderGeneration) return;
     var viewport = page.getViewport({ scale: 1 });
     var maxW, maxH;
     if (isPreview) {
@@ -1708,7 +1724,7 @@ function renderPresenterSlide() {
       return;
     }
     var pageNum = Math.min(currentSlide + 1, doc.numPages);
-    renderPageTo(doc, pageNum, el, false);
+    renderPageTo(doc, pageNum, el, false, myGen);
   });
 }
 function renderViewerSlide() {
@@ -1727,7 +1743,7 @@ function renderViewerSlide() {
       return;
     }
     var pageNum = Math.min(currentSlide + 1, doc.numPages);
-    renderPageTo(doc, pageNum, el, false);
+    renderPageTo(doc, pageNum, el, false, myGen);
   });
 }
 function renderMirror() {
@@ -2407,6 +2423,7 @@ window.addEventListener('load', function(){
   updateDiag();
 });
 window.addEventListener('resize', function(){
+  if (showingInterval) return;
   if (currentScreen === 'presenter') { renderPresenterSlide(); renderMirror(); }
   if (currentScreen === 'viewer') renderViewerSlide();
 });
