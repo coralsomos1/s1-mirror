@@ -812,14 +812,13 @@ function renderPageTo(doc, pageNum, container, isPreview, expectedGen) {
   });
 }
 /* =========================================================
-   IMAGENS DE ESTADO (blindada)
+   IMAGENS DE ESTADO (recria o elemento se foi destruido)
    ========================================================= */
 function showStateImage(which, imgPath) {
   var areaId = which === 'presenter' ? 'presenterSlide' : 'viewerSlide';
   var imgId = which === 'presenter' ? 'presenterOpening' : 'viewerOpening';
   var area = document.getElementById(areaId);
-  var el = document.getElementById(imgId);
-  if (!area || !el) return;
+  if (!area) return;
 
   renderGeneration++;
 
@@ -833,7 +832,14 @@ function showStateImage(which, imgPath) {
   } catch(e) {}
 
   try {
-    if (!area.contains(el)) area.appendChild(el);
+    var el = document.getElementById(imgId);
+    if (!el || !area.contains(el)) {
+      el = document.createElement('img');
+      el.id = imgId;
+      el.className = 'opening-img';
+      el.alt = 'Estado';
+      area.appendChild(el);
+    }
     el.style.display = 'block';
     el.style.visibility = 'visible';
     el.style.zIndex = '2';
