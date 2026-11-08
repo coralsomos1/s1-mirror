@@ -99,6 +99,7 @@
     padding:3px 8px; border-radius:6px; border:1px solid #2a2a36;
     text-transform:uppercase;
   }
+  .voice-cell-label.hidden { display:none; }
   .voice-cell-empty { color:#3a3a48; font-size:12px; font-style:italic; text-align:center; padding:14px; }
   .mirror-panel {
     width:clamp(220px,24vw,320px); flex-shrink:0;
@@ -182,6 +183,7 @@
   .bar-codes { display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
   .bar-code { display:flex; align-items:center; gap:6px; background:#15151d; border:1px solid #2a2a36; border-radius:9px; padding:5px 10px; }
   .bar-code-label { font-size:9px; color:#6a6a7a; text-transform:uppercase; letter-spacing:1px; font-weight:700; }
+  .bar-code-label.hidden { display:none; }
   .bar-code-value { font-size:14px; font-weight:700; color:#e8b44a; letter-spacing:3px; }
   .bar-viewers { display:flex; align-items:center; gap:6px; background:#15151d; border:1px solid #2a2a36; border-radius:9px; padding:5px 10px; font-size:12px; color:#c9c9d4; }
   .bar-viewers-num { font-weight:700; color:#3ddc84; font-size:14px; }
@@ -317,6 +319,7 @@
   .voice-upload { background:#15151d; border:1px solid #2a2a36; border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:9px; min-width:0; }
   .voice-upload-head { display:flex; align-items:center; justify-content:space-between; gap:8px; }
   .voice-upload-name { font-size:11px; font-weight:700; letter-spacing:1.2px; color:#e8b44a; text-transform:uppercase; }
+  .voice-upload-name.hidden { display:none; }
   .voice-upload-count { font-size:10px; font-weight:700; color:#3ddc84; background:#132a1e; border:1px solid #1e4a33; border-radius:9px; padding:2px 7px; }
   .voice-upload-btn { width:100%; min-height:38px; border-radius:8px; background:#1c1c26; border:1px solid #2a2a36; color:#e8e8f0; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; }
   .voice-upload-btn:active { background:#262632; }
@@ -747,6 +750,9 @@ function showScreen(name) {
     else floatBtn.classList.remove('show');
   }
 }
+function isSingleMode() {
+  return activeVoices.length === 1;
+}
 /* =========================================================
    NOMES DE MUSICA
    ========================================================= */
@@ -813,14 +819,14 @@ function renderCodeList() {
   for (var i = 0; i < activeVoices.length; i++) {
     var v = activeVoices[i];
     html += '<div class="code-row">' +
-      '<span class="code-row-name">' + VOICE_LABEL[v] + '</span>' +
+      '<span class="code-row-name' + (isSingleMode() ? ' hidden' : '') + '">' + VOICE_LABEL[v] + '</span>' +
       '<span class="code-row-value">' + voiceCodes[v] + '</span>' +
       '</div>';
   }
   list.innerHTML = html;
   var hint = document.getElementById('codeHint');
   if (hint) {
-    hint.textContent = sessionMode === 1
+    hint.textContent = isSingleMode()
       ? 'Compartilhe este código com o coral'
       : 'Compartilhe cada código com o naipe correspondente';
   }
@@ -1226,14 +1232,38 @@ function clearStateImage() { currentStateImage = 'none'; }
 function redrawCurrentState() {
   if (role !== 'presenter' && role !== 'viewer') return;
   var which = role === 'presenter' ? 'presenter' : 'viewer';
-  if (currentStateImage === 'opening') { showStateImage(which, OPENING_IMG); return; }
+  if (currentStateImage === 'opening') {
+    if (which === 'presenter') { clearPresenterArea(); return; }
+    showStateImage(which, OPENING_IMG);
+    return;
+  }
   if (currentStateImage === 'interval') { showStateImage(which, INTERVAL_IMG); return; }
   if (hasActiveMusic) {
     if (role === 'presenter') renderAllVoices();
     else renderViewerSlide();
     return;
   }
+  if (which === 'presenter') { clearPresenterArea(); return; }
   showStateImage(which, OPENING_IMG);
+}
+function clearPresenterArea() {
+  var area = document.getElementById('voicesGrid');
+  if (!area) return;
+  renderGeneration++;
+  try {
+    var nodes = area.querySelectorAll('.slide-canvas, .slide-placeholder, .opening-img');
+    for (var i = 0; i < nodes.length; i++) {
+      if (nodes[i].parentNode) nodes[i].parentNode.removeChild(nodes[i]);
+    }
+  } catch(e) {}
+  for (var j = 0; j < activeVoices.length; j++) {
+    var cell = document.getElementById('cell-' + activeVoices[j]);
+    if (cell) {
+      var label = cell.querySelector('.voice-cell-label');
+      var keep = label ? label.outerHTML : '';
+      cell.innerHTML = keep + '<div class="voice-cell-empty">Sem letra</div>';
+    }
+  }
 }
 /* =========================================================
    PREPARACAO VISUAL
@@ -1300,7 +1330,7 @@ function buildVoicesGrid() {
   for (var i = 0; i < activeVoices.length; i++) {
     var v = activeVoices[i];
     html += '<div class="voice-cell" id="cell-' + v + '">' +
-      '<div class="voice-cell-label">' + VOICE_LABEL[v] + '</div>' +
+      '<div class="voice-cell-label' + (isSingleMode() ? ' hidden' : '') + '">' + VOICE_LABEL[v] + '</div>' +
       '<div class="voice-cell-empty">Sem letra</div>' +
       '</div>';
   }
@@ -1551,7 +1581,7 @@ function openPdfPanel() {
   if (ov) ov.classList.add('open');
   var sub = document.getElementById('pdfPanelSub');
   if (sub) {
-    sub.textContent = activeVoices.length === 1
+    sub.textContent = isSingleMode()
       ? 'Selecione os PDFs do coral'
       : 'Selecione os PDFs de cada naipe';
   }
@@ -1576,7 +1606,7 @@ function renderPdfPanel() {
     var list = pdfPanelDraft[v] || [];
     html += '<div class="voice-upload">' +
       '<div class="voice-upload-head">' +
-        '<span class="voice-upload-name">' + VOICE_LABEL[v] + '</span>' +
+        '<span class="voice-upload-name' + (isSingleMode() ? ' hidden' : '') + '">' + VOICE_LABEL[v] + '</span>' +
         '<span class="voice-upload-count">' + list.length + '</span>' +
       '</div>' +
       '<button class="voice-upload-btn" onclick="pickPdfsFor(\'' + v + '\')">+ Adicionar PDFs</button>' +
@@ -1728,7 +1758,6 @@ function savePdfPanel() {
   log('Letras salvas - ' + musicNames.length + ' musicas');
   sendAllPdfs();
   publishOpening();
-  showOpeningImage('presenter');
   hasActiveMusic = false;
   currentMusicIndex = -1;
   currentSlide = 0;
@@ -1737,6 +1766,7 @@ function savePdfPanel() {
   sessionStarted = true;
   setNavEnabled(false);
   updateCounter();
+  clearPresenterArea();
 }
 function sendAllPdfs() {
   pendingUploads = 0;
@@ -1927,7 +1957,7 @@ function enterPresenterMode() {
     buildVoicesGrid();
     renderBarCodes();
     showScreen('presenter');
-    showOpeningImage('presenter');
+    clearPresenterArea();
     publishOpening();
     renderMembers();
     renderMusicMenu();
@@ -1952,7 +1982,7 @@ function renderBarCodes() {
   for (var i = 0; i < activeVoices.length; i++) {
     var v = activeVoices[i];
     html += '<div class="bar-code">' +
-      '<span class="bar-code-label">' + VOICE_LABEL[v] + '</span>' +
+      '<span class="bar-code-label' + (isSingleMode() ? ' hidden' : '') + '">' + VOICE_LABEL[v] + '</span>' +
       '<span class="bar-code-value">' + voiceCodes[v] + '</span>' +
       '</div>';
   }
@@ -2045,7 +2075,7 @@ function renderMembers() {
   for (var id in memberMap) {
     if (memberMap.hasOwnProperty(id) && id !== myClientId) {
       var m = memberMap[id];
-      if (m.name) names.push(m.name + ' (' + VOICE_LABEL[m.voice] + ')');
+      if (m.name) names.push(isSingleMode() ? m.name : (m.name + ' (' + VOICE_LABEL[m.voice] + ')'));
     }
   }
   names.sort(function(a, b){ return a.localeCompare(b, 'pt-BR'); });
@@ -2491,6 +2521,7 @@ document.getElementById('nameInput').addEventListener('input', function(e){
 document.getElementById('nameInput').addEventListener('keydown', function(e){
   if (e.key === 'Enter') document.getElementById('joinInput').focus();
 });
+document.getElementById('pdfPicker').addEventListener('change', handlePdfPicked);
 window.addEventListener('load', function(){
   if (typeof Ably === 'undefined') {
     showError('ERRO: A biblioteca do Ably nao carregou. Verifique a internet e recarregue.');
