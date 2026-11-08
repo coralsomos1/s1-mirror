@@ -267,6 +267,19 @@
     cursor:pointer; font-family:inherit; flex-shrink:0;
   }
   .finish-btn:active { background:#c93c40; }
+  /* BOTAO FINALIZAR FLUTUANTE (tela cheia) */
+  .finish-float {
+    position:fixed; top:14px; right:14px; z-index:120;
+    background:#e5484d; border:1px solid #b8383c; color:#fff;
+    padding:0 18px; min-height:44px; border-radius:11px;
+    font-size:13px; font-weight:700; letter-spacing:1px;
+    cursor:pointer; font-family:inherit;
+    display:none; align-items:center; justify-content:center;
+    box-shadow:0 6px 20px rgba(0,0,0,.55);
+    opacity:.92; transition:opacity .2s;
+  }
+  .finish-float:active { background:#c93c40; opacity:1; }
+  .finish-float.show { display:flex; }
   .controls {
     display:flex; align-items:center; justify-content:center; gap:14px;
     padding:14px 18px calc(14px + env(safe-area-inset-bottom));
@@ -455,12 +468,14 @@
     .members-block { margin:0; padding:0; border:none; flex:1; }
     .members-list { max-height:80px; }
     .preload-indicator { bottom:10px; right:10px; font-size:11px; padding:7px 11px; }
+    .finish-float { top:10px; right:10px; min-height:40px; padding:0 14px; font-size:12px; }
   }
 </style>
 </head>
 <body>
 <div class="error-banner" id="errorBanner"></div>
 <div class="preload-indicator" id="preloadIndicator">Carregando slides...</div>
+<button class="finish-float" id="finishFloat" onclick="openEndPanel()">FINALIZAR</button>
 <div class="screen active" id="home">
   <div class="logo">S1 <span>Mirror</span></div>
   <div class="tagline">Somos Um</div>
@@ -724,8 +739,9 @@ var isSendingPdf = false;
 var pendingPdfAction = null;
 var autoIntervalTimer = null;
 var autoIntervalDeadline = 0;
-/* NOVO: controla qual imagem de estado esta visivel (opening | interval | none) */
 var currentStateImage = 'opening';
+/* NOVO: controla se a tela cheia ja foi solicitada automaticamente */
+var autoFsRequested = false;
 /* =========================================================
    PDF.JS
    ========================================================= */
@@ -877,13 +893,12 @@ function clearStateImage() {
   currentStateImage = 'none';
 }
 /* =========================================================
-   AJUSTE 2 e 3: redesenha o que esta na tela apos resize/tela cheia
+   REDESENHA O QUE ESTA NA TELA (resize / tela cheia)
    ========================================================= */
 function redrawCurrentState() {
   if (role !== 'presenter' && role !== 'viewer') return;
   var which = role === 'presenter' ? 'presenter' : 'viewer';
 
-  /* Se esta mostrando imagem de estado, redesenha a imagem */
   if (currentStateImage === 'opening') {
     showStateImage(which, OPENING_IMG, 'opening');
     return;
@@ -893,7 +908,6 @@ function redrawCurrentState() {
     return;
   }
 
-  /* Se esta mostrando PDF, redesenha o slide */
   if (hasActiveMusic && currentPdfId) {
     if (role === 'presenter') {
       renderPresenterSlide();
@@ -904,7 +918,6 @@ function redrawCurrentState() {
     return;
   }
 
-  /* Fallback: sem PDF e sem estado definido - volta para abertura */
   showStateImage(which, OPENING_IMG, 'opening');
 }
 /* =========================================================
@@ -1038,40 +1051,60 @@ function getElapsed() {
 /* =========================================================
    TELA CHEIA
    ========================================================= */
-function toggleFullscreen() {
+function isFullscreen() {
+  return !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
+}
+function enterFullscreen() {
+  if (isFullscreen()) return;
   var el = document.documentElement;
-  var isFs = document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
-  if (!isFs) {
-    var req = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
-    if (req) {
-      var p = req.call(el);
-      if (p && p.catch) p.catch(function(e){ log('Tela cheia recusada: ' + e.message); });
-    } else {
-      showError('Este navegador nao suporta tela cheia.');
-    }
-  } else {
-    var exit = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
-    if (exit) exit.call(document);
+  var req = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+  if (!req) return;
+  try {
+    var p = req.call(el);
+    if (p && p.catch) p.catch(function(e){ log('Tela cheia recusada: ' + e.message); });
+  } catch(e) {
+    log('Tela cheia falhou: ' + e.message);
   }
 }
+function exitFullscreen() {
+  if (!isFullscreen()) return;
+  var exit = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
+  if (exit) exit.call(document);
+}
+function toggleFullscreen() {
+  if (!isFullscreen()) enterFullscreen();
+  else exitFullscreen();
+}
+/* NOVO: pede tela cheia no primeiro gesto do usuario (navegadores exigem interacao) */
+function requestAutoFullscreen() {
+  if (autoFsRequested) return;
+  if (isFullscreen()) { autoFsRequested = true; return; }
+  autoFsRequested = true;
+  enterFullscreen();
+  log('Tela cheia automatica solicitada');
+}
 function onFullscreenChange() {
-  var isFs = !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
+  var fs = isFullscreen();
   var bar = document.getElementById('presenterBar');
   var controls = document.getElementById('presenterControls');
   var vbar = document.getElementById('viewerBar');
-  if (isFs) {
+  var floatBtn = document.getElementById('finishFloat');
+
+  if (fs) {
     if (bar) bar.classList.add('fs-hide');
     if (controls) controls.classList.add('fs-hide');
     if (vbar) vbar.classList.add('fs-hide');
+    /* AJUSTE 1: mantem o FINALIZAR visivel em tela cheia (apresentador) */
+    if (floatBtn && role === 'presenter') floatBtn.classList.add('show');
     log('Tela cheia ativada');
   } else {
     if (bar) bar.classList.remove('fs-hide');
     if (controls) controls.classList.remove('fs-hide');
     if (vbar) vbar.classList.remove('fs-hide');
+    if (floatBtn) floatBtn.classList.remove('show');
     log('Tela cheia desativada');
   }
   updateDiag();
-  /* AJUSTE 2 e 3: redesenha o estado atual apos a mudanca de tela cheia */
   setTimeout(function(){ redrawCurrentState(); }, 120);
 }
 document.addEventListener('fullscreenchange', onFullscreenChange);
@@ -1176,6 +1209,12 @@ function showScreen(name) {
   var el = document.getElementById(name);
   if (el) el.classList.add('active');
   currentScreen = name;
+  /* AJUSTE 1: esconde o botao flutuante fora da tela do apresentador */
+  var floatBtn = document.getElementById('finishFloat');
+  if (floatBtn) {
+    if (name === 'presenter' && isFullscreen()) floatBtn.classList.add('show');
+    else floatBtn.classList.remove('show');
+  }
 }
 function toggleDiag() {
   document.getElementById('diag').classList.toggle('open');
@@ -1246,9 +1285,9 @@ function updateDiag() {
   var dSe = document.getElementById('dSent'); if (dSe) dSe.textContent = sentCount;
   var dEc = document.getElementById('dEcho'); if (dEc) dEc.textContent = echoResult;
   var dLo = document.getElementById('dLog'); if (dLo) dLo.textContent = eventLog.length ? eventLog.join('\n') : 'Nenhum evento registrado.';
-  var isFs = !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
+  var fs = isFullscreen();
   var dF = document.getElementById('dFullscreen');
-  if (dF) { dF.textContent = isFs ? 'ativa' : 'inativa'; dF.className = isFs ? 'green' : ''; }
+  if (dF) { dF.textContent = fs ? 'ativa' : 'inativa'; dF.className = fs ? 'green' : ''; }
   var dW = document.getElementById('dWake');
   if (dW) { dW.textContent = wakeLock ? 'ativo' : ('wakeLock' in navigator ? 'inativo' : 'nao suportado'); dW.className = wakeLock ? 'green' : ''; }
   if (channel) {
@@ -1434,14 +1473,10 @@ function registerPdf(nome, base64) {
     renderMusicMenu();
     updateDiag();
   });
-  /* AJUSTE 1: mostra a imagem de carregamento enquanto envia */
   showLoadingDuringSend();
   sendPdfToChannel(pdfId, nome, base64);
 }
-/* AJUSTE 1: imagem de carregamento durante o envio do PDF */
 function showLoadingDuringSend() {
-  var area = document.getElementById('presenterSlide');
-  if (!area) return;
   var overlay = document.getElementById('presenterPrep');
   if (overlay) overlay.classList.add('show');
   log('Imagem de carregamento ativada durante envio do PDF');
@@ -1559,7 +1594,6 @@ function sendPdfToChannel(pdfId, nome, base64) {
       if (wrap) wrap.classList.remove('show');
     }, 1200);
     log('PDF enviado ao canal: ' + nome + ' - ativando agora');
-    /* AJUSTE 1: a imagem de carregamento continua ate a ativacao terminar */
     activatePdf(pdfId);
   }
   sendNext();
@@ -1667,6 +1701,7 @@ function runPendingPdfAction() {
    ========================================================= */
 function startPresenter() {
   try {
+    requestAutoFullscreen();
     if (!initAbly()) return;
     sessionCode = genCode();
     role = 'presenter';
@@ -2141,6 +2176,7 @@ function applyInterval() {
 }
 function joinSession() {
   try {
+    requestAutoFullscreen();
     var nameInput = document.getElementById('nameInput');
     var input = document.getElementById('joinInput');
     var name = (nameInput.value || '').trim().toUpperCase();
@@ -2444,7 +2480,6 @@ window.addEventListener('load', function(){
   refreshLastCodeUI();
   updateDiag();
 });
-/* AJUSTE 2 e 3: resize agora respeita o estado atual da tela */
 window.addEventListener('resize', function(){
   redrawCurrentState();
 });
