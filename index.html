@@ -340,7 +340,6 @@
   .join-last { display:none; font-size:13px; color:#8a8a99; text-align:center; }
   .join-last.show { display:block; }
   .join-last b { color:#e8b44a; letter-spacing:3px; font-size:15px; }
-  /* NOVO: ultimo codigo clicavel */
   .join-last-btn {
     display:none; width:100%; max-width:300px;
     background:#15151d; border:1px solid #2a2a36; border-radius:12px;
@@ -354,8 +353,8 @@
     letter-spacing:1.5px; display:block; margin-bottom:5px;
   }
   .join-last-btn .jl-code {
-    font-size:22px; font-weight:700; color:#e8b44a; letter-spacing:6px;
-    padding-left:6px; display:block;
+    font-size:20px; font-weight:700; color:#e8b44a; letter-spacing:5px;
+    padding-left:5px; display:block;
   }
   .join-last-btn .jl-hint {
     font-size:10px; color:#6a6a7a; margin-top:5px; display:block;
@@ -502,7 +501,7 @@
   <button class="btn btn-secondary" onclick="goToJoin()">Assistir</button>
   <div class="last-code" id="homeLastCode">
     <div class="last-code-label">Último código usado</div>
-    <div class="last-code-value" id="homeLastCodeValue">----</div>
+    <div class="last-code-value" id="homeLastCodeValue">------</div>
     <div class="last-code-hint">Toque em "Assistir" para entrar novamente</div>
   </div>
   <div class="status-bar">
@@ -512,7 +511,7 @@
 </div>
 <div class="screen" id="code-screen">
   <div class="label">Código da sessão</div>
-  <div class="code-display" id="sessionCode">----</div>
+  <div class="code-display" id="sessionCode">------</div>
   <div class="hint">Compartilhe este código com o coral</div>
   <button class="btn btn-ghost" style="max-width:300px" onclick="copyCode()">Copiar código</button>
   <button class="btn btn-primary" style="max-width:300px" onclick="enterPresenterMode()">Iniciar apresentação</button>
@@ -525,11 +524,11 @@
   </div>
   <div class="field-group">
     <div class="field-label">Código da sessão</div>
-    <input class="code-input" id="joinInput" maxlength="4" autocomplete="off" autocapitalize="characters" inputmode="text" placeholder="----">
+    <input class="code-input" id="joinInput" maxlength="6" autocomplete="off" autocapitalize="characters" inputmode="text" placeholder="------">
   </div>
   <button class="join-last-btn" id="joinLastBtn" onclick="useLastCode()">
     <span class="jl-label">Último código usado</span>
-    <span class="jl-code" id="joinLastCode">----</span>
+    <span class="jl-code" id="joinLastCode">------</span>
     <span class="jl-hint">Toque para usar este código</span>
   </button>
   <button class="btn btn-primary" style="max-width:300px" onclick="joinSession()">Entrar</button>
@@ -544,7 +543,7 @@
   <div class="presenter-bar" id="presenterBar">
     <div class="bar-code">
       <span class="bar-code-label">Código</span>
-      <span class="bar-code-value" id="barCodeValue">----</span>
+      <span class="bar-code-value" id="barCodeValue">------</span>
     </div>
     <div class="bar-viewers">
       <span class="bar-viewers-num" id="barViewersNum">0</span>
@@ -612,7 +611,7 @@
 <div class="screen" id="viewer">
   <div class="offline-banner" id="offlineBanner">Apresentação encerrada</div>
   <div class="viewer-bar" id="viewerBar">
-    <div class="viewer-bar-code">Código: <b id="viewerBarCode">----</b></div>
+    <div class="viewer-bar-code">Código: <b id="viewerBarCode">------</b></div>
     <div class="conn-pill" id="connPill">
       <div class="dot"></div>
       <span id="connPillText">Conectando</span>
@@ -717,6 +716,8 @@ var CODE_TTL_MS = 60 * 60 * 1000;
 var HEARTBEAT_INTERVAL = 4000;
 var MEMBER_TIMEOUT = 10000;
 var AUTO_INTERVAL_MS = 60000;
+/* NOVO: tamanho do codigo da sessao */
+var CODE_LENGTH = 6;
 /* =========================================================
    ESTADO GLOBAL
    ========================================================= */
@@ -1097,7 +1098,6 @@ function toggleFullscreen() {
   if (!isFullscreen()) enterFullscreen();
   else exitFullscreen();
 }
-/* AJUSTE 1: reseta a flag ao voltar para home, permitindo nova tela cheia */
 function requestAutoFullscreen() {
   if (autoFsRequested) return;
   if (isFullscreen()) { autoFsRequested = true; return; }
@@ -1186,7 +1186,6 @@ function getLastCode() {
     return code;
   } catch(e) { return ''; }
 }
-/* AJUSTE 4: limpa o codigo salvo */
 function clearLastCode() {
   try {
     localStorage.removeItem('s1_last_code');
@@ -1215,7 +1214,6 @@ function refreshLastCodeUI() {
     if (last) { homeVal.textContent = last; homeBox.classList.add('show'); }
     else { homeBox.classList.remove('show'); }
   }
-  /* AJUSTE 3: botao clicavel com o ultimo codigo */
   var joinBtn = document.getElementById('joinLastBtn');
   var joinCode = document.getElementById('joinLastCode');
   if (joinBtn && joinCode) {
@@ -1223,7 +1221,6 @@ function refreshLastCodeUI() {
     else { joinBtn.classList.remove('show'); }
   }
 }
-/* AJUSTE 3: preenche o campo com o ultimo codigo ao tocar */
 function useLastCode() {
   var last = getLastCode();
   if (!last) return;
@@ -1234,15 +1231,23 @@ function useLastCode() {
   }
   log('Ultimo codigo aplicado ao campo: ' + last);
 }
-/* AJUSTE 2: abre o teclado no campo de codigo */
-function focusCodeInput() {
-  var input = document.getElementById('joinInput');
-  if (!input) return;
+/* AJUSTE 1: foco inteligente - nome vazio foca nome, senao foca codigo */
+function focusJoinFields() {
+  var nameInput = document.getElementById('nameInput');
+  var codeInput = document.getElementById('joinInput');
+  if (!nameInput || !codeInput) return;
   setTimeout(function(){
     try {
-      input.focus();
-      var len = input.value.length;
-      if (input.setSelectionRange) input.setSelectionRange(len, len);
+      var savedName = (nameInput.value || '').trim();
+      if (savedName.length === 0) {
+        nameInput.focus();
+        log('Foco no campo de nome');
+      } else {
+        codeInput.focus();
+        var len = codeInput.value.length;
+        if (codeInput.setSelectionRange) codeInput.setSelectionRange(len, len);
+        log('Foco no campo de codigo');
+      }
     } catch(e) {}
   }, 350);
 }
@@ -1253,7 +1258,7 @@ function goToJoin() {
   var nameInput = document.getElementById('nameInput');
   if (nameInput) nameInput.value = getSavedName();
   showScreen('join');
-  focusCodeInput();
+  focusJoinFields();
 }
 /* =========================================================
    NAVEGACAO E LOG
@@ -1417,10 +1422,11 @@ function initAbly() {
   log('Cliente Ably criado - clientId ' + myClientId);
   return true;
 }
+/* AJUSTE 2: gera codigo de 6 letras */
 function genCode() {
   var chars = 'ABCDEFGHJKMNPQRSTUVWXYZ';
   var c = '';
-  for (var i = 0; i < 4; i++) c += chars.charAt(Math.floor(Math.random() * chars.length));
+  for (var i = 0; i < CODE_LENGTH; i++) c += chars.charAt(Math.floor(Math.random() * chars.length));
   return c;
 }
 /* =========================================================
@@ -2237,7 +2243,7 @@ function joinSession() {
     var name = (nameInput.value || '').trim().toUpperCase();
     var code = (input.value || '').trim().toUpperCase();
     if (name.length < 2) { showError('Digite seu nome para entrar.'); nameInput.focus(); return; }
-    if (code.length !== 4) { showError('Digite o codigo de 4 letras.'); input.focus(); return; }
+    if (code.length !== CODE_LENGTH) { showError('Digite o codigo de ' + CODE_LENGTH + ' letras.'); input.focus(); return; }
     if (!initAbly()) return;
     myName = name;
     sessionCode = code;
@@ -2454,9 +2460,7 @@ function leaveSession() {
   if (btn) btn.disabled = false;
   var input = document.getElementById('joinInput');
   if (input) input.value = '';
-  /* AJUSTE 1: libera nova tela cheia na proxima sessao */
   autoFsRequested = false;
-  /* AJUSTE 4: limpa o codigo salvo ao voltar ao inicio */
   clearLastCode();
   showScreen('home');
   log('Sessao encerrada');
@@ -2511,8 +2515,9 @@ document.addEventListener('touchend', function(e){
   if (dx < -50) nextSlide();
   if (dx > 50) prevSlide();
 }, {passive:true});
+/* AJUSTE 2: aceita 6 letras no campo de codigo */
 document.getElementById('joinInput').addEventListener('input', function(e){
-  e.target.value = e.target.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4);
+  e.target.value = e.target.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, CODE_LENGTH);
 });
 document.getElementById('joinInput').addEventListener('keydown', function(e){
   if (e.key === 'Enter') joinSession();
