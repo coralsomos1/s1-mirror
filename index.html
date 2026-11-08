@@ -114,7 +114,6 @@
     background:#15151d; border:1px solid #2a2a36; border-radius:12px;
     padding:11px 12px; display:flex; flex-direction:column; gap:7px;
   }
-  /* LISTA SUSPENSA (dropdown) */
   .music-dropdown { position:relative; }
   .music-trigger {
     width:100%; min-height:42px; border-radius:9px;
@@ -707,7 +706,6 @@ var isPaused = false;
 var memberMap = {};
 var heartbeatTimer = null;
 var cleanupTimer = null;
-/* PDFs na lista: array ordenado de ids (ordem de envio) */
 var pdfDocs = {};
 var pdfOrder = [];
 var pdfSeq = 0;
@@ -726,6 +724,8 @@ var isSendingPdf = false;
 var pendingPdfAction = null;
 var autoIntervalTimer = null;
 var autoIntervalDeadline = 0;
+/* NOVO: controla qual imagem de estado esta visivel (opening | interval | none) */
+var currentStateImage = 'opening';
 /* =========================================================
    PDF.JS
    ========================================================= */
@@ -816,7 +816,7 @@ function renderPageTo(doc, pageNum, container, isPreview, expectedGen) {
 /* =========================================================
    IMAGENS DE ESTADO (recria o elemento se foi destruido)
    ========================================================= */
-function showStateImage(which, imgPath) {
+function showStateImage(which, imgPath, stateName) {
   var areaId = which === 'presenter' ? 'presenterSlide' : 'viewerSlide';
   var imgId = which === 'presenter' ? 'presenterOpening' : 'viewerOpening';
   var area = document.getElementById(areaId);
@@ -866,10 +866,46 @@ function hideStateImage(which) {
   if (el) el.style.display = 'none';
 }
 function showOpeningImage(which) {
-  showStateImage(which, OPENING_IMG);
+  currentStateImage = 'opening';
+  showStateImage(which, OPENING_IMG, 'opening');
 }
 function showIntervalImage(which) {
-  showStateImage(which, INTERVAL_IMG);
+  currentStateImage = 'interval';
+  showStateImage(which, INTERVAL_IMG, 'interval');
+}
+function clearStateImage() {
+  currentStateImage = 'none';
+}
+/* =========================================================
+   AJUSTE 2 e 3: redesenha o que esta na tela apos resize/tela cheia
+   ========================================================= */
+function redrawCurrentState() {
+  if (role !== 'presenter' && role !== 'viewer') return;
+  var which = role === 'presenter' ? 'presenter' : 'viewer';
+
+  /* Se esta mostrando imagem de estado, redesenha a imagem */
+  if (currentStateImage === 'opening') {
+    showStateImage(which, OPENING_IMG, 'opening');
+    return;
+  }
+  if (currentStateImage === 'interval') {
+    showStateImage(which, INTERVAL_IMG, 'interval');
+    return;
+  }
+
+  /* Se esta mostrando PDF, redesenha o slide */
+  if (hasActiveMusic && currentPdfId) {
+    if (role === 'presenter') {
+      renderPresenterSlide();
+      renderMirror();
+    } else {
+      renderViewerSlide();
+    }
+    return;
+  }
+
+  /* Fallback: sem PDF e sem estado definido - volta para abertura */
+  showStateImage(which, OPENING_IMG, 'opening');
 }
 /* =========================================================
    AUTO-INTERVALO (60s no ultimo slide)
@@ -1035,6 +1071,8 @@ function onFullscreenChange() {
     log('Tela cheia desativada');
   }
   updateDiag();
+  /* AJUSTE 2 e 3: redesenha o estado atual apos a mudanca de tela cheia */
+  setTimeout(function(){ redrawCurrentState(); }, 120);
 }
 document.addEventListener('fullscreenchange', onFullscreenChange);
 document.addEventListener('webkitfullscreenchange', onFullscreenChange);
@@ -1241,6 +1279,7 @@ function copyDiag() {
     'Coralistas ativos: ' + viewerCount + '\n' +
     'PDFs na lista: ' + countPdfs() + '\n' +
     'PDF atual: ' + (currentPdfName() || 'Musica vazia') + '\n' +
+    'Estado visual: ' + currentStateImage + '\n' +
     'Slide: ' + (hasActiveMusic ? ((currentSlide + 1) + '/' + slideCount) : '-') + '\n' +
     'Tempo: ' + formatTime(getElapsed()) + '\n' +
     'Recebidas: ' + recvCount + '\n' +
@@ -1315,14 +1354,12 @@ function renderMusicMenu() {
   if (!menu) return;
 
   var html = '';
-  /* Posicao 0: musica vazia */
   var emptyActive = (!hasActiveMusic) ? ' active' : '';
   html += '<button class="music-option empty-opt' + emptyActive + '" onclick="selectEmptyMusic()">' +
     '<span class="opt-num">0</span>' +
     '<span class="opt-name">Música vazia</span>' +
     '</button>';
 
-  /* Posicoes 1..N: PDFs na ordem de envio */
   for (var i = 0; i < pdfOrder.length; i++) {
     var id = pdfOrder[i];
     var p = pdfDocs[id];
@@ -1397,8 +1434,21 @@ function registerPdf(nome, base64) {
     renderMusicMenu();
     updateDiag();
   });
-  /* Envia ao canal; a ativacao acontece ao final do envio */
+  /* AJUSTE 1: mostra a imagem de carregamento enquanto envia */
+  showLoadingDuringSend();
   sendPdfToChannel(pdfId, nome, base64);
+}
+/* AJUSTE 1: imagem de carregamento durante o envio do PDF */
+function showLoadingDuringSend() {
+  var area = document.getElementById('presenterSlide');
+  if (!area) return;
+  var overlay = document.getElementById('presenterPrep');
+  if (overlay) overlay.classList.add('show');
+  log('Imagem de carregamento ativada durante envio do PDF');
+}
+function hideLoadingAfterSend() {
+  var overlay = document.getElementById('presenterPrep');
+  if (overlay) overlay.classList.remove('show');
 }
 function activatePdf(pdfId) {
   if (!pdfDocs[pdfId]) return;
@@ -1406,6 +1456,7 @@ function activatePdf(pdfId) {
   clearAutoInterval();
   cancelPreparation();
   hideStateImage('presenter');
+  clearStateImage();
   showingInterval = false;
   sessionStarted = true;
   hasActiveMusic = true;
@@ -1446,6 +1497,7 @@ function selectEmptyMusic() {
 function sendPdfToChannel(pdfId, nome, base64) {
   if (!channel) {
     log('Sem canal - PDF nao enviado aos coralistas');
+    hideLoadingAfterSend();
     return;
   }
   isSendingPdf = true;
@@ -1507,7 +1559,7 @@ function sendPdfToChannel(pdfId, nome, base64) {
       if (wrap) wrap.classList.remove('show');
     }, 1200);
     log('PDF enviado ao canal: ' + nome + ' - ativando agora');
-    /* AJUSTE 3: ativa somente depois do envio terminar */
+    /* AJUSTE 1: a imagem de carregamento continua ate a ativacao terminar */
     activatePdf(pdfId);
   }
   sendNext();
@@ -1946,7 +1998,6 @@ function nextSlide() {
     renderMirror();
     updateCounter();
     publishSlide();
-    /* Reinicia o auto-intervalo ao chegar no ultimo slide */
     if (currentSlide === slideCount - 1) armAutoInterval();
     else clearAutoInterval();
   }
@@ -1960,7 +2011,6 @@ function prevSlide() {
     renderMirror();
     updateCounter();
     publishSlide();
-    /* Reinicia o auto-intervalo ao voltar para o ultimo slide */
     if (currentSlide === slideCount - 1) armAutoInterval();
     else clearAutoInterval();
   }
@@ -2020,6 +2070,7 @@ function endPresentation() {
   hasActiveMusic = false;
   sessionStarted = false;
   showingInterval = false;
+  currentStateImage = 'opening';
   setPresenterOnline(null);
   showScreen('ended');
   log('Apresentacao encerrada - tempo ' + finalText);
@@ -2113,6 +2164,7 @@ function joinSession() {
     hasActiveMusic = false;
     sessionStarted = false;
     showingInterval = false;
+    currentStateImage = 'opening';
     var channelName = 's1-' + code;
     channel = ably.channels.get(channelName);
     channel.subscribe('slide', function(msg){
@@ -2289,6 +2341,7 @@ function leaveSession() {
   hasActiveMusic = false;
   sessionStarted = false;
   showingInterval = false;
+  currentStateImage = 'opening';
   recvCount = 0;
   sentCount = 0;
   viewerCount = 0;
@@ -2391,10 +2444,9 @@ window.addEventListener('load', function(){
   refreshLastCodeUI();
   updateDiag();
 });
+/* AJUSTE 2 e 3: resize agora respeita o estado atual da tela */
 window.addEventListener('resize', function(){
-  if (showingInterval) return;
-  if (currentScreen === 'presenter') { renderPresenterSlide(); renderMirror(); }
-  if (currentScreen === 'viewer') renderViewerSlide();
+  redrawCurrentState();
 });
 </script>
 </body>
