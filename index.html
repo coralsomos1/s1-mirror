@@ -73,7 +73,6 @@
     pointer-events:none; z-index:50;
   }
   .prep-overlay.show { display:flex; }
-  /* IMAGENS: crescem ate encostar em um dos lados, ignorando o padding do container */
   .prep-img {
     position:absolute; inset:0;
     width:100%; height:100%;
@@ -115,25 +114,23 @@
     background:#15151d; border:1px solid #2a2a36; border-radius:12px;
     padding:11px 12px; display:flex; flex-direction:column; gap:7px;
   }
-  .music-select {
-    width:100%; min-height:40px; border-radius:9px;
-    background:#1c1c26; border:1px solid #2a2a36; color:#f2f2f5;
-    font-size:13px; font-weight:600; font-family:inherit; padding:0 10px;
-    cursor:pointer;
+  .music-current {
+    font-size:12px; color:#e8e8f0; font-weight:600; text-align:center;
+    line-height:1.4; word-break:break-word;
   }
-  .music-select:focus { outline:none; border-color:#e8b44a; }
+  .music-current.empty { color:#4a4a5a; font-style:italic; font-weight:400; }
   .music-progress {
     font-size:11px; color:#6a6a7a; text-align:center;
     font-variant-numeric:tabular-nums;
   }
   .open-pdf-btn {
-    width:100%; min-height:38px; border-radius:9px;
-    background:#1c1c26; border:1px solid #2a2a36; color:#c9c9d4;
-    font-size:12px; font-weight:700; letter-spacing:.5px;
+    width:100%; min-height:44px; border-radius:9px;
+    background:#e8b44a; border:1px solid #c99a35; color:#12121a;
+    font-size:13px; font-weight:700; letter-spacing:.5px;
     cursor:pointer; font-family:inherit;
     display:flex; align-items:center; justify-content:center; gap:6px;
   }
-  .open-pdf-btn:active { background:#262632; }
+  .open-pdf-btn:active { background:#d4a33f; }
   .open-pdf-btn:disabled { opacity:.5; cursor:default; }
   .pdf-progress-wrap {
     display:none; flex-direction:column; gap:5px;
@@ -150,6 +147,32 @@
     font-size:10px; color:#8a8a99; text-align:center;
     font-variant-numeric:tabular-nums;
   }
+  .pdf-history {
+    display:flex; flex-direction:column; gap:5px;
+  }
+  .pdf-history-item {
+    display:flex; align-items:center; gap:8px;
+    background:#15151d; border:1px solid #24242f; border-radius:9px;
+    padding:8px 10px; font-size:11px; font-weight:600;
+    color:#c9c9d4; cursor:pointer; text-align:left;
+    font-family:inherit; width:100%;
+    transition:background .12s, border-color .12s;
+  }
+  .pdf-history-item:active { background:#1f1f2a; }
+  .pdf-history-item.active {
+    border-color:#e8b44a; color:#e8b44a; background:#1a1710;
+  }
+  .pdf-history-item .pdf-ico {
+    font-size:13px; flex-shrink:0; opacity:.8;
+  }
+  .pdf-history-item .pdf-name {
+    flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .pdf-history-item .pdf-pages {
+    font-size:10px; color:#6a6a7a; flex-shrink:0;
+    font-variant-numeric:tabular-nums;
+  }
+  .pdf-history-item.active .pdf-pages { color:#b8912f; }
   .timer-block {
     background:#15151d; border:1px solid #2a2a36; border-radius:12px;
     padding:12px; display:flex; flex-direction:column; gap:9px;
@@ -397,13 +420,14 @@
     .mirror-panel {
       width:100%; border-left:none; border-top:1px solid #1e1e28;
       flex-direction:row; align-items:flex-start; gap:10px; padding:10px 14px;
-      max-height:180px; overflow-y:auto;
+      max-height:190px; overflow-y:auto;
     }
     .mirror-panel .mirror-label { display:none; }
     .mirror-preview { aspect-ratio:auto; padding:6px; flex:1; min-height:64px; }
     .mirror-next-num { margin:0; white-space:nowrap; }
-    .music-block { padding:8px 10px; min-width:130px; }
-    .music-select { min-height:34px; font-size:12px; }
+    .music-block { padding:8px 10px; min-width:150px; }
+    .open-pdf-btn { min-height:38px; font-size:12px; }
+    .pdf-history { max-height:70px; overflow-y:auto; }
     .timer-block { padding:8px 10px; min-width:110px; }
     .timer-block-label { display:none; }
     .timer-block-value { font-size:20px; }
@@ -488,9 +512,7 @@
       <div class="mirror-next-num" id="mirrorNextNum">—</div>
       <div class="music-block">
         <div class="mirror-label">Música</div>
-        <select class="music-select" id="musicSelect" onchange="changeMusic(this.value)">
-          <option value="">—</option>
-        </select>
+        <div class="music-current empty" id="musicCurrent">Nenhum PDF aberto</div>
         <div class="music-progress" id="musicProgress">—</div>
         <button class="open-pdf-btn" id="openPdfBtn" onclick="triggerPdfPicker()">+ Abrir PDF</button>
         <input type="file" id="pdfPicker" accept="application/pdf,.pdf" style="display:none" onchange="handlePdfPicked(event)">
@@ -499,6 +521,7 @@
           <div class="pdf-progress-text" id="pdfProgressText">Enviando 0%</div>
         </div>
       </div>
+      <div class="pdf-history" id="pdfHistory"></div>
       <div class="timer-block">
         <div class="timer-block-label">Tempo de apresentação</div>
         <div class="timer-block-value" id="barTimerValue">00:00</div>
@@ -590,10 +613,9 @@
   </div>
   <div class="diag-section">
     <h4>Músicas</h4>
-    <div class="diag-row"><span>Total carregado</span><span id="dMusicCount">0</span></div>
-    <div class="diag-row"><span>Música atual</span><span id="dMusicCurrent">—</span></div>
+    <div class="diag-row"><span>PDFs abertos</span><span id="dMusicCount">0</span></div>
+    <div class="diag-row"><span>PDF atual</span><span id="dMusicCurrent">—</span></div>
     <div class="diag-row"><span>PDFs em cache</span><span id="dCache">0</span></div>
-    <div class="diag-row"><span>PDFs extras</span><span id="dExtraCount">0</span></div>
     <div class="diag-row"><span>Slide atual</span><span id="dSlide">—</span></div>
     <div class="diag-row"><span>Tempo</span><span id="dElapsed">—</span></div>
     <div class="diag-row"><span>Recebidas</span><span id="dRecv">0</span></div>
@@ -658,25 +680,23 @@ var isPaused = false;
 var memberMap = {};
 var heartbeatTimer = null;
 var cleanupTimer = null;
-var musicas = [];
-var currentMusicIndex = -999;
+/* PDFs abertos: chave = id interno, valor = { nome, bytes, base64, paginas, doc } */
+var pdfDocs = {};
+var pdfOrder = [];
+var pdfSeq = 0;
+var currentPdfId = null;
 var currentSlide = 0;
 var slideCount = 0;
-var pdfCache = {};
-var pdfLoading = {};
 var isPreparing = false;
 var prepTimer = null;
 var hasActiveMusic = false;
 var sessionStarted = false;
 var showingInterval = false;
 var renderGeneration = 0;
-var extraPdfs = {};
-var extraPdfCounter = 0;
-var extraPdfSentTo = {};
 var pendingPdfChunks = {};
 var orphanChunks = {};
 var isSendingPdf = false;
-var pendingExtraAction = null;
+var pendingPdfAction = null;
 /* =========================================================
    PDF.JS
    ========================================================= */
@@ -684,100 +704,50 @@ if (typeof pdfjsLib !== 'undefined') {
   pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_DIR + 'pdf.worker.min.js';
 }
 /* =========================================================
-   MUSICAS
+   PDFS ABERTOS
    ========================================================= */
-function isExtraIndex(idx) {
-  return typeof idx === 'number' && idx < 0;
+function currentPdf() {
+  if (!currentPdfId) return null;
+  return pdfDocs[currentPdfId] || null;
 }
-function pdfUrl(musicIndex) {
-  var m = musicas[musicIndex];
-  if (!m) return '';
-  var path = m.pdf || '';
-  if (!path) return '';
-  return BASE_URL + path;
+function currentPdfName() {
+  var p = currentPdf();
+  return p ? p.nome : '';
 }
-function currentMusic() {
-  return musicas[currentMusicIndex] || null;
+function totalPagesOf(pdfId) {
+  var p = pdfDocs[pdfId];
+  if (!p) return 1;
+  return p.paginas || 1;
 }
-function totalPagesOf(musicIndex) {
-  var m = musicas[musicIndex];
-  if (!m) return 1;
-  return m.paginas || 1;
-}
-function loadMusicas(callback) {
-  var url = BASE_URL + 'musicas.json?t=' + Date.now();
-  fetch(url)
-    .then(function(r){
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      return r.json();
-    })
-    .then(function(data){
-      if (Array.isArray(data)) musicas = data;
-      else if (data && Array.isArray(data.musicas)) musicas = data.musicas;
-      else musicas = [];
-      log('musicas.json carregado - ' + musicas.length + ' musica(s)');
-      if (callback) callback(true);
-    })
-    .catch(function(e){
-      log('ERRO ao carregar musicas.json: ' + e.message);
-      musicas = [];
-      if (callback) callback(false);
-    });
-}
-/* =========================================================
-   PDF CACHE (com fila para evitar downloads duplicados)
-   ========================================================= */
-function getPdf(musicIndex, callback) {
-  if (isExtraIndex(musicIndex)) {
-    var ex = extraPdfs[musicIndex];
-    if (!ex) { callback(null); return; }
-    if (ex.doc) { callback(ex.doc); return; }
-    if (!ex.bytes) { callback(null); return; }
-    if (typeof pdfjsLib === 'undefined') { callback(null); return; }
-    var task = pdfjsLib.getDocument({ data: ex.bytes.slice(0) });
-    task.promise.then(function(doc){
-      ex.doc = doc;
-      ex.paginas = doc.numPages;
-      log('PDF extra aberto: ' + ex.nome + ' (' + doc.numPages + ' paginas)');
-      updateDiag();
-      callback(doc);
-    }).catch(function(e){
-      log('ERRO ao abrir PDF extra: ' + e.message);
-      callback(null);
-    });
-    return;
+function countPdfs() {
+  var n = 0;
+  for (var k in pdfDocs) {
+    if (pdfDocs.hasOwnProperty(k)) n++;
   }
-  var url = pdfUrl(musicIndex);
-  if (!url) { callback(null); return; }
-  if (pdfCache[url]) { callback(pdfCache[url]); return; }
-  if (pdfLoading[url]) {
-    pdfLoading[url].push(callback);
-    return;
-  }
+  return n;
+}
+function openPdfDoc(pdfId, callback) {
+  var p = pdfDocs[pdfId];
+  if (!p) { callback(null); return; }
+  if (p.doc) { callback(p.doc); return; }
+  if (!p.bytes) { callback(null); return; }
   if (typeof pdfjsLib === 'undefined') {
     showError('PDF.js nao carregou. Verifique a pasta pdfjs/.');
-    log('ERRO: pdfjsLib ausente');
     callback(null);
     return;
   }
-  pdfLoading[url] = [callback];
-  pdfjsLib.getDocument(url).promise.then(function(doc){
-    pdfCache[url] = doc;
-    log('PDF carregado: ' + url + ' (' + doc.numPages + ' paginas)');
-    var waiters = pdfLoading[url] || [];
-    delete pdfLoading[url];
+  var task = pdfjsLib.getDocument({ data: p.bytes.slice(0) });
+  task.promise.then(function(doc){
+    p.doc = doc;
+    p.paginas = doc.numPages;
+    log('PDF aberto: ' + p.nome + ' (' + doc.numPages + ' paginas)');
     updateDiag();
-    for (var i = 0; i < waiters.length; i++) {
-      try { waiters[i](doc); } catch(e) {}
-    }
+    renderPdfHistory();
+    callback(doc);
   }).catch(function(e){
-    log('ERRO ao carregar PDF: ' + e.message);
-    showError('Nao foi possivel carregar o PDF: ' + (currentMusic() ? currentMusic().nome : ''));
-    var waiters = pdfLoading[url] || [];
-    delete pdfLoading[url];
-    for (var i = 0; i < waiters.length; i++) {
-      try { waiters[i](null); } catch(e) {}
-    }
+    log('ERRO ao abrir PDF: ' + e.message);
+    showError('Nao foi possivel abrir o PDF: ' + p.nome);
+    callback(null);
   });
 }
 /* =========================================================
@@ -877,65 +847,15 @@ function showIntervalImage(which) {
   showStateImage(which, INTERVAL_IMG);
 }
 /* =========================================================
-   PRELOAD
-   ========================================================= */
-function preloadMusic(musicIndex) {
-  if (isExtraIndex(musicIndex)) {
-    var ex = extraPdfs[musicIndex];
-    if (ex && ex.bytes && !ex.doc) {
-      getPdf(musicIndex, function(){});
-    }
-    return;
-  }
-  var m = musicas[musicIndex];
-  if (!m) return;
-  var url = pdfUrl(musicIndex);
-  if (!url) return;
-  if (pdfCache[url]) {
-    showPreloadIndicator(false, 0, 0);
-    log('PDF ja em cache: ' + m.nome);
-    return;
-  }
-  showPreloadIndicator(true, 0, 1);
-  getPdf(musicIndex, function(doc){
-    showPreloadIndicator(false, 0, 0);
-    if (doc) log('Pre-carregamento concluido: ' + m.nome);
-  });
-}
-function showPreloadIndicator(show, done, total) {
-  var el = document.getElementById('preloadIndicator');
-  if (!el) return;
-  if (show) {
-    el.classList.add('show');
-    el.textContent = 'Carregando PDF...';
-  } else {
-    el.classList.remove('show');
-  }
-}
-function countCached() {
-  var n = 0;
-  for (var k in pdfCache) {
-    if (pdfCache.hasOwnProperty(k)) n++;
-  }
-  return n;
-}
-function countExtra() {
-  var n = 0;
-  for (var k in extraPdfs) {
-    if (extraPdfs.hasOwnProperty(k)) n++;
-  }
-  return n;
-}
-/* =========================================================
    PREPARACAO VISUAL
    ========================================================= */
-function startPreparation(musicIndex, onDone) {
-  var m = musicas[musicIndex];
-  if (!m) { if (onDone) onDone(); return; }
+function startPreparation(pdfId, onDone) {
+  var p = pdfDocs[pdfId];
+  if (!p) { if (onDone) onDone(); return; }
   isPreparing = true;
   setPrepOverlay(true);
   setNavEnabled(false);
-  var total = totalPagesOf(musicIndex);
+  var total = totalPagesOf(pdfId);
   var i = 0;
   function step() {
     if (!isPreparing) return;
@@ -1215,14 +1135,10 @@ function updateDiag() {
   var dR = document.getElementById('dRole'); if (dR) dR.textContent = role || '-';
   var dN = document.getElementById('dMyName'); if (dN) dN.textContent = myName || '-';
   var dV = document.getElementById('dViewers'); if (dV) dV.textContent = viewerCount;
-  var dMC = document.getElementById('dMusicCount'); if (dMC) dMC.textContent = musicas.length;
+  var dMC = document.getElementById('dMusicCount'); if (dMC) dMC.textContent = countPdfs();
   var dMCur = document.getElementById('dMusicCurrent');
-  if (dMCur) {
-    var cm = currentMusic();
-    dMCur.textContent = cm ? cm.nome : '-';
-  }
-  var dCache = document.getElementById('dCache'); if (dCache) dCache.textContent = countCached();
-  var dEx = document.getElementById('dExtraCount'); if (dEx) dEx.textContent = countExtra();
+  if (dMCur) dMCur.textContent = currentPdfName() || '-';
+  var dCache = document.getElementById('dCache'); if (dCache) dCache.textContent = countPdfs();
   var dSl = document.getElementById('dSlide');
   if (dSl) dSl.textContent = hasActiveMusic ? ((currentSlide + 1) + ' / ' + slideCount) : '-';
   var dEl = document.getElementById('dElapsed'); if (dEl) dEl.textContent = formatTime(getElapsed());
@@ -1252,7 +1168,6 @@ function updateDiag() {
   }
 }
 function copyDiag() {
-  var cm = currentMusic();
   var txt = 'TRANSPORTE: Ably Realtime + PDF.js\n' +
     'Biblioteca: ' + (typeof Ably !== 'undefined' ? 'carregada (ok)' : 'NAO CARREGADA') + '\n' +
     'Host: ' + (ably ? (ably.connection.connectionManager.host || '-') : '-') + '\n' +
@@ -1262,10 +1177,8 @@ function copyDiag() {
     'Canal: ' + (channel ? channel.name : '-') + '\n' +
     'Papel: ' + (role || '-') + '\n' +
     'Coralistas ativos: ' + viewerCount + '\n' +
-    'Musicas: ' + musicas.length + '\n' +
-    'PDFs extras: ' + countExtra() + '\n' +
-    'Musica atual: ' + (cm ? cm.nome : '-') + '\n' +
-    'PDFs em cache: ' + countCached() + '\n' +
+    'PDFs abertos: ' + countPdfs() + '\n' +
+    'PDF atual: ' + (currentPdfName() || '-') + '\n' +
     'Slide: ' + (hasActiveMusic ? ((currentSlide + 1) + '/' + slideCount) : '-') + '\n' +
     'Tempo: ' + formatTime(getElapsed()) + '\n' +
     'Recebidas: ' + recvCount + '\n' +
@@ -1317,7 +1230,7 @@ function genCode() {
   return c;
 }
 /* =========================================================
-   PDF EXTRA - ENVIO
+   PDF - ENVIO
    ========================================================= */
 function triggerPdfPicker() {
   if (isSendingPdf) return;
@@ -1340,7 +1253,7 @@ function handlePdfPicked(ev) {
     var dataUrl = reader.result;
     var base64 = String(dataUrl).split(',')[1] || '';
     if (!base64) { showError('Nao foi possivel ler o PDF.'); return; }
-    startExtraPdfSend(nome, base64);
+    registerAndActivatePdf(nome, base64);
   };
   reader.onerror = function(){
     showError('Erro ao ler o arquivo PDF.');
@@ -1348,8 +1261,85 @@ function handlePdfPicked(ev) {
   };
   reader.readAsDataURL(file);
 }
-function startExtraPdfSend(nome, base64) {
-  if (!channel) { showError('Sem conexao ativa.'); return; }
+function registerAndActivatePdf(nome, base64) {
+  pdfSeq++;
+  var pdfId = 'pdf' + pdfSeq;
+  var bytes = base64ToBytes(base64);
+  pdfDocs[pdfId] = {
+    nome: nome,
+    bytes: bytes,
+    base64: base64,
+    paginas: 1,
+    doc: null
+  };
+  pdfOrder.push(pdfId);
+  log('PDF registrado: ' + nome + ' (' + Math.round(bytes.length / 1024) + ' KB)');
+  openPdfDoc(pdfId, function(doc){
+    if (doc) {
+      log('PDF pronto: ' + nome + ' - ' + doc.numPages + ' paginas');
+    }
+    renderPdfHistory();
+    updateDiag();
+    activatePdf(pdfId);
+  });
+  sendPdfToChannel(pdfId, nome, base64);
+}
+function activatePdf(pdfId) {
+  if (!pdfDocs[pdfId]) return;
+  cancelPreparation();
+  hideStateImage('presenter');
+  showingInterval = false;
+  sessionStarted = true;
+  hasActiveMusic = true;
+  currentPdfId = pdfId;
+  currentSlide = 0;
+  slideCount = totalPagesOf(pdfId);
+  renderPresenterSlide();
+  renderMirror();
+  updateCounter();
+  renderPdfHistory();
+  publishPrepStart(pdfId);
+  startPreparation(pdfId, function(){
+    publishSlide();
+  });
+  log('PDF ativado: ' + pdfDocs[pdfId].nome);
+}
+function renderPdfHistory() {
+  var box = document.getElementById('pdfHistory');
+  if (!box) return;
+  if (pdfOrder.length === 0) {
+    box.innerHTML = '';
+    return;
+  }
+  var html = '';
+  for (var i = pdfOrder.length - 1; i >= 0; i--) {
+    var id = pdfOrder[i];
+    var p = pdfDocs[id];
+    if (!p) continue;
+    var active = (id === currentPdfId) ? ' active' : '';
+    html += '<button class="pdf-history-item' + active + '" onclick="activatePdf(\'' + id + '\')">' +
+      '<span class="pdf-ico">📄</span>' +
+      '<span class="pdf-name">' + escapeHtml(p.nome) + '</span>' +
+      '<span class="pdf-pages">' + (p.paginas || 1) + 'p</span>' +
+      '</button>';
+  }
+  box.innerHTML = html;
+  var cur = document.getElementById('musicCurrent');
+  if (cur) {
+    if (currentPdfId && pdfDocs[currentPdfId]) {
+      cur.textContent = pdfDocs[currentPdfId].nome;
+      cur.classList.remove('empty');
+    } else {
+      cur.textContent = 'Nenhum PDF aberto';
+      cur.classList.add('empty');
+    }
+  }
+}
+function sendPdfToChannel(pdfId, nome, base64) {
+  if (!channel) {
+    log('Sem canal - PDF nao enviado aos coralistas');
+    return;
+  }
   isSendingPdf = true;
   var btn = document.getElementById('openPdfBtn');
   if (btn) btn.disabled = true;
@@ -1359,8 +1349,6 @@ function startExtraPdfSend(nome, base64) {
   if (wrap) wrap.classList.add('show');
   if (fill) fill.style.width = '0%';
   if (txt) txt.textContent = 'Enviando 0%';
-  extraPdfCounter++;
-  var idx = -extraPdfCounter;
   var total = Math.ceil(base64.length / PDF_CHUNK_SIZE);
   var sent = 0;
   var sendId = 'p' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
@@ -1370,15 +1358,15 @@ function startExtraPdfSend(nome, base64) {
     if (txt) txt.textContent = 'Enviando ' + pct + '% (' + sent + '/' + total + ')';
   }
   try {
-    channel.publish('extra-pdf-meta', {
-      idx: idx,
+    channel.publish('pdf-meta', {
+      pdfId: pdfId,
       nome: nome,
       total: total,
       sendId: sendId,
       size: base64.length
     });
     sentCount++;
-    log('extra-pdf-meta publicado: ' + nome + ' (' + total + ' partes)');
+    log('pdf-meta publicado: ' + nome + ' (' + total + ' partes)');
   } catch(e) {
     log('ERRO ao publicar meta: ' + e.message);
   }
@@ -1390,8 +1378,8 @@ function startExtraPdfSend(nome, base64) {
     var start = sent * PDF_CHUNK_SIZE;
     var chunk = base64.slice(start, start + PDF_CHUNK_SIZE);
     try {
-      channel.publish('extra-pdf-chunk', {
-        idx: idx,
+      channel.publish('pdf-chunk', {
+        pdfId: pdfId,
         sendId: sendId,
         seq: sent,
         data: chunk
@@ -1410,25 +1398,9 @@ function startExtraPdfSend(nome, base64) {
     setTimeout(function(){
       if (wrap) wrap.classList.remove('show');
     }, 1200);
-    addExtraMusicLocal(idx, nome, base64);
-    log('PDF extra adicionado: ' + nome + ' (indice ' + idx + ')');
+    log('PDF enviado ao canal: ' + nome);
   }
   sendNext();
-}
-function addExtraMusicLocal(idx, nome, base64) {
-  extraPdfs[idx] = { nome: nome, bytes: null, base64: base64, paginas: 1, doc: null, complete: true };
-  var bin = base64ToBytes(base64);
-  extraPdfs[idx].bytes = bin;
-  musicas[idx] = { nome: nome, paginas: 1, extra: true };
-  getPdf(idx, function(doc){
-    if (doc) {
-      musicas[idx].paginas = doc.numPages;
-      extraPdfs[idx].paginas = doc.numPages;
-      log('PDF extra pronto: ' + nome + ' - ' + doc.numPages + ' paginas');
-    }
-    buildMusicSelect();
-    updateDiag();
-  });
 }
 function base64ToBytes(base64) {
   var bin = atob(base64);
@@ -1438,18 +1410,18 @@ function base64ToBytes(base64) {
   return bytes;
 }
 /* =========================================================
-   PDF EXTRA - RECEBIMENTO (CORALISTA)
+   PDF - RECEBIMENTO (CORALISTA)
    ========================================================= */
-function handleExtraPdfMeta(msg) {
+function handlePdfMeta(msg) {
   var d = msg.data || {};
-  if (typeof d.idx !== 'number' || !d.nome) return;
-  var idx = d.idx;
-  if (extraPdfs[idx] && extraPdfs[idx].complete) {
-    log('PDF extra ja recebido: ' + d.nome);
+  if (!d.pdfId || !d.nome) return;
+  var pdfId = d.pdfId;
+  if (pdfDocs[pdfId] && pdfDocs[pdfId].bytes) {
+    log('PDF ja recebido: ' + d.nome);
     return;
   }
   var pending = {
-    idx: idx,
+    pdfId: pdfId,
     nome: d.nome,
     total: d.total || 0,
     parts: {},
@@ -1462,12 +1434,12 @@ function handleExtraPdfMeta(msg) {
     log('Partes orfas recuperadas: ' + pending.received);
   }
   pendingPdfChunks[d.sendId] = pending;
-  log('extra-pdf-meta recebido: ' + d.nome + ' (' + d.total + ' partes)');
+  log('pdf-meta recebido: ' + d.nome + ' (' + d.total + ' partes)');
   if (pending.total > 0 && pending.received >= pending.total) {
-    finalizeExtraPdf(d.sendId);
+    finalizePdf(d.sendId);
   }
 }
-function handleExtraPdfChunk(msg) {
+function handlePdfChunk(msg) {
   var d = msg.data || {};
   var sendId = d.sendId;
   if (!sendId || typeof d.seq !== 'number') return;
@@ -1486,10 +1458,10 @@ function handleExtraPdfChunk(msg) {
   pending.parts[d.seq] = d.data;
   pending.received++;
   if (pending.total > 0 && pending.received >= pending.total) {
-    finalizeExtraPdf(sendId);
+    finalizePdf(sendId);
   }
 }
-function finalizeExtraPdf(sendId) {
+function finalizePdf(sendId) {
   var pending = pendingPdfChunks[sendId];
   if (!pending) return;
   var full = '';
@@ -1498,37 +1470,36 @@ function finalizeExtraPdf(sendId) {
   }
   delete pendingPdfChunks[sendId];
   var bytes = base64ToBytes(full);
-  extraPdfs[pending.idx] = {
+  pdfDocs[pending.pdfId] = {
     nome: pending.nome,
     bytes: bytes,
     base64: full,
     paginas: 1,
-    doc: null,
-    complete: true
+    doc: null
   };
-  musicas[pending.idx] = { nome: pending.nome, paginas: 1, extra: true };
-  log('PDF extra completo: ' + pending.nome + ' (' + Math.round(bytes.length / 1024) + ' KB)');
-  getPdf(pending.idx, function(doc){
+  if (pdfOrder.indexOf(pending.pdfId) === -1) {
+    pdfOrder.push(pending.pdfId);
+  }
+  log('PDF completo recebido: ' + pending.nome + ' (' + Math.round(bytes.length / 1024) + ' KB)');
+  openPdfDoc(pending.pdfId, function(doc){
     if (doc) {
-      musicas[pending.idx].paginas = doc.numPages;
-      extraPdfs[pending.idx].paginas = doc.numPages;
-      log('PDF extra renderizavel: ' + pending.nome + ' - ' + doc.numPages + ' paginas');
+      log('PDF recebido renderizavel: ' + pending.nome + ' - ' + doc.numPages + ' paginas');
     }
     updateDiag();
-    runPendingExtraAction();
+    runPendingPdfAction();
   });
 }
-function runPendingExtraAction() {
-  if (!pendingExtraAction) return;
-  var act = pendingExtraAction;
-  var ex = extraPdfs[act.music];
-  if (!ex || !ex.doc) return;
-  pendingExtraAction = null;
-  log('Executando acao pendente para musica extra ' + act.music);
+function runPendingPdfAction() {
+  if (!pendingPdfAction) return;
+  var act = pendingPdfAction;
+  var p = pdfDocs[act.pdfId];
+  if (!p || !p.doc) return;
+  pendingPdfAction = null;
+  log('Executando acao pendente para PDF ' + act.pdfId);
   if (act.type === 'prep') {
-    applyPrepStart(act.music);
+    applyPrepStart(act.pdfId);
   } else if (act.type === 'slide') {
-    applySlide(act.music, act.index, act.total);
+    applySlide(act.pdfId, act.index, act.total);
   }
 }
 /* =========================================================
@@ -1562,7 +1533,6 @@ function enterPresenterMode() {
     var channelName = 's1-' + sessionCode;
     channel = ably.channels.get(channelName);
     memberMap = {};
-    extraPdfSentTo = {};
     sessionStarted = false;
     showingInterval = false;
     channel.subscribe('state-request', function(){
@@ -1599,7 +1569,6 @@ function enterPresenterMode() {
       channel.presence.subscribe('leave', function(m){
         log('presence leave: ' + m.clientId);
         delete memberMap[m.clientId];
-        delete extraPdfSentTo[m.clientId];
         renderMembers();
         updateViewerCount();
       });
@@ -1612,20 +1581,13 @@ function enterPresenterMode() {
     showOpeningImage('presenter');
     publishOpening();
     renderMembers();
+    renderPdfHistory();
     resetTimer();
     startTimer();
     hasActiveMusic = false;
-    currentMusicIndex = -999;
+    currentPdfId = null;
     setNavEnabled(false);
     updateCounter();
-    loadMusicas(function(ok){
-      if (!ok) {
-        document.getElementById('presenterSlide').innerHTML =
-          '<div class="slide-placeholder">Nao foi possivel carregar o musicas.json.<br>Verifique se o arquivo existe na raiz do repositorio.</div>';
-        return;
-      }
-      buildMusicSelect();
-    });
     setTimeout(function(){ updateViewerCount(); }, 500);
     startPresencePoll();
     startMemberCleanup();
@@ -1656,75 +1618,6 @@ function publishCurrentState() {
   }
   publishSlide();
 }
-function buildMusicSelect() {
-  var sel = document.getElementById('musicSelect');
-  if (!sel) return;
-  var html = '<option value="">—</option>';
-  var extras = [];
-  for (var k in musicas) {
-    if (musicas.hasOwnProperty(k) && isExtraIndex(parseInt(k, 10))) {
-      extras.push(parseInt(k, 10));
-    }
-  }
-  extras.sort(function(a, b){ return b - a; });
-  for (var i = 0; i < musicas.length; i++) {
-    if (!musicas[i]) continue;
-    if (isExtraIndex(i)) continue;
-    html += '<option value="' + i + '">' + escapeHtml(musicas[i].nome) + '</option>';
-  }
-  for (var j = 0; j < extras.length; j++) {
-    var e = extras[j];
-    html += '<option value="' + e + '">' + escapeHtml(musicas[e].nome) + '</option>';
-  }
-  sel.innerHTML = html;
-  sel.value = hasActiveMusic ? String(currentMusicIndex) : '';
-}
-/* =========================================================
-   TROCA DE MUSICA
-   ========================================================= */
-function changeMusic(index) {
-  if (index === '' || index === null || index === undefined) {
-    cancelPreparation();
-    hasActiveMusic = false;
-    showingInterval = true;
-    currentMusicIndex = -999;
-    currentSlide = 0;
-    slideCount = 0;
-    setNavEnabled(false);
-    if (sessionStarted) {
-      showIntervalImage('presenter');
-      publishInterval();
-      log('Item vazio - imagem de intervalo');
-    } else {
-      showOpeningImage('presenter');
-      publishOpening();
-      log('Item vazio - imagem de abertura');
-    }
-    document.getElementById('mirrorPreview').innerHTML = '<div class="mirror-empty">—</div>';
-    document.getElementById('mirrorNextNum').textContent = '—';
-    updateCounter();
-    return;
-  }
-  var idx = parseInt(index, 10);
-  if (isNaN(idx) || !musicas[idx]) return;
-  cancelPreparation();
-  hideStateImage('presenter');
-  showingInterval = false;
-  sessionStarted = true;
-  hasActiveMusic = true;
-  currentMusicIndex = idx;
-  currentSlide = 0;
-  slideCount = totalPagesOf(idx);
-  renderPresenterSlide();
-  renderMirror();
-  updateCounter();
-  preloadMusic(idx);
-  publishPrepStart(idx);
-  startPreparation(idx, function(){
-    publishSlide();
-  });
-  log('Musica alterada: ' + musicas[idx].nome);
-}
 function publishInterval() {
   if (!channel) return;
   try {
@@ -1733,17 +1626,16 @@ function publishInterval() {
     log('interval publicado');
   } catch(e) {}
 }
-function publishPrepStart(musicIndex) {
+function publishPrepStart(pdfId) {
   if (!channel) return;
   try {
     channel.publish('prep-start', {
-      music: musicIndex,
-      total: totalPagesOf(musicIndex),
-      perSlide: PREP_PER_SLIDE_MS,
-      extra: isExtraIndex(musicIndex)
+      pdfId: pdfId,
+      total: totalPagesOf(pdfId),
+      perSlide: PREP_PER_SLIDE_MS
     });
     sentCount++;
-    log('prep-start publicado: musica ' + musicIndex);
+    log('prep-start publicado: ' + pdfId);
   } catch(e) {
     log('ERRO ao publicar prep-start: ' + e.message);
   }
@@ -1756,7 +1648,7 @@ function renderPresenterSlide() {
   hideStateImage('presenter');
   var overlay = document.getElementById('presenterPrep');
   var keepOverlay = overlay ? overlay.outerHTML : '';
-  getPdf(currentMusicIndex, function(doc){
+  openPdfDoc(currentPdfId, function(doc){
     if (showingInterval) return;
     if (myGen !== renderGeneration) return;
     if (!doc) {
@@ -1775,7 +1667,7 @@ function renderViewerSlide() {
   hideStateImage('viewer');
   var overlay = document.getElementById('viewerPrep');
   var keepOverlay = overlay ? overlay.outerHTML : '';
-  getPdf(currentMusicIndex, function(doc){
+  openPdfDoc(currentPdfId, function(doc){
     if (showingInterval) return;
     if (myGen !== renderGeneration) return;
     if (!doc) {
@@ -1801,7 +1693,7 @@ function renderMirror() {
     if (num) num.textContent = '—';
     return;
   }
-  getPdf(currentMusicIndex, function(doc){
+  openPdfDoc(currentPdfId, function(doc){
     if (!doc) {
       preview.innerHTML = '<div class="mirror-empty">—</div>';
       return;
@@ -1816,8 +1708,7 @@ function updateCounter() {
   if (c) c.textContent = hasActiveMusic ? ((currentSlide + 1) + ' / ' + slideCount) : '—';
   var p = document.getElementById('musicProgress');
   if (p) {
-    var m = currentMusic();
-    p.textContent = (hasActiveMusic && m) ? (m.nome + ' - ' + (currentSlide + 1) + '/' + slideCount) : '—';
+    p.textContent = (hasActiveMusic && currentPdfId) ? (currentPdfName() + ' - ' + (currentSlide + 1) + '/' + slideCount) : '—';
   }
 }
 function startPresencePoll() {
@@ -1825,81 +1716,11 @@ function startPresencePoll() {
   presencePollTimer = setInterval(function(){
     if (role === 'presenter' && channel) {
       updateViewerCount();
-      checkNewViewers();
     }
   }, 2000);
 }
 function stopPresencePoll() {
   if (presencePollTimer) { clearInterval(presencePollTimer); presencePollTimer = null; }
-}
-function checkNewViewers() {
-  if (role !== 'presenter') return;
-  if (!channel) return;
-  var hasExtra = false;
-  for (var k in extraPdfs) {
-    if (extraPdfs.hasOwnProperty(k)) { hasExtra = true; break; }
-  }
-  if (!hasExtra) return;
-  try {
-    channel.presence.get(function(err, members){
-      if (err || !members) return;
-      for (var i = 0; i < members.length; i++) {
-        var cid = members[i].clientId;
-        if (cid === myClientId) continue;
-        if (extraPdfSentTo[cid]) continue;
-        extraPdfSentTo[cid] = true;
-        resendExtrasTo(cid);
-      }
-    });
-  } catch(e) {}
-}
-function resendExtrasTo(clientId) {
-  var keys = [];
-  for (var k in extraPdfs) {
-    if (extraPdfs.hasOwnProperty(k)) keys.push(parseInt(k, 10));
-  }
-  if (keys.length === 0) return;
-  keys.sort(function(a, b){ return a - b; });
-  log('Reenviando ' + keys.length + ' PDF(s) extra para ' + clientId);
-  var ki = 0;
-  function nextPdf() {
-    if (ki >= keys.length) return;
-    var idx = keys[ki];
-    ki++;
-    var ex = extraPdfs[idx];
-    if (!ex || !ex.base64) { nextPdf(); return; }
-    sendExtraToClient(idx, ex.nome, ex.base64, clientId, nextPdf);
-  }
-  nextPdf();
-}
-function sendExtraToClient(idx, nome, base64, clientId, done) {
-  if (!channel) { if (done) done(); return; }
-  var total = Math.ceil(base64.length / PDF_CHUNK_SIZE);
-  var sent = 0;
-  var sendId = 'r' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
-  try {
-    channel.publish('extra-pdf-meta', {
-      idx: idx, nome: nome, total: total, sendId: sendId, size: base64.length
-    });
-    sentCount++;
-  } catch(e) {}
-  function step() {
-    if (sent >= total) {
-      if (done) done();
-      return;
-    }
-    var start = sent * PDF_CHUNK_SIZE;
-    var chunk = base64.slice(start, start + PDF_CHUNK_SIZE);
-    try {
-      channel.publish('extra-pdf-chunk', {
-        idx: idx, sendId: sendId, seq: sent, data: chunk
-      });
-      sentCount++;
-    } catch(e) {}
-    sent++;
-    setTimeout(step, PDF_CHUNK_DELAY);
-  }
-  step();
 }
 function startMemberCleanup() {
   stopMemberCleanup();
@@ -1911,7 +1732,6 @@ function startMemberCleanup() {
       if (memberMap.hasOwnProperty(id)) {
         if (now - memberMap[id].ts > MEMBER_TIMEOUT) {
           delete memberMap[id];
-          delete extraPdfSentTo[id];
           removed++;
         }
       }
@@ -1998,13 +1818,12 @@ function publishSlide() {
   if (!hasActiveMusic) { publishInterval(); return; }
   try {
     channel.publish('slide', {
-      music: currentMusicIndex,
+      pdfId: currentPdfId,
       index: currentSlide,
-      total: slideCount,
-      extra: isExtraIndex(currentMusicIndex)
+      total: slideCount
     });
     sentCount++;
-    log('slide publicado: musica ' + currentMusicIndex + ', slide ' + (currentSlide + 1));
+    log('slide publicado: ' + currentPdfId + ', slide ' + (currentSlide + 1));
     updateDiag();
   } catch(e) {
     log('ERRO ao publicar slide: ' + e.message);
@@ -2076,16 +1895,16 @@ function endPresentation() {
   sentCount = 0;
   viewerCount = 0;
   memberMap = {};
-  extraPdfs = {};
-  extraPdfCounter = 0;
-  extraPdfSentTo = {};
+  pdfDocs = {};
+  pdfOrder = [];
+  pdfSeq = 0;
+  currentPdfId = null;
   pendingPdfChunks = {};
   orphanChunks = {};
-  pendingExtraAction = null;
+  pendingPdfAction = null;
   hasActiveMusic = false;
   sessionStarted = false;
   showingInterval = false;
-  currentMusicIndex = -999;
   setPresenterOnline(null);
   showScreen('ended');
   log('Apresentacao encerrada - tempo ' + finalText);
@@ -2097,7 +1916,7 @@ function applyOpening() {
   cancelPreparation();
   hasActiveMusic = false;
   showingInterval = false;
-  currentMusicIndex = -999;
+  currentPdfId = null;
   currentSlide = 0;
   slideCount = 0;
   stopStateRequests();
@@ -2106,44 +1925,43 @@ function applyOpening() {
   showScreen('viewer');
   log('opening recebido - imagem de abertura');
 }
-function applyPrepStart(idx) {
-  log('prep-start aplicado: musica ' + idx);
+function applyPrepStart(pdfId) {
+  log('prep-start aplicado: ' + pdfId);
   cancelPreparation();
   showingInterval = false;
   sessionStarted = true;
   hasActiveMusic = true;
-  currentMusicIndex = idx;
+  currentPdfId = pdfId;
   currentSlide = 0;
-  slideCount = totalPagesOf(idx);
+  slideCount = totalPagesOf(pdfId);
   showScreen('viewer');
   setPresenterOnline(true);
   stopStateRequests();
-  preloadMusic(idx);
-  startPreparation(idx, function(){
+  startPreparation(pdfId, function(){
     log('Preparacao concluida no receptor');
   });
   updateDiag();
 }
-function applySlide(musicIdx, index, total) {
+function applySlide(pdfId, index, total) {
   if (isPreparing) return;
   showingInterval = false;
   sessionStarted = true;
   hasActiveMusic = true;
-  currentMusicIndex = musicIdx;
+  currentPdfId = pdfId;
   currentSlide = index;
-  slideCount = total || totalPagesOf(musicIdx);
+  slideCount = total || totalPagesOf(pdfId);
   renderViewerSlide();
   showScreen('viewer');
   stopStateRequests();
   setPresenterOnline(true);
-  log('slide aplicado: musica ' + musicIdx + ', slide ' + (currentSlide + 1));
+  log('slide aplicado: ' + pdfId + ', slide ' + (currentSlide + 1));
 }
 function applyInterval() {
   cancelPreparation();
   sessionStarted = true;
   hasActiveMusic = false;
   showingInterval = true;
-  currentMusicIndex = -999;
+  currentPdfId = null;
   currentSlide = 0;
   slideCount = 0;
   stopStateRequests();
@@ -2167,51 +1985,44 @@ function joinSession() {
     saveLastCode(code);
     saveName(name);
     memberMap = {};
-    extraPdfs = {};
+    pdfDocs = {};
+    pdfOrder = [];
+    pdfSeq = 0;
+    currentPdfId = null;
     pendingPdfChunks = {};
     orphanChunks = {};
-    pendingExtraAction = null;
+    pendingPdfAction = null;
     hasActiveMusic = false;
     sessionStarted = false;
     showingInterval = false;
-    currentMusicIndex = -999;
     var channelName = 's1-' + code;
     channel = ably.channels.get(channelName);
     channel.subscribe('slide', function(msg){
       recvCount++;
       if (msg.data && typeof msg.data.index === 'number') {
-        var mIdx = (typeof msg.data.music === 'number') ? msg.data.music : 0;
-        var tot = msg.data.total || totalPagesOf(mIdx);
-        if (isExtraIndex(mIdx)) {
-          var ex = extraPdfs[mIdx];
-          if (!ex || !ex.doc) {
-            pendingExtraAction = { type: 'slide', music: mIdx, index: msg.data.index, total: tot };
-            log('slide de extra aguardando PDF: musica ' + mIdx);
-            updateDiag();
-            return;
-          }
+        var pid = msg.data.pdfId;
+        var tot = msg.data.total || totalPagesOf(pid);
+        if (!pdfDocs[pid] || !pdfDocs[pid].doc) {
+          pendingPdfAction = { type: 'slide', pdfId: pid, index: msg.data.index, total: tot };
+          log('slide aguardando PDF: ' + pid);
+          updateDiag();
+          return;
         }
-        applySlide(mIdx, msg.data.index, tot);
+        applySlide(pid, msg.data.index, tot);
       }
       updateDiag();
     });
     channel.subscribe('prep-start', function(msg){
       recvCount++;
-      var idx = (msg.data && typeof msg.data.music === 'number') ? msg.data.music : 0;
-      if (isExtraIndex(idx)) {
-        var ex = extraPdfs[idx];
-        if (!ex || !ex.doc) {
-          pendingExtraAction = { type: 'prep', music: idx };
-          log('prep-start de extra aguardando PDF: musica ' + idx);
-          updateDiag();
-          return;
-        }
-      }
-      if (!musicas[idx]) {
-        log('prep-start recebido, mas musica ' + idx + ' nao esta carregada');
+      var pid = (msg.data && msg.data.pdfId) ? msg.data.pdfId : null;
+      if (!pid) return;
+      if (!pdfDocs[pid] || !pdfDocs[pid].doc) {
+        pendingPdfAction = { type: 'prep', pdfId: pid };
+        log('prep-start aguardando PDF: ' + pid);
+        updateDiag();
         return;
       }
-      applyPrepStart(idx);
+      applyPrepStart(pid);
     });
     channel.subscribe('opening', function(){
       recvCount++;
@@ -2223,14 +2034,14 @@ function joinSession() {
       applyInterval();
       updateDiag();
     });
-    channel.subscribe('extra-pdf-meta', function(msg){
+    channel.subscribe('pdf-meta', function(msg){
       recvCount++;
-      handleExtraPdfMeta(msg);
+      handlePdfMeta(msg);
       updateDiag();
     });
-    channel.subscribe('extra-pdf-chunk', function(msg){
+    channel.subscribe('pdf-chunk', function(msg){
       recvCount++;
-      handleExtraPdfChunk(msg);
+      handlePdfChunk(msg);
     });
     channel.subscribe('session-end', function(msg){
       var ms = (msg.data && typeof msg.data.elapsedMs === 'number') ? msg.data.elapsedMs : 0;
@@ -2246,7 +2057,7 @@ function joinSession() {
     channel.subscribe('echo-test', function(msg){
       if (msg.clientId !== myClientId) log('echo de outro cliente: ' + msg.clientId);
     });
-    log('subscribe(slide, prep-start, opening, interval, extra-pdf) em ' + channelName);
+    log('subscribe(slide, prep-start, opening, interval, pdf) em ' + channelName);
     try {
       channel.presence.enter();
       channel.presence.subscribe('leave', function(m){
@@ -2270,9 +2081,6 @@ function joinSession() {
     document.getElementById('waitingText').textContent = 'Aguardando apresentacao...';
     showScreen('waiting');
     setPresenterOnline(null);
-    loadMusicas(function(ok){
-      if (!ok) log('viewer: musicas.json nao carregou');
-    });
     startStateRequests();
     startHeartbeat();
     requestWakeLock();
@@ -2357,7 +2165,7 @@ function leaveSession() {
   role = null;
   sessionCode = '';
   currentSlide = 0;
-  currentMusicIndex = -999;
+  currentPdfId = null;
   hasActiveMusic = false;
   sessionStarted = false;
   showingInterval = false;
@@ -2365,16 +2173,15 @@ function leaveSession() {
   sentCount = 0;
   viewerCount = 0;
   memberMap = {};
-  extraPdfs = {};
-  extraPdfCounter = 0;
-  extraPdfSentTo = {};
+  pdfDocs = {};
+  pdfOrder = [];
+  pdfSeq = 0;
   pendingPdfChunks = {};
   orphanChunks = {};
-  pendingExtraAction = null;
+  pendingPdfAction = null;
   isSendingPdf = false;
   resetTimer();
   setPresenterOnline(null);
-  showPreloadIndicator(false, 0, 0);
   var wrap = document.getElementById('pdfProgressWrap');
   if (wrap) wrap.classList.remove('show');
   var btn = document.getElementById('openPdfBtn');
