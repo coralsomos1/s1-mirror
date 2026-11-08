@@ -2068,6 +2068,7 @@ function closeEndPanel() {
 function endPresentation() {
   var finalMs = getElapsed();
   var finalText = formatTime(finalMs);
+  exitFullscreen();  
   closeEndPanel();
   stopTimer();
   clearAutoInterval();
@@ -2252,6 +2253,7 @@ function joinSession() {
     channel.subscribe('session-end', function(msg){
       var ms = (msg.data && typeof msg.data.elapsedMs === 'number') ? msg.data.elapsedMs : 0;
       log('apresentacao encerrada pela maestrina - tempo ' + formatTime(ms));
+      exitFullscreen(); 
       cancelPreparation();
       clearAutoInterval();
       stopHeartbeat();
