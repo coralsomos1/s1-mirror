@@ -267,7 +267,6 @@
     cursor:pointer; font-family:inherit; flex-shrink:0;
   }
   .finish-btn:active { background:#c93c40; }
-  /* BOTAO FINALIZAR FLUTUANTE (tela cheia) */
   .finish-float {
     position:fixed; top:14px; right:14px; z-index:120;
     background:#e5484d; border:1px solid #b8383c; color:#fff;
@@ -341,6 +340,26 @@
   .join-last { display:none; font-size:13px; color:#8a8a99; text-align:center; }
   .join-last.show { display:block; }
   .join-last b { color:#e8b44a; letter-spacing:3px; font-size:15px; }
+  /* NOVO: ultimo codigo clicavel */
+  .join-last-btn {
+    display:none; width:100%; max-width:300px;
+    background:#15151d; border:1px solid #2a2a36; border-radius:12px;
+    padding:11px 14px; cursor:pointer; font-family:inherit;
+    text-align:center; transition:background .12s, border-color .12s;
+  }
+  .join-last-btn.show { display:block; }
+  .join-last-btn:active { background:#1f1f2a; border-color:#e8b44a; }
+  .join-last-btn .jl-label {
+    font-size:10px; color:#6a6a7a; text-transform:uppercase;
+    letter-spacing:1.5px; display:block; margin-bottom:5px;
+  }
+  .join-last-btn .jl-code {
+    font-size:22px; font-weight:700; color:#e8b44a; letter-spacing:6px;
+    padding-left:6px; display:block;
+  }
+  .join-last-btn .jl-hint {
+    font-size:10px; color:#6a6a7a; margin-top:5px; display:block;
+  }
   #waiting { align-items:center; justify-content:center; padding:24px; gap:14px; text-align:center; position:relative; background:#000; }
   .waiting-msg {
     color:#8a8a99; font-size:15px; line-height:1.6; max-width:320px;
@@ -506,9 +525,13 @@
   </div>
   <div class="field-group">
     <div class="field-label">Código da sessão</div>
-    <input class="code-input" id="joinInput" maxlength="4" autocomplete="off" autocapitalize="characters" placeholder="----">
+    <input class="code-input" id="joinInput" maxlength="4" autocomplete="off" autocapitalize="characters" inputmode="text" placeholder="----">
   </div>
-  <div class="join-last" id="joinLast">Último código usado: <b id="joinLastValue">----</b></div>
+  <button class="join-last-btn" id="joinLastBtn" onclick="useLastCode()">
+    <span class="jl-label">Último código usado</span>
+    <span class="jl-code" id="joinLastCode">----</span>
+    <span class="jl-hint">Toque para usar este código</span>
+  </button>
   <button class="btn btn-primary" style="max-width:300px" onclick="joinSession()">Entrar</button>
   <button class="btn btn-ghost" style="max-width:300px" onclick="showScreen('home')">Voltar</button>
 </div>
@@ -740,7 +763,6 @@ var pendingPdfAction = null;
 var autoIntervalTimer = null;
 var autoIntervalDeadline = 0;
 var currentStateImage = 'opening';
-/* NOVO: controla se a tela cheia ja foi solicitada automaticamente */
 var autoFsRequested = false;
 /* =========================================================
    PDF.JS
@@ -830,7 +852,7 @@ function renderPageTo(doc, pageNum, container, isPreview, expectedGen) {
   });
 }
 /* =========================================================
-   IMAGENS DE ESTADO (recria o elemento se foi destruido)
+   IMAGENS DE ESTADO
    ========================================================= */
 function showStateImage(which, imgPath, stateName) {
   var areaId = which === 'presenter' ? 'presenterSlide' : 'viewerSlide';
@@ -893,7 +915,7 @@ function clearStateImage() {
   currentStateImage = 'none';
 }
 /* =========================================================
-   REDESENHA O QUE ESTA NA TELA (resize / tela cheia)
+   REDESENHA O QUE ESTA NA TELA
    ========================================================= */
 function redrawCurrentState() {
   if (role !== 'presenter' && role !== 'viewer') return;
@@ -921,7 +943,7 @@ function redrawCurrentState() {
   showStateImage(which, OPENING_IMG, 'opening');
 }
 /* =========================================================
-   AUTO-INTERVALO (60s no ultimo slide)
+   AUTO-INTERVALO
    ========================================================= */
 function clearAutoInterval() {
   if (autoIntervalTimer) {
@@ -941,7 +963,7 @@ function armAutoInterval() {
   autoIntervalTimer = setTimeout(function(){
     autoIntervalTimer = null;
     autoIntervalDeadline = 0;
-    log('Auto-intervalo: 60s no ultimo slide - mudando para musica vazia');
+    log('Auto-intervalo: 60s no ultimo slide - mudando para modo espera');
     selectEmptyMusic();
   }, AUTO_INTERVAL_MS);
   log('Auto-intervalo armado: 60s no ultimo slide');
@@ -1075,7 +1097,7 @@ function toggleFullscreen() {
   if (!isFullscreen()) enterFullscreen();
   else exitFullscreen();
 }
-/* NOVO: pede tela cheia no primeiro gesto do usuario (navegadores exigem interacao) */
+/* AJUSTE 1: reseta a flag ao voltar para home, permitindo nova tela cheia */
 function requestAutoFullscreen() {
   if (autoFsRequested) return;
   if (isFullscreen()) { autoFsRequested = true; return; }
@@ -1094,7 +1116,6 @@ function onFullscreenChange() {
     if (bar) bar.classList.add('fs-hide');
     if (controls) controls.classList.add('fs-hide');
     if (vbar) vbar.classList.add('fs-hide');
-    /* AJUSTE 1: mantem o FINALIZAR visivel em tela cheia (apresentador) */
     if (floatBtn && role === 'presenter') floatBtn.classList.add('show');
     log('Tela cheia ativada');
   } else {
@@ -1165,6 +1186,15 @@ function getLastCode() {
     return code;
   } catch(e) { return ''; }
 }
+/* AJUSTE 4: limpa o codigo salvo */
+function clearLastCode() {
+  try {
+    localStorage.removeItem('s1_last_code');
+    localStorage.removeItem('s1_last_code_ts');
+  } catch(e) {}
+  refreshLastCodeUI();
+  log('Codigo salvo removido');
+}
 function saveName(name) {
   try {
     localStorage.setItem('s1_name', name);
@@ -1185,12 +1215,36 @@ function refreshLastCodeUI() {
     if (last) { homeVal.textContent = last; homeBox.classList.add('show'); }
     else { homeBox.classList.remove('show'); }
   }
-  var joinBox = document.getElementById('joinLast');
-  var joinVal = document.getElementById('joinLastValue');
-  if (joinBox && joinVal) {
-    if (last) { joinVal.textContent = last; joinBox.classList.add('show'); }
-    else { joinBox.classList.remove('show'); }
+  /* AJUSTE 3: botao clicavel com o ultimo codigo */
+  var joinBtn = document.getElementById('joinLastBtn');
+  var joinCode = document.getElementById('joinLastCode');
+  if (joinBtn && joinCode) {
+    if (last) { joinCode.textContent = last; joinBtn.classList.add('show'); }
+    else { joinBtn.classList.remove('show'); }
   }
+}
+/* AJUSTE 3: preenche o campo com o ultimo codigo ao tocar */
+function useLastCode() {
+  var last = getLastCode();
+  if (!last) return;
+  var input = document.getElementById('joinInput');
+  if (input) {
+    input.value = last;
+    input.focus();
+  }
+  log('Ultimo codigo aplicado ao campo: ' + last);
+}
+/* AJUSTE 2: abre o teclado no campo de codigo */
+function focusCodeInput() {
+  var input = document.getElementById('joinInput');
+  if (!input) return;
+  setTimeout(function(){
+    try {
+      input.focus();
+      var len = input.value.length;
+      if (input.setSelectionRange) input.setSelectionRange(len, len);
+    } catch(e) {}
+  }, 350);
 }
 function goToJoin() {
   refreshLastCodeUI();
@@ -1199,6 +1253,7 @@ function goToJoin() {
   var nameInput = document.getElementById('nameInput');
   if (nameInput) nameInput.value = getSavedName();
   showScreen('join');
+  focusCodeInput();
 }
 /* =========================================================
    NAVEGACAO E LOG
@@ -1209,7 +1264,6 @@ function showScreen(name) {
   var el = document.getElementById(name);
   if (el) el.classList.add('active');
   currentScreen = name;
-  /* AJUSTE 1: esconde o botao flutuante fora da tela do apresentador */
   var floatBtn = document.getElementById('finishFloat');
   if (floatBtn) {
     if (name === 'presenter' && isFullscreen()) floatBtn.classList.add('show');
@@ -1266,7 +1320,7 @@ function updateDiag() {
   var dV = document.getElementById('dViewers'); if (dV) dV.textContent = viewerCount;
   var dMC = document.getElementById('dMusicCount'); if (dMC) dMC.textContent = countPdfs();
   var dMCur = document.getElementById('dMusicCurrent');
-  if (dMCur) dMCur.textContent = currentPdfName() || 'Musica vazia';
+  if (dMCur) dMCur.textContent = currentPdfName() || 'Modo espera';
   var dAI = document.getElementById('dAutoInterval');
   if (dAI) {
     if (autoIntervalDeadline > 0) {
@@ -1317,7 +1371,7 @@ function copyDiag() {
     'Papel: ' + (role || '-') + '\n' +
     'Coralistas ativos: ' + viewerCount + '\n' +
     'PDFs na lista: ' + countPdfs() + '\n' +
-    'PDF atual: ' + (currentPdfName() || 'Musica vazia') + '\n' +
+    'PDF atual: ' + (currentPdfName() || 'Modo espera') + '\n' +
     'Estado visual: ' + currentStateImage + '\n' +
     'Slide: ' + (hasActiveMusic ? ((currentSlide + 1) + '/' + slideCount) : '-') + '\n' +
     'Tempo: ' + formatTime(getElapsed()) + '\n' +
@@ -1527,7 +1581,7 @@ function selectEmptyMusic() {
   document.getElementById('mirrorPreview').innerHTML = '<div class="mirror-empty">—</div>';
   document.getElementById('mirrorNextNum').textContent = '—';
   updateCounter();
-  log('Musica vazia selecionada - imagem de intervalo');
+  log('Modo espera selecionado - imagem de intervalo');
 }
 function sendPdfToChannel(pdfId, nome, base64) {
   if (!channel) {
@@ -1723,7 +1777,7 @@ function copyCode() {
 }
 function enterPresenterMode() {
   try {
-     requestAutoFullscreen();
+    requestAutoFullscreen();
     if (!ably) { showError('Ably nao inicializado. Recarregue a pagina.'); return; }
     var channelName = 's1-' + sessionCode;
     channel = ably.channels.get(channelName);
@@ -2068,7 +2122,7 @@ function closeEndPanel() {
 function endPresentation() {
   var finalMs = getElapsed();
   var finalText = formatTime(finalMs);
-  exitFullscreen();  
+  exitFullscreen();
   closeEndPanel();
   stopTimer();
   clearAutoInterval();
@@ -2253,7 +2307,7 @@ function joinSession() {
     channel.subscribe('session-end', function(msg){
       var ms = (msg.data && typeof msg.data.elapsedMs === 'number') ? msg.data.elapsedMs : 0;
       log('apresentacao encerrada pela maestrina - tempo ' + formatTime(ms));
-      exitFullscreen(); 
+      exitFullscreen();
       cancelPreparation();
       clearAutoInterval();
       stopHeartbeat();
@@ -2400,7 +2454,10 @@ function leaveSession() {
   if (btn) btn.disabled = false;
   var input = document.getElementById('joinInput');
   if (input) input.value = '';
-  refreshLastCodeUI();
+  /* AJUSTE 1: libera nova tela cheia na proxima sessao */
+  autoFsRequested = false;
+  /* AJUSTE 4: limpa o codigo salvo ao voltar ao inicio */
+  clearLastCode();
   showScreen('home');
   log('Sessao encerrada');
 }
