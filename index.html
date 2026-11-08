@@ -716,8 +716,8 @@ var CODE_TTL_MS = 60 * 60 * 1000;
 var HEARTBEAT_INTERVAL = 4000;
 var MEMBER_TIMEOUT = 10000;
 var AUTO_INTERVAL_MS = 60000;
-/* NOVO: tamanho do codigo da sessao */
 var CODE_LENGTH = 6;
+var FS_RESTORE_DELAY = 250;
 /* =========================================================
    ESTADO GLOBAL
    ========================================================= */
@@ -765,6 +765,7 @@ var autoIntervalTimer = null;
 var autoIntervalDeadline = 0;
 var currentStateImage = 'opening';
 var autoFsRequested = false;
+var fsPickerGuard = false;
 /* =========================================================
    PDF.JS
    ========================================================= */
@@ -1105,6 +1106,18 @@ function requestAutoFullscreen() {
   enterFullscreen();
   log('Tela cheia automatica solicitada');
 }
+/* NOVO: restaura a tela cheia depois que o seletor de arquivos fecha */
+function restoreFullscreenAfterPicker() {
+  if (role !== 'presenter') return;
+  if (!fsPickerGuard) return;
+  fsPickerGuard = false;
+  setTimeout(function(){
+    if (currentScreen !== 'presenter') return;
+    if (isFullscreen()) return;
+    enterFullscreen();
+    log('Tela cheia restaurada apos seletor de arquivos');
+  }, FS_RESTORE_DELAY);
+}
 function onFullscreenChange() {
   var fs = isFullscreen();
   var bar = document.getElementById('presenterBar');
@@ -1231,7 +1244,6 @@ function useLastCode() {
   }
   log('Ultimo codigo aplicado ao campo: ' + last);
 }
-/* AJUSTE 1: foco inteligente - nome vazio foca nome, senao foca codigo */
 function focusJoinFields() {
   var nameInput = document.getElementById('nameInput');
   var codeInput = document.getElementById('joinInput');
@@ -1422,7 +1434,6 @@ function initAbly() {
   log('Cliente Ably criado - clientId ' + myClientId);
   return true;
 }
-/* AJUSTE 2: gera codigo de 6 letras */
 function genCode() {
   var chars = 'ABCDEFGHJKMNPQRSTUVWXYZ';
   var c = '';
@@ -1489,14 +1500,27 @@ function renderMusicMenu() {
 function triggerPdfPicker() {
   if (isSendingPdf) return;
   var picker = document.getElementById('pdfPicker');
-  if (picker) picker.click();
+  if (!picker) return;
+  /* NOVO: marca que o seletor esta aberto para restaurar a tela cheia depois */
+  fsPickerGuard = true;
+  picker.click();
+  /* fallback: se o usuario cancelar, restaura ao voltar o foco */
+  window.addEventListener('focus', function onFocusBack(){
+    window.removeEventListener('focus', onFocusBack);
+    restoreFullscreenAfterPicker();
+  });
 }
 function handlePdfPicked(ev) {
   var file = ev.target.files && ev.target.files[0];
-  if (!file) return;
+  if (!file) {
+    /* NOVO: usuario cancelou - restaura a tela cheia */
+    restoreFullscreenAfterPicker();
+    return;
+  }
   ev.target.value = '';
   if (file.type && file.type.indexOf('pdf') === -1 && !/\.pdf$/i.test(file.name)) {
     showError('Selecione um arquivo PDF.');
+    restoreFullscreenAfterPicker();
     return;
   }
   var nome = file.name.replace(/\.pdf$/i, '');
@@ -1514,6 +1538,8 @@ function handlePdfPicked(ev) {
     log('ERRO FileReader');
   };
   reader.readAsDataURL(file);
+  /* NOVO: restaura a tela cheia logo apos escolher o arquivo */
+  restoreFullscreenAfterPicker();
 }
 function registerPdf(nome, base64) {
   pdfSeq++;
@@ -2167,6 +2193,7 @@ function endPresentation() {
   sessionStarted = false;
   showingInterval = false;
   currentStateImage = 'opening';
+  fsPickerGuard = false;
   setPresenterOnline(null);
   showScreen('ended');
   log('Apresentacao encerrada - tempo ' + finalText);
@@ -2451,6 +2478,7 @@ function leaveSession() {
   orphanChunks = {};
   pendingPdfAction = null;
   isSendingPdf = false;
+  fsPickerGuard = false;
   resetTimer();
   setPresenterOnline(null);
   closeMusicMenu();
@@ -2515,7 +2543,6 @@ document.addEventListener('touchend', function(e){
   if (dx < -50) nextSlide();
   if (dx > 50) prevSlide();
 }, {passive:true});
-/* AJUSTE 2: aceita 6 letras no campo de codigo */
 document.getElementById('joinInput').addEventListener('input', function(e){
   e.target.value = e.target.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, CODE_LENGTH);
 });
