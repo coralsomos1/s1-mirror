@@ -1701,7 +1701,6 @@ function runPendingPdfAction() {
    ========================================================= */
 function startPresenter() {
   try {
-    requestAutoFullscreen();
     if (!initAbly()) return;
     sessionCode = genCode();
     role = 'presenter';
@@ -1724,6 +1723,7 @@ function copyCode() {
 }
 function enterPresenterMode() {
   try {
+   requestAutoFullscreen();
     if (!ably) { showError('Ably nao inicializado. Recarregue a pagina.'); return; }
     var channelName = 's1-' + sessionCode;
     channel = ably.channels.get(channelName);
