@@ -43,77 +43,70 @@
   .last-code-label { font-size:11px; color:#6a6a7a; text-transform:uppercase; letter-spacing:1.5px; margin-bottom:6px; }
   .last-code-value { font-size:26px; font-weight:700; color:#e8b44a; letter-spacing:8px; padding-left:8px; }
   .last-code-hint { font-size:11px; color:#6a6a7a; margin-top:6px; }
-  #code-screen { align-items:center; justify-content:center; padding:24px; gap:22px; }
+  #mode-screen { align-items:center; justify-content:center; padding:24px; gap:14px; }
+  #code-screen { align-items:center; justify-content:center; padding:24px; gap:18px; overflow-y:auto; }
   .label { font-size:13px; color:#8a8a99; text-transform:uppercase; letter-spacing:2px; }
-  .code-display {
-    font-size:clamp(56px,16vw,96px); font-weight:700; letter-spacing:14px;
-    color:#e8b44a; padding-left:14px;
+  .hint { color:#8a8a99; font-size:14px; text-align:center; max-width:340px; line-height:1.5; }
+  .code-list { width:100%; max-width:420px; display:flex; flex-direction:column; gap:10px; }
+  .code-row {
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    background:#15151d; border:1px solid #2a2a36; border-radius:12px;
+    padding:12px 16px;
   }
-  .hint { color:#8a8a99; font-size:14px; text-align:center; max-width:320px; line-height:1.5; }
+  .code-row-name { font-size:12px; color:#8a8a99; text-transform:uppercase; letter-spacing:1.5px; font-weight:600; }
+  .code-row-value { font-size:26px; font-weight:700; color:#e8b44a; letter-spacing:7px; padding-left:7px; }
   #presenter, #viewer { position:relative; }
   .presenter-body { flex:1; display:flex; min-height:0; }
   .slide-area {
     flex:1; display:flex; align-items:center; justify-content:center;
-    padding:clamp(10px,2vw,28px); min-width:0; overflow:hidden;
+    padding:clamp(8px,1.5vw,20px); min-width:0; overflow:hidden;
     background:#000; position:relative;
   }
-  .slide-canvas {
-    max-width:100%; max-height:100%; width:auto; height:auto;
-    object-fit:contain; display:block;
-    position:relative; z-index:1;
-  }
-  .slide-placeholder {
-    color:#4a4a5a; font-size:14px; text-align:center; padding:30px;
-    line-height:1.6; position:relative; z-index:1;
-  }
+  .slide-canvas { max-width:100%; max-height:100%; width:auto; height:auto; object-fit:contain; display:block; position:relative; z-index:1; }
+  .slide-placeholder { color:#4a4a5a; font-size:14px; text-align:center; padding:30px; line-height:1.6; position:relative; z-index:1; }
   .prep-overlay {
-    position:absolute; inset:0; display:none;
-    align-items:center; justify-content:center;
-    background:#000;
-    pointer-events:none; z-index:50;
+    position:absolute; inset:0; display:none; align-items:center; justify-content:center;
+    background:#000; pointer-events:none; z-index:50;
   }
   .prep-overlay.show { display:flex; }
   .prep-img {
-    position:absolute; inset:0;
-    width:100%; height:100%;
-    max-width:none; max-height:none;
-    object-fit:contain; object-position:center;
-    display:block;
+    position:absolute; inset:0; width:100%; height:100%;
+    max-width:none; max-height:none; object-fit:contain; object-position:center; display:block;
   }
   .opening-img {
-    position:absolute; inset:0;
-    width:100%; height:100%;
-    max-width:none; max-height:none;
-    object-fit:contain; object-position:center;
+    position:absolute; inset:0; width:100%; height:100%;
+    max-width:none; max-height:none; object-fit:contain; object-position:center;
     display:block; z-index:2;
   }
+  .voices-grid {
+    flex:1; display:grid; gap:clamp(6px,1vw,12px);
+    padding:clamp(6px,1vw,12px); min-height:0; min-width:0; background:#000;
+  }
+  .voices-grid.mode-1 { grid-template-columns:1fr; grid-template-rows:1fr; }
+  .voices-grid.mode-3 { grid-template-columns:repeat(3,1fr); grid-template-rows:1fr; }
+  .voices-grid.mode-4 { grid-template-columns:repeat(2,1fr); grid-template-rows:repeat(2,1fr); }
+  .voice-cell {
+    position:relative; background:#0a0a0f; border:1px solid #1e1e28;
+    border-radius:10px; overflow:hidden;
+    display:flex; align-items:center; justify-content:center;
+    min-height:0; min-width:0;
+  }
+  .voice-cell .slide-canvas { max-width:100%; max-height:100%; }
+  .voice-cell-label {
+    position:absolute; top:6px; left:8px; z-index:5;
+    font-size:10px; font-weight:700; letter-spacing:1.5px;
+    color:#e8b44a; background:rgba(10,10,15,.82);
+    padding:3px 8px; border-radius:6px; border:1px solid #2a2a36;
+    text-transform:uppercase;
+  }
+  .voice-cell-empty { color:#3a3a48; font-size:12px; font-style:italic; text-align:center; padding:14px; }
   .mirror-panel {
-    width:clamp(230px,27vw,350px); flex-shrink:0;
+    width:clamp(220px,24vw,320px); flex-shrink:0;
     background:#0d0d14; border-left:1px solid #1e1e28;
-    display:flex; flex-direction:column; padding:16px; gap:12px;
-    overflow-y:auto;
+    display:flex; flex-direction:column; padding:14px; gap:11px; overflow-y:auto;
   }
-  .mirror-label {
-    font-size:10px; color:#6a6a7a; text-transform:uppercase;
-    letter-spacing:1.5px; font-weight:600;
-  }
-  .mirror-preview {
-    background:#15151d; border:1px solid #2a2a36; border-radius:12px;
-    padding:8px; aspect-ratio:16/9; display:flex; align-items:center;
-    justify-content:center; overflow:hidden;
-  }
-  .mirror-preview canvas { max-width:100%; max-height:100%; object-fit:contain; display:block; }
-  .mirror-next-num {
-    font-size:11px; color:#6a6a7a; text-align:center; margin-top:2px;
-  }
-  .mirror-empty {
-    color:#4a4a5a; font-size:12px; text-align:center; padding:20px 8px;
-    font-style:italic;
-  }
-  .music-block {
-    background:#15151d; border:1px solid #2a2a36; border-radius:12px;
-    padding:11px 12px; display:flex; flex-direction:column; gap:7px;
-  }
+  .mirror-label { font-size:10px; color:#6a6a7a; text-transform:uppercase; letter-spacing:1.5px; font-weight:600; }
+  .music-block { background:#15151d; border:1px solid #2a2a36; border-radius:12px; padding:11px 12px; display:flex; flex-direction:column; gap:7px; }
   .music-dropdown { position:relative; }
   .music-trigger {
     width:100%; min-height:42px; border-radius:9px;
@@ -121,18 +114,12 @@
     font-size:12px; font-weight:600; font-family:inherit;
     padding:0 30px 0 11px; cursor:pointer; text-align:left;
     display:flex; align-items:center; gap:7px;
-    overflow:hidden; white-space:nowrap; text-overflow:ellipsis;
-    position:relative;
+    overflow:hidden; white-space:nowrap; text-overflow:ellipsis; position:relative;
   }
   .music-trigger:active { background:#262632; }
-  .music-trigger .trg-name {
-    flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-  }
+  .music-trigger .trg-name { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .music-trigger .trg-name.empty { color:#4a4a5a; font-style:italic; font-weight:400; }
-  .music-trigger .trg-arrow {
-    position:absolute; right:10px; top:50%; transform:translateY(-50%);
-    font-size:9px; color:#6a6a7a; transition:transform .15s;
-  }
+  .music-trigger .trg-arrow { position:absolute; right:10px; top:50%; transform:translateY(-50%); font-size:9px; color:#6a6a7a; transition:transform .15s; }
   .music-dropdown.open .trg-arrow { transform:translateY(-50%) rotate(180deg); }
   .music-menu {
     display:none; position:absolute; left:0; right:0; top:calc(100% + 5px);
@@ -150,25 +137,12 @@
   }
   .music-option:active { background:#262632; }
   .music-option.active { background:#1a1710; color:#e8b44a; }
-  .music-option .opt-num {
-    font-size:10px; color:#6a6a7a; flex-shrink:0; min-width:14px;
-    font-variant-numeric:tabular-nums;
-  }
+  .music-option .opt-num { font-size:10px; color:#6a6a7a; flex-shrink:0; min-width:14px; font-variant-numeric:tabular-nums; }
   .music-option.active .opt-num { color:#b8912f; }
-  .music-option .opt-name {
-    flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-  }
-  .music-option .opt-pages {
-    font-size:9px; color:#6a6a7a; flex-shrink:0;
-    font-variant-numeric:tabular-nums;
-  }
-  .music-option.active .opt-pages { color:#b8912f; }
+  .music-option .opt-name { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .music-option.empty-opt { color:#8a8a99; font-style:italic; font-weight:400; }
   .music-option.empty-opt.active { color:#e8b44a; font-style:italic; }
-  .music-progress {
-    font-size:11px; color:#6a6a7a; text-align:center;
-    font-variant-numeric:tabular-nums;
-  }
+  .music-progress { font-size:11px; color:#6a6a7a; text-align:center; font-variant-numeric:tabular-nums; }
   .open-pdf-btn {
     width:100%; min-height:44px; border-radius:9px;
     background:#e8b44a; border:1px solid #c99a35; color:#12121a;
@@ -178,34 +152,9 @@
   }
   .open-pdf-btn:active { background:#d4a33f; }
   .open-pdf-btn:disabled { opacity:.5; cursor:default; }
-  .pdf-progress-wrap {
-    display:none; flex-direction:column; gap:5px;
-  }
-  .pdf-progress-wrap.show { display:flex; }
-  .pdf-progress-bar {
-    height:6px; background:#24242f; border-radius:3px; overflow:hidden;
-  }
-  .pdf-progress-fill {
-    height:100%; width:0%; background:#e8b44a; border-radius:3px;
-    transition:width .15s linear;
-  }
-  .pdf-progress-text {
-    font-size:10px; color:#8a8a99; text-align:center;
-    font-variant-numeric:tabular-nums;
-  }
-  .timer-block {
-    background:#15151d; border:1px solid #2a2a36; border-radius:12px;
-    padding:12px; display:flex; flex-direction:column; gap:9px;
-  }
-  .timer-block-label {
-    font-size:10px; color:#6a6a7a; text-transform:uppercase;
-    letter-spacing:1.5px; font-weight:600;
-  }
-  .timer-block-value {
-    font-size:clamp(26px,3vw,34px); font-weight:700; color:#e8b44a;
-    font-variant-numeric:tabular-nums; letter-spacing:2px;
-    text-align:center; line-height:1;
-  }
+  .timer-block { background:#15151d; border:1px solid #2a2a36; border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:9px; }
+  .timer-block-label { font-size:10px; color:#6a6a7a; text-transform:uppercase; letter-spacing:1.5px; font-weight:600; }
+  .timer-block-value { font-size:clamp(24px,2.6vw,32px); font-weight:700; color:#e8b44a; font-variant-numeric:tabular-nums; letter-spacing:2px; text-align:center; line-height:1; }
   .timer-reset-btn {
     width:100%; min-height:36px; border-radius:9px;
     background:#3a2f14; border:1px solid #6b5520; color:#e8b44a;
@@ -214,23 +163,10 @@
     display:flex; align-items:center; justify-content:center; gap:6px;
   }
   .timer-reset-btn:active { background:#4a3c1a; border-color:#8a6f2a; }
-  .timer-reset-btn .ico { font-size:14px; line-height:1; }
-  .members-block {
-    margin-top:6px; padding-top:12px; border-top:1px solid #1e1e28;
-    display:flex; flex-direction:column; gap:8px; flex:1; min-height:0;
-  }
-  .members-head {
-    display:flex; align-items:center; justify-content:space-between; gap:8px;
-  }
-  .members-count {
-    font-size:11px; font-weight:700; color:#3ddc84;
-    background:#132a1e; border:1px solid #1e4a33; border-radius:10px;
-    padding:2px 8px;
-  }
-  .members-list {
-    display:flex; flex-direction:column; gap:5px; overflow-y:auto;
-    max-height:200px; padding-right:2px;
-  }
+  .members-block { margin-top:4px; padding-top:11px; border-top:1px solid #1e1e28; display:flex; flex-direction:column; gap:8px; flex:1; min-height:0; }
+  .members-head { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .members-count { font-size:11px; font-weight:700; color:#3ddc84; background:#132a1e; border:1px solid #1e4a33; border-radius:10px; padding:2px 8px; }
+  .members-list { display:flex; flex-direction:column; gap:5px; overflow-y:auto; max-height:180px; padding-right:2px; }
   .member-item {
     display:flex; align-items:center; gap:8px;
     background:#15151d; border:1px solid #24242f; border-radius:9px;
@@ -238,32 +174,22 @@
     color:#e8e8f0; letter-spacing:.5px;
   }
   .member-item .dot { width:6px; height:6px; flex-shrink:0; }
-  .members-empty {
-    font-size:11px; color:#4a4a5a; font-style:italic; padding:8px 2px;
-  }
+  .members-empty { font-size:11px; color:#4a4a5a; font-style:italic; padding:8px 2px; }
   .presenter-bar {
-    display:flex; align-items:center; gap:10px; flex-wrap:wrap;
-    padding:10px 14px; background:#0f0f16; border-bottom:1px solid #1e1e28;
-    flex-shrink:0;
+    display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+    padding:9px 12px; background:#0f0f16; border-bottom:1px solid #1e1e28; flex-shrink:0;
   }
-  .bar-code {
-    display:flex; align-items:center; gap:8px;
-    background:#15151d; border:1px solid #2a2a36; border-radius:10px;
-    padding:7px 12px;
-  }
-  .bar-code-label { font-size:10px; color:#6a6a7a; text-transform:uppercase; letter-spacing:1.2px; }
-  .bar-code-value { font-size:17px; font-weight:700; color:#e8b44a; letter-spacing:4px; }
-  .bar-viewers {
-    display:flex; align-items:center; gap:7px;
-    background:#15151d; border:1px solid #2a2a36; border-radius:10px;
-    padding:7px 12px; font-size:13px; color:#c9c9d4;
-  }
-  .bar-viewers-num { font-weight:700; color:#3ddc84; font-size:15px; }
+  .bar-codes { display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
+  .bar-code { display:flex; align-items:center; gap:6px; background:#15151d; border:1px solid #2a2a36; border-radius:9px; padding:5px 10px; }
+  .bar-code-label { font-size:9px; color:#6a6a7a; text-transform:uppercase; letter-spacing:1px; font-weight:700; }
+  .bar-code-value { font-size:14px; font-weight:700; color:#e8b44a; letter-spacing:3px; }
+  .bar-viewers { display:flex; align-items:center; gap:6px; background:#15151d; border:1px solid #2a2a36; border-radius:9px; padding:5px 10px; font-size:12px; color:#c9c9d4; }
+  .bar-viewers-num { font-weight:700; color:#3ddc84; font-size:14px; }
   .bar-spacer { flex:1; }
   .finish-btn {
     background:#e5484d; border:1px solid #b8383c; color:#fff;
-    padding:0 18px; min-height:44px; border-radius:11px;
-    font-size:13px; font-weight:700; letter-spacing:1px;
+    padding:0 16px; min-height:40px; border-radius:10px;
+    font-size:12px; font-weight:700; letter-spacing:1px;
     cursor:pointer; font-family:inherit; flex-shrink:0;
   }
   .finish-btn:active { background:#c93c40; }
@@ -274,16 +200,14 @@
     font-size:13px; font-weight:700; letter-spacing:1px;
     cursor:pointer; font-family:inherit;
     display:none; align-items:center; justify-content:center;
-    box-shadow:0 6px 20px rgba(0,0,0,.55);
-    opacity:.92; transition:opacity .2s;
+    box-shadow:0 6px 20px rgba(0,0,0,.55); opacity:.92; transition:opacity .2s;
   }
   .finish-float:active { background:#c93c40; opacity:1; }
   .finish-float.show { display:flex; }
   .controls {
     display:flex; align-items:center; justify-content:center; gap:14px;
-    padding:14px 18px calc(14px + env(safe-area-inset-bottom));
-    background:#0f0f16; border-top:1px solid #1e1e28;
-    flex-shrink:0;
+    padding:12px 18px calc(12px + env(safe-area-inset-bottom));
+    background:#0f0f16; border-top:1px solid #1e1e28; flex-shrink:0;
   }
   .ctrl-btn {
     background:#1c1c26; border:1px solid #2a2a36; color:#f2f2f5;
@@ -293,16 +217,12 @@
   .ctrl-btn:disabled { opacity:.35; cursor:default; }
   .counter { font-size:15px; color:#8a8a99; min-width:64px; text-align:center; }
   .icon-btn {
-    width:44px; height:44px; border-radius:11px; background:rgba(28,28,38,.85);
-    border:1px solid #2a2a36; color:#c9c9d4; font-size:17px; cursor:pointer;
+    width:42px; height:42px; border-radius:10px; background:rgba(28,28,38,.85);
+    border:1px solid #2a2a36; color:#c9c9d4; font-size:16px; cursor:pointer;
     display:flex; align-items:center; justify-content:center; flex-shrink:0;
   }
   .icon-btn:active { background:#2a2a36; }
-  .viewer-bar {
-    display:flex; align-items:center; gap:10px;
-    padding:10px 14px; background:#0f0f16; border-bottom:1px solid #1e1e28;
-    flex-shrink:0;
-  }
+  .viewer-bar { display:flex; align-items:center; gap:10px; padding:10px 14px; background:#0f0f16; border-bottom:1px solid #1e1e28; flex-shrink:0; }
   .viewer-bar-code { font-size:12px; color:#6a6a7a; letter-spacing:1px; }
   .viewer-bar-code b { color:#e8b44a; letter-spacing:3px; font-size:14px; }
   .exit-btn {
@@ -313,8 +233,7 @@
   .conn-pill {
     display:flex; align-items:center; gap:6px;
     padding:6px 11px; border-radius:20px; font-size:11px; font-weight:600;
-    background:#15151d; border:1px solid #2a2a36; color:#8a8a99;
-    white-space:nowrap;
+    background:#15151d; border:1px solid #2a2a36; color:#8a8a99; white-space:nowrap;
   }
   .conn-pill .dot { width:7px; height:7px; }
   .conn-pill.online { color:#3ddc84; border-color:#1e4a33; }
@@ -337,9 +256,6 @@
     text-transform:uppercase; font-family:inherit; padding-left:12px;
   }
   .code-input:focus { outline:none; border-color:#e8b44a; }
-  .join-last { display:none; font-size:13px; color:#8a8a99; text-align:center; }
-  .join-last.show { display:block; }
-  .join-last b { color:#e8b44a; letter-spacing:3px; font-size:15px; }
   .join-last-btn {
     display:none; width:100%; max-width:300px;
     background:#15151d; border:1px solid #2a2a36; border-radius:12px;
@@ -348,28 +264,13 @@
   }
   .join-last-btn.show { display:block; }
   .join-last-btn:active { background:#1f1f2a; border-color:#e8b44a; }
-  .join-last-btn .jl-label {
-    font-size:10px; color:#6a6a7a; text-transform:uppercase;
-    letter-spacing:1.5px; display:block; margin-bottom:5px;
-  }
-  .join-last-btn .jl-code {
-    font-size:20px; font-weight:700; color:#e8b44a; letter-spacing:5px;
-    padding-left:5px; display:block;
-  }
-  .join-last-btn .jl-hint {
-    font-size:10px; color:#6a6a7a; margin-top:5px; display:block;
-  }
+  .join-last-btn .jl-label { font-size:10px; color:#6a6a7a; text-transform:uppercase; letter-spacing:1.5px; display:block; margin-bottom:5px; }
+  .join-last-btn .jl-code { font-size:20px; font-weight:700; color:#e8b44a; letter-spacing:5px; padding-left:5px; display:block; }
+  .join-last-btn .jl-hint { font-size:10px; color:#6a6a7a; margin-top:5px; display:block; }
   #waiting { align-items:center; justify-content:center; padding:24px; gap:14px; text-align:center; position:relative; background:#000; }
-  .waiting-msg {
-    color:#8a8a99; font-size:15px; line-height:1.6; max-width:320px;
-  }
-  .waiting-code {
-    color:#e8b44a; font-weight:600; font-size:14px; letter-spacing:1px;
-  }
-  .offline-banner {
-    display:none; background:#e5484d; color:#fff; padding:10px 16px;
-    font-size:13px; text-align:center; font-weight:600; flex-shrink:0;
-  }
+  .waiting-msg { color:#8a8a99; font-size:15px; line-height:1.6; max-width:320px; }
+  .waiting-code { color:#e8b44a; font-weight:600; font-size:14px; letter-spacing:1px; }
+  .offline-banner { display:none; background:#e5484d; color:#fff; padding:10px 16px; font-size:13px; text-align:center; font-weight:600; flex-shrink:0; }
   .offline-banner.show { display:block; }
   .end-overlay {
     position:fixed; inset:0; background:rgba(6,6,10,.92);
@@ -384,99 +285,89 @@
   }
   .end-title { font-size:20px; font-weight:700; }
   .end-sub { font-size:13px; color:#8a8a99; line-height:1.5; }
-  .end-time-box {
-    background:#15151d; border:1px solid #2a2a36; border-radius:14px;
-    padding:16px; display:flex; flex-direction:column; gap:6px;
-  }
-  .end-time-label {
-    font-size:10px; color:#6a6a7a; text-transform:uppercase; letter-spacing:1.5px;
-  }
-  .end-time-value {
-    font-size:34px; font-weight:700; color:#e8b44a;
-    font-variant-numeric:tabular-nums; letter-spacing:2px;
-  }
+  .end-time-box { background:#15151d; border:1px solid #2a2a36; border-radius:14px; padding:16px; display:flex; flex-direction:column; gap:6px; }
+  .end-time-label { font-size:10px; color:#6a6a7a; text-transform:uppercase; letter-spacing:1.5px; }
+  .end-time-value { font-size:34px; font-weight:700; color:#e8b44a; font-variant-numeric:tabular-nums; letter-spacing:2px; }
   .end-actions { display:flex; flex-direction:column; gap:10px; margin-top:4px; }
-  .end-btn {
-    width:100%; min-height:52px; border-radius:13px; border:none;
-    font-size:15px; font-weight:700; cursor:pointer; font-family:inherit;
-    letter-spacing:.5px;
-  }
+  .end-btn { width:100%; min-height:52px; border-radius:13px; border:none; font-size:15px; font-weight:700; cursor:pointer; font-family:inherit; letter-spacing:.5px; }
   .end-btn-danger { background:#e5484d; color:#fff; }
   .end-btn-danger:active { background:#c93c40; }
   .end-btn-safe { background:#1c1c26; color:#f2f2f5; border:1px solid #2a2a36; }
   .end-btn-safe:active { background:#262632; }
-  #ended {
-    align-items:center; justify-content:center; padding:24px; gap:18px; text-align:center;
-  }
-  .ended-icon {
-    width:64px; height:64px; border-radius:50%; background:#132a1e;
-    border:1px solid #1e4a33; display:flex; align-items:center;
-    justify-content:center; font-size:28px; color:#3ddc84;
-  }
+  #ended { align-items:center; justify-content:center; padding:24px; gap:18px; text-align:center; }
+  .ended-icon { width:64px; height:64px; border-radius:50%; background:#132a1e; border:1px solid #1e4a33; display:flex; align-items:center; justify-content:center; font-size:28px; color:#3ddc84; }
   .ended-title { font-size:24px; font-weight:700; }
-  .ended-time-box {
-    background:#15151d; border:1px solid #2a2a36; border-radius:14px;
-    padding:16px 28px; display:flex; flex-direction:column; gap:6px; margin-top:6px;
+  .ended-time-box { background:#15151d; border:1px solid #2a2a36; border-radius:14px; padding:16px 28px; display:flex; flex-direction:column; gap:6px; margin-top:6px; }
+  .ended-time-label { font-size:10px; color:#6a6a7a; text-transform:uppercase; letter-spacing:1.5px; }
+  .ended-time-value { font-size:30px; font-weight:700; color:#e8b44a; font-variant-numeric:tabular-nums; letter-spacing:2px; }
+  .pdf-overlay {
+    position:fixed; inset:0; background:rgba(6,6,10,.94);
+    z-index:160; display:none; align-items:center; justify-content:center;
+    padding:16px; backdrop-filter:blur(6px); overflow-y:auto;
   }
-  .ended-time-label {
-    font-size:10px; color:#6a6a7a; text-transform:uppercase; letter-spacing:1.5px;
+  .pdf-overlay.open { display:flex; }
+  .pdf-panel { background:#12121a; border:1px solid #2a2a36; border-radius:18px; width:100%; max-width:900px; max-height:92vh; display:flex; flex-direction:column; overflow:hidden; }
+  .pdf-panel-head { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 18px; border-bottom:1px solid #1e1e28; flex-shrink:0; }
+  .pdf-panel-title { font-size:16px; font-weight:700; }
+  .pdf-panel-sub { font-size:11px; color:#6a6a7a; margin-top:2px; }
+  .pdf-panel-body { flex:1; overflow-y:auto; padding:14px 18px; display:grid; gap:12px; min-height:0; }
+  .pdf-panel-body.mode-1 { grid-template-columns:1fr; }
+  .pdf-panel-body.mode-3 { grid-template-columns:repeat(3,1fr); }
+  .pdf-panel-body.mode-4 { grid-template-columns:repeat(2,1fr); }
+  .voice-upload { background:#15151d; border:1px solid #2a2a36; border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:9px; min-width:0; }
+  .voice-upload-head { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .voice-upload-name { font-size:11px; font-weight:700; letter-spacing:1.2px; color:#e8b44a; text-transform:uppercase; }
+  .voice-upload-count { font-size:10px; font-weight:700; color:#3ddc84; background:#132a1e; border:1px solid #1e4a33; border-radius:9px; padding:2px 7px; }
+  .voice-upload-btn { width:100%; min-height:38px; border-radius:8px; background:#1c1c26; border:1px solid #2a2a36; color:#e8e8f0; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; }
+  .voice-upload-btn:active { background:#262632; }
+  .voice-file-list { display:flex; flex-direction:column; gap:4px; max-height:150px; overflow-y:auto; }
+  .voice-file-item { display:flex; align-items:center; gap:6px; background:#0f0f16; border:1px solid #24242f; border-radius:7px; padding:5px 7px; font-size:11px; color:#c9c9d4; }
+  .voice-file-item .vf-num { font-size:9px; color:#6a6a7a; min-width:12px; font-variant-numeric:tabular-nums; flex-shrink:0; }
+  .voice-file-item .vf-name { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .voice-file-item .vf-del {
+    width:20px; height:20px; border-radius:5px; flex-shrink:0;
+    background:#3a1416; border:1px solid #6b2024; color:#e5484d;
+    font-size:12px; font-weight:700; line-height:1;
+    cursor:pointer; font-family:inherit;
+    display:flex; align-items:center; justify-content:center;
   }
-  .ended-time-value {
-    font-size:30px; font-weight:700; color:#e8b44a;
-    font-variant-numeric:tabular-nums; letter-spacing:2px;
-  }
-  #diag {
-    position:fixed; inset:0; background:#08080c; z-index:100; display:none;
-    flex-direction:column; padding:16px; overflow-y:auto; font-size:12px;
-  }
+  .voice-file-item .vf-del:active { background:#4d1a1d; }
+  .voice-file-empty { font-size:10px; color:#4a4a5a; font-style:italic; padding:6px 2px; }
+  .pdf-panel-foot { display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:13px 18px; border-top:1px solid #1e1e28; flex-shrink:0; background:#0f0f16; }
+  .pdf-msg { flex:1; min-width:180px; font-size:11px; line-height:1.5; color:#e8b44a; display:none; }
+  .pdf-msg.show { display:block; }
+  .pdf-msg.error { color:#e5484d; }
+  .pdf-foot-btn { min-height:44px; padding:0 20px; border-radius:10px; border:none; font-size:13px; font-weight:700; letter-spacing:.5px; cursor:pointer; font-family:inherit; flex-shrink:0; }
+  .pdf-save { background:#e8b44a; color:#12121a; }
+  .pdf-save:active { background:#d4a33f; }
+  .pdf-cancel { background:#1c1c26; color:#c9c9d4; border:1px solid #2a2a36; }
+  .pdf-cancel:active { background:#262632; }
+  #diag { position:fixed; inset:0; background:#08080c; z-index:100; display:none; flex-direction:column; padding:16px; overflow-y:auto; font-size:12px; }
   #diag.open { display:flex; }
   .diag-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
   .diag-title { font-size:16px; font-weight:700; color:#e8b44a; }
   .diag-section { margin-bottom:16px; }
-  .diag-section h4 {
-    font-size:11px; text-transform:uppercase; letter-spacing:1.5px;
-    color:#6a6a7a; margin-bottom:7px; border-bottom:1px solid #1e1e28; padding-bottom:5px;
-  }
+  .diag-section h4 { font-size:11px; text-transform:uppercase; letter-spacing:1.5px; color:#6a6a7a; margin-bottom:7px; border-bottom:1px solid #1e1e28; padding-bottom:5px; }
   .diag-row { display:flex; justify-content:space-between; padding:4px 0; gap:12px; }
   .diag-row span:first-child { color:#8a8a99; flex-shrink:0; }
   .diag-row span:last-child { color:#e8e8f0; text-align:right; word-break:break-all; font-family:ui-monospace,monospace; }
-  .diag-list {
-    font-family:ui-monospace,monospace; font-size:11px; color:#9a9aa8;
-    background:#0f0f16; border-radius:8px; padding:9px; max-height:170px; overflow-y:auto;
-    line-height:1.6; white-space:pre-wrap; word-break:break-all;
-  }
+  .diag-list { font-family:ui-monospace,monospace; font-size:11px; color:#9a9aa8; background:#0f0f16; border-radius:8px; padding:9px; max-height:170px; overflow-y:auto; line-height:1.6; white-space:pre-wrap; word-break:break-all; }
   .diag-actions { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
-  .diag-btn {
-    background:#1c1c26; border:1px solid #2a2a36; color:#c9c9d4; padding:9px 14px;
-    border-radius:9px; font-size:12px; cursor:pointer; font-family:inherit;
-  }
+  .diag-btn { background:#1c1c26; border:1px solid #2a2a36; color:#c9c9d4; padding:9px 14px; border-radius:9px; font-size:12px; cursor:pointer; font-family:inherit; }
   .red { color:#e5484d !important; }
   .green { color:#3ddc84 !important; }
-  .error-banner {
-    position:fixed; top:0; left:0; right:0; background:#e5484d; color:#fff;
-    padding:11px 16px; font-size:13px; text-align:center; z-index:200; display:none;
-  }
+  .error-banner { position:fixed; top:0; left:0; right:0; background:#e5484d; color:#fff; padding:11px 16px; font-size:13px; text-align:center; z-index:200; display:none; }
   .error-banner.show { display:block; }
-  .preload-indicator {
-    position:fixed; bottom:16px; right:16px; z-index:180;
-    background:#15151d; border:1px solid #2a2a36; border-radius:10px;
-    padding:9px 14px; font-size:12px; font-weight:600; color:#e8b44a;
-    display:none; align-items:center; gap:8px;
-    font-variant-numeric:tabular-nums;
-  }
-  .preload-indicator.show { display:flex; }
   .fs-hide { display:none !important; }
-  @media (max-width:760px) {
+  @media (max-width:860px) {
     .presenter-body { flex-direction:column; }
     .mirror-panel {
       width:100%; border-left:none; border-top:1px solid #1e1e28;
       flex-direction:row; align-items:flex-start; gap:10px; padding:10px 14px;
-      max-height:190px; overflow-y:auto;
+      max-height:170px; overflow-y:auto;
     }
     .mirror-panel .mirror-label { display:none; }
-    .mirror-preview { aspect-ratio:auto; padding:6px; flex:1; min-height:64px; }
-    .mirror-next-num { margin:0; white-space:nowrap; }
-    .music-block { padding:8px 10px; min-width:160px; }
+    .music-block { padding:8px 10px; min-width:170px; }
     .open-pdf-btn { min-height:38px; font-size:12px; }
     .music-menu { max-height:180px; }
     .timer-block { padding:8px 10px; min-width:110px; }
@@ -484,24 +375,27 @@
     .timer-block-value { font-size:20px; }
     .timer-reset-btn { min-height:30px; font-size:10px; }
     .members-block { margin:0; padding:0; border:none; flex:1; }
-    .members-list { max-height:80px; }
-    .preload-indicator { bottom:10px; right:10px; font-size:11px; padding:7px 11px; }
+    .members-list { max-height:70px; }
     .finish-float { top:10px; right:10px; min-height:40px; padding:0 14px; font-size:12px; }
+    .pdf-panel-body.mode-3, .pdf-panel-body.mode-4 { grid-template-columns:1fr; }
+    .voices-grid.mode-3 { grid-template-columns:1fr; grid-template-rows:repeat(3,1fr); }
+    .voices-grid.mode-4 { grid-template-columns:1fr; grid-template-rows:repeat(4,1fr); }
+    .voice-cell-label { font-size:9px; padding:2px 6px; }
   }
 </style>
 </head>
 <body>
 <div class="error-banner" id="errorBanner"></div>
-<div class="preload-indicator" id="preloadIndicator">Carregando slides...</div>
 <button class="finish-float" id="finishFloat" onclick="openEndPanel()">FINALIZAR</button>
+
 <div class="screen active" id="home">
   <div class="logo">S1 <span>Mirror</span></div>
   <div class="tagline">Somos Um</div>
-  <button class="btn btn-primary" onclick="startPresenter()">Apresentar</button>
+  <button class="btn btn-primary" onclick="goToModeSelect()">Apresentar</button>
   <button class="btn btn-secondary" onclick="goToJoin()">Assistir</button>
   <div class="last-code" id="homeLastCode">
     <div class="last-code-label">Último código usado</div>
-    <div class="last-code-value" id="homeLastCodeValue">------</div>
+    <div class="last-code-value" id="homeLastCodeValue">-----</div>
     <div class="last-code-hint">Toque em "Assistir" para entrar novamente</div>
   </div>
   <div class="status-bar">
@@ -509,14 +403,24 @@
     <span id="homeStatus">Inicializando...</span>
   </div>
 </div>
-<div class="screen" id="code-screen">
-  <div class="label">Código da sessão</div>
-  <div class="code-display" id="sessionCode">------</div>
-  <div class="hint">Compartilhe este código com o coral</div>
-  <button class="btn btn-ghost" style="max-width:300px" onclick="copyCode()">Copiar código</button>
-  <button class="btn btn-primary" style="max-width:300px" onclick="enterPresenterMode()">Iniciar apresentação</button>
-  <button class="btn btn-ghost" style="max-width:300px" onclick="cancelPresenterSetup()">Voltar</button>
+
+<div class="screen" id="mode-screen">
+  <div class="logo" style="font-size:clamp(26px,5vw,36px)">S1 <span>Mirror</span></div>
+  <div class="label" style="margin-bottom:6px">Escolha o modo</div>
+  <button class="btn btn-primary" onclick="chooseMode(1)">Modo coral</button>
+  <button class="btn btn-primary" onclick="chooseMode(3)">Modo 3 naipes</button>
+  <button class="btn btn-primary" onclick="chooseMode(4)">Modo 4 naipes</button>
+  <button class="btn btn-ghost" onclick="showScreen('home')">Voltar</button>
 </div>
+
+<div class="screen" id="code-screen">
+  <div class="label">Códigos da sessão</div>
+  <div class="code-list" id="codeList"></div>
+  <div class="hint" id="codeHint">Compartilhe cada código com o naipe correspondente</div>
+  <button class="btn btn-primary" style="max-width:340px" onclick="enterPresenterMode()">Iniciar apresentação</button>
+  <button class="btn btn-ghost" style="max-width:340px" onclick="cancelPresenterSetup()">Voltar</button>
+</div>
+
 <div class="screen" id="join">
   <div class="field-group">
     <div class="field-label">Seu nome</div>
@@ -524,27 +428,26 @@
   </div>
   <div class="field-group">
     <div class="field-label">Código da sessão</div>
-    <input class="code-input" id="joinInput" maxlength="6" autocomplete="off" autocapitalize="characters" inputmode="text" placeholder="------">
+    <input class="code-input" id="joinInput" maxlength="5" autocomplete="off" autocapitalize="characters" inputmode="text" placeholder="-----">
   </div>
   <button class="join-last-btn" id="joinLastBtn" onclick="useLastCode()">
     <span class="jl-label">Último código usado</span>
-    <span class="jl-code" id="joinLastCode">------</span>
+    <span class="jl-code" id="joinLastCode">-----</span>
     <span class="jl-hint">Toque para usar este código</span>
   </button>
   <button class="btn btn-primary" style="max-width:300px" onclick="joinSession()">Entrar</button>
   <button class="btn btn-ghost" style="max-width:300px" onclick="showScreen('home')">Voltar</button>
 </div>
+
 <div class="screen" id="waiting">
   <div class="waiting-msg" id="waitingText">Aguardando apresentação...</div>
   <div class="waiting-code" id="waitingCode"></div>
   <button class="btn btn-ghost" style="max-width:300px" onclick="leaveSession()">Sair</button>
 </div>
+
 <div class="screen" id="presenter">
   <div class="presenter-bar" id="presenterBar">
-    <div class="bar-code">
-      <span class="bar-code-label">Código</span>
-      <span class="bar-code-value" id="barCodeValue">------</span>
-    </div>
+    <div class="bar-codes" id="barCodes"></div>
     <div class="bar-viewers">
       <span class="bar-viewers-num" id="barViewersNum">0</span>
       <span id="barViewersLabel">conectados</span>
@@ -555,18 +458,8 @@
     <button class="finish-btn" onclick="openEndPanel()">FINALIZAR</button>
   </div>
   <div class="presenter-body">
-    <div class="slide-area" id="presenterSlide">
-      <img class="opening-img" id="presenterOpening" src="imagens/apresentacao/imagem-de-abertura.gif" alt="Abertura">
-      <div class="prep-overlay" id="presenterPrep">
-        <img class="prep-img" id="presenterPrepImg" src="imagens/apresentacao/carregando-arquivo-pdf.gif" alt="Carregando">
-      </div>
-    </div>
+    <div class="voices-grid mode-1" id="voicesGrid"></div>
     <div class="mirror-panel" id="mirrorPanel">
-      <div class="mirror-label">A seguir</div>
-      <div class="mirror-preview" id="mirrorPreview">
-        <div class="mirror-empty">—</div>
-      </div>
-      <div class="mirror-next-num" id="mirrorNextNum">—</div>
       <div class="music-block">
         <div class="mirror-label">Música</div>
         <div class="music-dropdown" id="musicDropdown">
@@ -577,19 +470,12 @@
           <div class="music-menu" id="musicMenu"></div>
         </div>
         <div class="music-progress" id="musicProgress">—</div>
-        <button class="open-pdf-btn" id="openPdfBtn" onclick="triggerPdfPicker()">+ Abrir PDF</button>
-        <input type="file" id="pdfPicker" accept="application/pdf,.pdf" style="display:none" onchange="handlePdfPicked(event)">
-        <div class="pdf-progress-wrap" id="pdfProgressWrap">
-          <div class="pdf-progress-bar"><div class="pdf-progress-fill" id="pdfProgressFill"></div></div>
-          <div class="pdf-progress-text" id="pdfProgressText">Enviando 0%</div>
-        </div>
+        <button class="open-pdf-btn" id="openPdfBtn" onclick="openPdfPanel()">+ Abrir PDF</button>
       </div>
       <div class="timer-block">
         <div class="timer-block-label">Tempo de apresentação</div>
         <div class="timer-block-value" id="barTimerValue">00:00</div>
-        <button class="timer-reset-btn" onclick="resetTimerClick()">
-          <span class="ico">↺</span> ZERAR
-        </button>
+        <button class="timer-reset-btn" onclick="resetTimerClick()">↺ ZERAR</button>
       </div>
       <div class="members-block">
         <div class="members-head">
@@ -608,10 +494,11 @@
     <button class="ctrl-btn" id="btnNext" onclick="nextSlide()" disabled>Próximo ▶</button>
   </div>
 </div>
+
 <div class="screen" id="viewer">
   <div class="offline-banner" id="offlineBanner">Apresentação encerrada</div>
   <div class="viewer-bar" id="viewerBar">
-    <div class="viewer-bar-code">Código: <b id="viewerBarCode">------</b></div>
+    <div class="viewer-bar-code">Código: <b id="viewerBarCode">-----</b></div>
     <div class="conn-pill" id="connPill">
       <div class="dot"></div>
       <span id="connPillText">Conectando</span>
@@ -627,6 +514,7 @@
     </div>
   </div>
 </div>
+
 <div class="screen" id="ended">
   <div class="ended-icon">✓</div>
   <div class="ended-title">Apresentação encerrada</div>
@@ -636,6 +524,7 @@
   </div>
   <button class="btn btn-ghost" style="max-width:300px;margin-top:8px" onclick="leaveSession()">Voltar ao início</button>
 </div>
+
 <div class="end-overlay" id="endOverlay">
   <div class="end-card">
     <div class="end-title">Finalizar apresentação</div>
@@ -650,6 +539,27 @@
     </div>
   </div>
 </div>
+
+<div class="pdf-overlay" id="pdfOverlay">
+  <div class="pdf-panel">
+    <div class="pdf-panel-head">
+      <div>
+        <div class="pdf-panel-title">Carregar letras</div>
+        <div class="pdf-panel-sub" id="pdfPanelSub">Selecione os PDFs de cada naipe</div>
+      </div>
+      <button class="icon-btn" onclick="closePdfPanel()" title="Fechar">✕</button>
+    </div>
+    <div class="pdf-panel-body mode-1" id="pdfPanelBody"></div>
+    <div class="pdf-panel-foot">
+      <div class="pdf-msg" id="pdfMsg"></div>
+      <button class="pdf-foot-btn pdf-cancel" onclick="closePdfPanel()">CANCELAR</button>
+      <button class="pdf-foot-btn pdf-save" onclick="savePdfPanel()">SALVAR</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="pdfPicker" accept="application/pdf,.pdf" multiple style="display:none">
+
 <div id="diag">
   <div class="diag-head">
     <div class="diag-title">Diagnóstico</div>
@@ -665,18 +575,18 @@
     <h4>Conexão</h4>
     <div class="diag-row"><span>Estado</span><span id="dState">—</span></div>
     <div class="diag-row"><span>Client ID</span><span id="dClient">—</span></div>
-    <div class="diag-row"><span>Canal</span><span id="dChannel">—</span></div>
+    <div class="diag-row"><span>Canais</span><span id="dChannel">—</span></div>
     <div class="diag-row"><span>Papel</span><span id="dRole">—</span></div>
+    <div class="diag-row"><span>Modo</span><span id="dMode">—</span></div>
     <div class="diag-row"><span>Meu nome</span><span id="dMyName">—</span></div>
-    <div class="diag-row"><span>Membros no canal</span><span id="dMembers">—</span></div>
     <div class="diag-row"><span>Coralistas ativos</span><span id="dViewers">—</span></div>
     <div class="diag-row"><span>Tela cheia</span><span id="dFullscreen">—</span></div>
     <div class="diag-row"><span>Wake Lock</span><span id="dWake">—</span></div>
   </div>
   <div class="diag-section">
     <h4>Músicas</h4>
-    <div class="diag-row"><span>PDFs na lista</span><span id="dMusicCount">0</span></div>
-    <div class="diag-row"><span>PDF atual</span><span id="dMusicCurrent">—</span></div>
+    <div class="diag-row"><span>Músicas na lista</span><span id="dMusicCount">0</span></div>
+    <div class="diag-row"><span>Música atual</span><span id="dMusicCurrent">—</span></div>
     <div class="diag-row"><span>Auto-intervalo</span><span id="dAutoInterval">inativo</span></div>
     <div class="diag-row"><span>Slide atual</span><span id="dSlide">—</span></div>
     <div class="diag-row"><span>Tempo</span><span id="dElapsed">—</span></div>
@@ -698,6 +608,7 @@
     </div>
   </div>
 </div>
+
 <script>
 /* =========================================================
    CONFIGURACAO
@@ -716,16 +627,30 @@ var CODE_TTL_MS = 60 * 60 * 1000;
 var HEARTBEAT_INTERVAL = 4000;
 var MEMBER_TIMEOUT = 10000;
 var AUTO_INTERVAL_MS = 60000;
-var CODE_LENGTH = 6;
+var CODE_LENGTH = 5;
 var FS_RESTORE_DELAY = 250;
+var VOICE_LABEL = {
+  SOPRANO: 'Soprano',
+  CONTRALTO: 'Contralto',
+  TENOR: 'Tenor',
+  BARITONO: 'Barítono'
+};
 /* =========================================================
    ESTADO GLOBAL
    ========================================================= */
 var ably = null;
-var channel = null;
 var currentScreen = 'home';
 var role = null;
-var sessionCode = '';
+var sessionMode = 1;
+var activeVoices = ['SOPRANO'];
+var voiceState = {};
+var voiceCodes = {};
+var voicePdfs = {};
+var currentSlide = 0;
+var slideCount = 0;
+var hasActiveMusic = false;
+var currentMusicIndex = -1;
+var musicNames = [];
 var recvCount = 0;
 var sentCount = 0;
 var eventLog = [];
@@ -734,6 +659,7 @@ var stateRequestTimer = null;
 var stateRequestAttempts = 0;
 var myClientId = '';
 var myName = '';
+var myVoice = null;
 var viewerCount = 0;
 var presencePollTimer = null;
 var wakeLock = null;
@@ -745,27 +671,24 @@ var isPaused = false;
 var memberMap = {};
 var heartbeatTimer = null;
 var cleanupTimer = null;
-var pdfDocs = {};
-var pdfOrder = [];
-var pdfSeq = 0;
-var currentPdfId = null;
-var currentSlide = 0;
-var slideCount = 0;
 var isPreparing = false;
 var prepTimer = null;
-var hasActiveMusic = false;
 var sessionStarted = false;
 var showingInterval = false;
 var renderGeneration = 0;
 var pendingPdfChunks = {};
 var orphanChunks = {};
-var isSendingPdf = false;
 var pendingPdfAction = null;
 var autoIntervalTimer = null;
 var autoIntervalDeadline = 0;
 var currentStateImage = 'opening';
 var autoFsRequested = false;
 var fsPickerGuard = false;
+var pdfPanelVoice = null;
+var pdfPanelDraft = {};
+var pdfSeq = 0;
+var pendingUploads = 0;
+var myChannel = null;
 /* =========================================================
    PDF.JS
    ========================================================= */
@@ -773,65 +696,423 @@ if (typeof pdfjsLib !== 'undefined') {
   pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_DIR + 'pdf.worker.min.js';
 }
 /* =========================================================
-   PDFS NA LISTA
+   UTIL
    ========================================================= */
-function currentPdf() {
-  if (!currentPdfId) return null;
-  return pdfDocs[currentPdfId] || null;
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
-function currentPdfName() {
-  var p = currentPdf();
-  return p ? p.nome : '';
+function formatTime(ms) {
+  var total = Math.floor(ms / 1000);
+  var h = Math.floor(total / 3600);
+  var m = Math.floor((total % 3600) / 60);
+  var s = total % 60;
+  var mm = ('0' + m).slice(-2);
+  var ss = ('0' + s).slice(-2);
+  if (h > 0) return h + ':' + mm + ':' + ss;
+  return mm + ':' + ss;
 }
-function totalPagesOf(pdfId) {
-  var p = pdfDocs[pdfId];
-  if (!p) return 1;
-  return p.paginas || 1;
+function log(msg) {
+  var d = new Date();
+  var t = ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2)+':'+('0'+d.getSeconds()).slice(-2);
+  eventLog.unshift(t + ' - ' + msg);
+  if (eventLog.length > 40) eventLog.pop();
+  updateDiag();
 }
-function countPdfs() {
-  return pdfOrder.length;
+function showError(msg) {
+  var b = document.getElementById('errorBanner');
+  b.textContent = msg;
+  b.classList.add('show');
+  setTimeout(function(){ b.classList.remove('show'); }, 9000);
 }
-function openPdfDoc(pdfId, callback) {
-  var p = pdfDocs[pdfId];
-  if (!p) { callback(null); return; }
-  if (p.doc) { callback(p.doc); return; }
-  if (!p.bytes) { callback(null); return; }
-  if (typeof pdfjsLib === 'undefined') {
-    showError('PDF.js nao carregou. Verifique a pasta pdfjs/.');
-    callback(null);
-    return;
+function setDot(color, text) {
+  var dot = document.getElementById('homeDot');
+  var st = document.getElementById('homeStatus');
+  if (dot) dot.className = 'dot ' + color;
+  if (st) st.textContent = text;
+}
+function showScreen(name) {
+  var all = document.querySelectorAll('.screen');
+  for (var i = 0; i < all.length; i++) all[i].classList.remove('active');
+  var el = document.getElementById(name);
+  if (el) el.classList.add('active');
+  currentScreen = name;
+  var floatBtn = document.getElementById('finishFloat');
+  if (floatBtn) {
+    if (name === 'presenter' && isFullscreen()) floatBtn.classList.add('show');
+    else floatBtn.classList.remove('show');
   }
-  var task = pdfjsLib.getDocument({ data: p.bytes.slice(0) });
-  task.promise.then(function(doc){
-    p.doc = doc;
-    p.paginas = doc.numPages;
-    log('PDF aberto: ' + p.nome + ' (' + doc.numPages + ' paginas)');
-    updateDiag();
-    renderMusicMenu();
-    callback(doc);
-  }).catch(function(e){
-    log('ERRO ao abrir PDF: ' + e.message);
-    showError('Nao foi possivel abrir o PDF: ' + p.nome);
-    callback(null);
-  });
 }
 /* =========================================================
-   RENDER (com verificacao de geracao)
+   NOMES DE MUSICA
    ========================================================= */
-function renderPageTo(doc, pageNum, container, isPreview, expectedGen) {
+function cleanMusicName(raw) {
+  var s = String(raw || '');
+  s = s.replace(/\.[Pp][Dd][Ff]$/, '');
+  s = s.replace(/^\s*\d+\s*[-._)\]]*\s*/, '');
+  s = s.replace(/\b(sopranos?|contraltos?|tenores?|bar[ií]tonos?)\b/gi, ' ');
+  s = s.replace(/\s+/g, ' ').trim();
+  s = s.replace(/^[-._\s]+/, '').replace(/[-._\s]+$/, '');
+  if (!s) return 'Sem nome';
+  return s.split(' ').map(function(w){
+    if (!w) return w;
+    return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+  }).join(' ');
+}
+function sortPdfs(list) {
+  return list.slice().sort(function(a, b){
+    var ma = String(a.original || '').match(/^\s*(\d+)/);
+    var mb = String(b.original || '').match(/^\s*(\d+)/);
+    var na = ma ? parseInt(ma[1], 10) : NaN;
+    var nb = mb ? parseInt(mb[1], 10) : NaN;
+    var hasA = !isNaN(na);
+    var hasB = !isNaN(nb);
+    if (hasA && hasB && na !== nb) return na - nb;
+    if (hasA && !hasB) return -1;
+    if (!hasA && hasB) return 1;
+    return String(a.nome).localeCompare(String(b.nome), 'pt-BR');
+  });
+}
+function buildMusicNames() {
+  var base = null;
+  for (var i = 0; i < activeVoices.length; i++) {
+    var list = voicePdfs[activeVoices[i]] || [];
+    if (list.length > 0) { base = list; break; }
+  }
+  if (!base) { musicNames = []; return; }
+  musicNames = base.map(function(p){ return p.nome; });
+}
+/* =========================================================
+   MODOS
+   ========================================================= */
+function goToModeSelect() {
+  showScreen('mode-screen');
+}
+function chooseMode(n) {
+  if (!initAbly()) return;
+  sessionMode = n;
+  if (n === 1) activeVoices = ['SOPRANO'];
+  else if (n === 3) activeVoices = ['SOPRANO', 'CONTRALTO', 'TENOR'];
+  else activeVoices = ['SOPRANO', 'CONTRALTO', 'TENOR', 'BARITONO'];
+  voiceCodes = {};
+  for (var i = 0; i < activeVoices.length; i++) {
+    voiceCodes[activeVoices[i]] = genCode();
+  }
+  renderCodeList();
+  showScreen('code-screen');
+  log('Modo ' + n + ' naipes: ' + activeVoices.join(', '));
+}
+function renderCodeList() {
+  var list = document.getElementById('codeList');
+  if (!list) return;
+  var html = '';
+  for (var i = 0; i < activeVoices.length; i++) {
+    var v = activeVoices[i];
+    html += '<div class="code-row">' +
+      '<span class="code-row-name">' + VOICE_LABEL[v] + '</span>' +
+      '<span class="code-row-value">' + voiceCodes[v] + '</span>' +
+      '</div>';
+  }
+  list.innerHTML = html;
+  var hint = document.getElementById('codeHint');
+  if (hint) {
+    hint.textContent = sessionMode === 1
+      ? 'Compartilhe este código com o coral'
+      : 'Compartilhe cada código com o naipe correspondente';
+  }
+}
+function cancelPresenterSetup() {
+  voiceCodes = {};
+  role = null;
+  showScreen('home');
+  log('Criacao de sessao cancelada');
+}
+function genCode() {
+  var chars = 'ABCDEFGHJKMNPQRSTUVWXYZ';
+  var c = '';
+  for (var i = 0; i < CODE_LENGTH; i++) c += chars.charAt(Math.floor(Math.random() * chars.length));
+  return c;
+}
+/* =========================================================
+   ABLY
+   ========================================================= */
+function initAbly() {
+  if (typeof Ably === 'undefined') {
+    showError('ERRO: A biblioteca do Ably nao carregou. Verifique a internet e recarregue.');
+    log('ERRO: biblioteca Ably ausente');
+    return false;
+  }
+  if (ably) return true;
+  myClientId = 's1-' + Math.random().toString(36).slice(2, 10);
+  try {
+    ably = new Ably.Realtime({
+      key: API_KEY,
+      clientId: myClientId,
+      echoMessages: true,
+      disconnectedRetryTimeout: 5000,
+      suspendedRetryTimeout: 8000
+    });
+  } catch(e) {
+    showError('Erro ao criar cliente Ably: ' + e.message);
+    log('ERRO ao criar cliente: ' + e.message);
+    return false;
+  }
+  ably.connection.on('connected', function(){ log('Conexao: connected'); setDot('green','Conectado'); updateDiag(); });
+  ably.connection.on('connecting', function(){ log('Conexao: connecting'); setDot('yellow','Conectando...'); });
+  ably.connection.on('disconnected', function(){ log('Conexao: disconnected'); setDot('yellow','Desconectado'); });
+  ably.connection.on('suspended', function(){ log('Conexao: suspended'); setDot('yellow','Suspenso'); });
+  ably.connection.on('failed', function(s){
+    var r = (s && s.reason && s.reason.message) ? s.reason.message : 'motivo desconhecido';
+    log('Conexao: FAILED - ' + r);
+    setDot('red','Falhou');
+    showError('Falha na conexao com o Ably: ' + r);
+  });
+  log('Cliente Ably criado - clientId ' + myClientId);
+  return true;
+}
+/* =========================================================
+   TELA CHEIA
+   ========================================================= */
+function isFullscreen() {
+  return !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
+}
+function enterFullscreen() {
+  if (isFullscreen()) return;
+  var el = document.documentElement;
+  var req = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+  if (!req) return;
+  try {
+    var p = req.call(el);
+    if (p && p.catch) p.catch(function(e){ log('Tela cheia recusada: ' + e.message); });
+  } catch(e) {
+    log('Tela cheia falhou: ' + e.message);
+  }
+}
+function exitFullscreen() {
+  if (!isFullscreen()) return;
+  var exit = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
+  if (exit) exit.call(document);
+}
+function toggleFullscreen() {
+  if (!isFullscreen()) enterFullscreen();
+  else exitFullscreen();
+}
+function requestAutoFullscreen() {
+  if (autoFsRequested) return;
+  if (isFullscreen()) { autoFsRequested = true; return; }
+  autoFsRequested = true;
+  enterFullscreen();
+  log('Tela cheia automatica solicitada');
+}
+function restoreFullscreenAfterPicker() {
+  if (role !== 'presenter') return;
+  if (!fsPickerGuard) return;
+  fsPickerGuard = false;
+  setTimeout(function(){
+    if (currentScreen !== 'presenter') return;
+    if (isFullscreen()) return;
+    enterFullscreen();
+    log('Tela cheia restaurada apos seletor');
+  }, FS_RESTORE_DELAY);
+}
+function onFullscreenChange() {
+  var fs = isFullscreen();
+  var bar = document.getElementById('presenterBar');
+  var controls = document.getElementById('presenterControls');
+  var vbar = document.getElementById('viewerBar');
+  var floatBtn = document.getElementById('finishFloat');
+  if (fs) {
+    if (bar) bar.classList.add('fs-hide');
+    if (controls) controls.classList.add('fs-hide');
+    if (vbar) vbar.classList.add('fs-hide');
+    if (floatBtn && role === 'presenter') floatBtn.classList.add('show');
+    log('Tela cheia ativada');
+  } else {
+    if (bar) bar.classList.remove('fs-hide');
+    if (controls) controls.classList.remove('fs-hide');
+    if (vbar) vbar.classList.remove('fs-hide');
+    if (floatBtn) floatBtn.classList.remove('show');
+    log('Tela cheia desativada');
+  }
+  updateDiag();
+  setTimeout(function(){ redrawCurrentState(); }, 120);
+}
+document.addEventListener('fullscreenchange', onFullscreenChange);
+document.addEventListener('webkitfullscreenchange', onFullscreenChange);
+document.addEventListener('msfullscreenchange', onFullscreenChange);
+/* =========================================================
+   WAKE LOCK
+   ========================================================= */
+function requestWakeLock() {
+  if (!('wakeLock' in navigator)) { log('Wake Lock nao suportado'); return; }
+  navigator.wakeLock.request('screen').then(function(lock) {
+    wakeLock = lock;
+    log('Wake Lock ativo');
+    lock.addEventListener('release', function(){ wakeLock = null; updateDiag(); });
+    updateDiag();
+  }).catch(function(e) { log('Wake Lock falhou: ' + e.message); updateDiag(); });
+}
+function releaseWakeLock() {
+  if (wakeLock) { try { wakeLock.release(); } catch(e) {} wakeLock = null; }
+}
+document.addEventListener('visibilitychange', function(){
+  if (document.visibilityState === 'visible' && role) requestWakeLock();
+});
+/* =========================================================
+   CODIGO E NOME SALVOS
+   ========================================================= */
+function saveLastCode(code) {
+  try {
+    localStorage.setItem('s1_last_code', code);
+    localStorage.setItem('s1_last_code_ts', String(Date.now()));
+  } catch(e) {}
+}
+function getLastCode() {
+  try {
+    var code = localStorage.getItem('s1_last_code');
+    var ts = parseInt(localStorage.getItem('s1_last_code_ts') || '0', 10);
+    if (!code || !ts) return '';
+    if (Date.now() - ts > CODE_TTL_MS) {
+      localStorage.removeItem('s1_last_code');
+      localStorage.removeItem('s1_last_code_ts');
+      return '';
+    }
+    return code;
+  } catch(e) { return ''; }
+}
+function clearLastCode() {
+  try {
+    localStorage.removeItem('s1_last_code');
+    localStorage.removeItem('s1_last_code_ts');
+  } catch(e) {}
+  refreshLastCodeUI();
+  log('Codigo salvo removido');
+}
+function saveName(name) { try { localStorage.setItem('s1_name', name); } catch(e) {} }
+function getSavedName() { try { return localStorage.getItem('s1_name') || ''; } catch(e) { return ''; } }
+function refreshLastCodeUI() {
+  var last = getLastCode();
+  var homeBox = document.getElementById('homeLastCode');
+  var homeVal = document.getElementById('homeLastCodeValue');
+  if (homeBox && homeVal) {
+    if (last) { homeVal.textContent = last; homeBox.classList.add('show'); }
+    else { homeBox.classList.remove('show'); }
+  }
+  var joinBtn = document.getElementById('joinLastBtn');
+  var joinCode = document.getElementById('joinLastCode');
+  if (joinBtn && joinCode) {
+    if (last) { joinCode.textContent = last; joinBtn.classList.add('show'); }
+    else { joinBtn.classList.remove('show'); }
+  }
+}
+function useLastCode() {
+  var last = getLastCode();
+  if (!last) return;
+  var input = document.getElementById('joinInput');
+  if (input) { input.value = last; input.focus(); }
+  log('Ultimo codigo aplicado: ' + last);
+}
+function focusJoinFields() {
+  var nameInput = document.getElementById('nameInput');
+  var codeInput = document.getElementById('joinInput');
+  if (!nameInput || !codeInput) return;
+  setTimeout(function(){
+    try {
+      var savedName = (nameInput.value || '').trim();
+      if (savedName.length === 0) nameInput.focus();
+      else {
+        codeInput.focus();
+        var len = codeInput.value.length;
+        if (codeInput.setSelectionRange) codeInput.setSelectionRange(len, len);
+      }
+    } catch(e) {}
+  }, 350);
+}
+function goToJoin() {
+  refreshLastCodeUI();
+  var input = document.getElementById('joinInput');
+  if (input) input.value = '';
+  var nameInput = document.getElementById('nameInput');
+  if (nameInput) nameInput.value = getSavedName();
+  showScreen('join');
+  focusJoinFields();
+}
+/* =========================================================
+   CRONOMETRO
+   ========================================================= */
+function startTimer() {
+  if (timerInterval) return;
+  startTime = Date.now() - elapsedMs;
+  timerInterval = setInterval(function(){
+    if (isPaused) return;
+    elapsedMs = Date.now() - startTime;
+    var el = document.getElementById('barTimerValue');
+    if (el) el.textContent = formatTime(elapsedMs);
+  }, 1000);
+}
+function stopTimer() {
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+}
+function resetTimer() {
+  stopTimer();
+  startTime = 0;
+  elapsedMs = 0;
+  isPaused = false;
+  var el = document.getElementById('barTimerValue');
+  if (el) el.textContent = '00:00';
+}
+function resetTimerClick() {
+  elapsedMs = 0;
+  startTime = Date.now();
+  var el = document.getElementById('barTimerValue');
+  if (el) el.textContent = '00:00';
+  if (!timerInterval) startTimer();
+  log('Cronometro zerado');
+}
+function getElapsed() {
+  if (timerInterval && !isPaused) return Date.now() - startTime;
+  return elapsedMs;
+}
+/* =========================================================
+   AUTO-INTERVALO
+   ========================================================= */
+function clearAutoInterval() {
+  if (autoIntervalTimer) { clearTimeout(autoIntervalTimer); autoIntervalTimer = null; }
+  autoIntervalDeadline = 0;
+  updateDiag();
+}
+function armAutoInterval() {
+  clearAutoInterval();
+  if (role !== 'presenter') return;
+  if (!hasActiveMusic) return;
+  if (slideCount <= 0) return;
+  if (currentSlide !== slideCount - 1) return;
+  autoIntervalDeadline = Date.now() + AUTO_INTERVAL_MS;
+  autoIntervalTimer = setTimeout(function(){
+    autoIntervalTimer = null;
+    autoIntervalDeadline = 0;
+    log('Auto-intervalo: 60s no ultimo slide - modo espera');
+    selectEmptyMusic();
+  }, AUTO_INTERVAL_MS);
+  log('Auto-intervalo armado: 60s no ultimo slide');
+  updateDiag();
+}
+/* =========================================================
+   RENDER
+   ========================================================= */
+function renderPageTo(doc, pageNum, container, expectedGen) {
   if (!doc || !container) return;
   doc.getPage(pageNum).then(function(page){
     if (showingInterval) return;
     if (expectedGen !== undefined && expectedGen !== null && expectedGen !== renderGeneration) return;
     var viewport = page.getViewport({ scale: 1 });
-    var maxW, maxH;
-    if (isPreview) {
-      maxW = container.clientWidth || 300;
-      maxH = container.clientHeight || 170;
-    } else {
-      maxW = container.clientWidth || window.innerWidth;
-      maxH = container.clientHeight || window.innerHeight;
-    }
+    var maxW = container.clientWidth || 400;
+    var maxH = container.clientHeight || 300;
+    if (maxW < 20 || maxH < 20) { maxW = 400; maxH = 300; }
     var scale = Math.min(maxW / viewport.width, maxH / viewport.height);
     var scaled = page.getViewport({ scale: scale });
     var canvas = document.createElement('canvas');
@@ -853,26 +1134,57 @@ function renderPageTo(doc, pageNum, container, isPreview, expectedGen) {
     log('ERRO ao renderizar pagina: ' + e.message);
   });
 }
+function openPdfDoc(pdfId, callback) {
+  var p = voicePdfsById(pdfId);
+  if (!p) { callback(null); return; }
+  if (p.doc) { callback(p.doc); return; }
+  if (!p.bytes) { callback(null); return; }
+  if (typeof pdfjsLib === 'undefined') {
+    showError('PDF.js nao carregou. Verifique a pasta pdfjs/.');
+    callback(null);
+    return;
+  }
+  var task = pdfjsLib.getDocument({ data: p.bytes.slice(0) });
+  task.promise.then(function(doc){
+    p.doc = doc;
+    p.paginas = doc.numPages;
+    log('PDF aberto: ' + p.nome + ' (' + doc.numPages + ' paginas)');
+    updateDiag();
+    callback(doc);
+  }).catch(function(e){
+    log('ERRO ao abrir PDF: ' + e.message);
+    callback(null);
+  });
+}
+function voicePdfsById(pdfId) {
+  for (var i = 0; i < activeVoices.length; i++) {
+    var list = voicePdfs[activeVoices[i]] || [];
+    for (var j = 0; j < list.length; j++) {
+      if (list[j].id === pdfId) return list[j];
+    }
+  }
+  return null;
+}
+function pdfIdForVoiceAt(voice, index) {
+  var list = voicePdfs[voice] || [];
+  if (index < 0 || index >= list.length) return null;
+  return list[index].id;
+}
 /* =========================================================
    IMAGENS DE ESTADO
    ========================================================= */
-function showStateImage(which, imgPath, stateName) {
-  var areaId = which === 'presenter' ? 'presenterSlide' : 'viewerSlide';
+function showStateImage(which, imgPath) {
+  var areaId = which === 'presenter' ? 'voicesGrid' : 'viewerSlide';
   var imgId = which === 'presenter' ? 'presenterOpening' : 'viewerOpening';
   var area = document.getElementById(areaId);
   if (!area) return;
-
   renderGeneration++;
-
-  var removed = 0;
   try {
     var nodes = area.querySelectorAll('.slide-canvas, .slide-placeholder');
-    removed = nodes.length;
     for (var i = 0; i < nodes.length; i++) {
       if (nodes[i].parentNode) nodes[i].parentNode.removeChild(nodes[i]);
     }
   } catch(e) {}
-
   try {
     var el = document.getElementById(imgId);
     if (!el || !area.contains(el)) {
@@ -895,10 +1207,7 @@ function showStateImage(which, imgPath, stateName) {
     el.style.objectPosition = 'center';
     el.src = BASE_URL + imgPath + '?t=' + Date.now();
   } catch(e) {}
-
-  try {
-    log('showStateImage(' + which + ') - ' + removed + ' canvas removido(s), src=' + imgPath);
-  } catch(e) {}
+  log('showStateImage(' + which + ') src=' + imgPath);
 }
 function hideStateImage(which) {
   var imgId = which === 'presenter' ? 'presenterOpening' : 'viewerOpening';
@@ -907,80 +1216,33 @@ function hideStateImage(which) {
 }
 function showOpeningImage(which) {
   currentStateImage = 'opening';
-  showStateImage(which, OPENING_IMG, 'opening');
+  showStateImage(which, OPENING_IMG);
 }
 function showIntervalImage(which) {
   currentStateImage = 'interval';
-  showStateImage(which, INTERVAL_IMG, 'interval');
+  showStateImage(which, INTERVAL_IMG);
 }
-function clearStateImage() {
-  currentStateImage = 'none';
-}
-/* =========================================================
-   REDESENHA O QUE ESTA NA TELA
-   ========================================================= */
+function clearStateImage() { currentStateImage = 'none'; }
 function redrawCurrentState() {
   if (role !== 'presenter' && role !== 'viewer') return;
   var which = role === 'presenter' ? 'presenter' : 'viewer';
-
-  if (currentStateImage === 'opening') {
-    showStateImage(which, OPENING_IMG, 'opening');
+  if (currentStateImage === 'opening') { showStateImage(which, OPENING_IMG); return; }
+  if (currentStateImage === 'interval') { showStateImage(which, INTERVAL_IMG); return; }
+  if (hasActiveMusic) {
+    if (role === 'presenter') renderAllVoices();
+    else renderViewerSlide();
     return;
   }
-  if (currentStateImage === 'interval') {
-    showStateImage(which, INTERVAL_IMG, 'interval');
-    return;
-  }
-
-  if (hasActiveMusic && currentPdfId) {
-    if (role === 'presenter') {
-      renderPresenterSlide();
-      renderMirror();
-    } else {
-      renderViewerSlide();
-    }
-    return;
-  }
-
-  showStateImage(which, OPENING_IMG, 'opening');
-}
-/* =========================================================
-   AUTO-INTERVALO
-   ========================================================= */
-function clearAutoInterval() {
-  if (autoIntervalTimer) {
-    clearTimeout(autoIntervalTimer);
-    autoIntervalTimer = null;
-  }
-  autoIntervalDeadline = 0;
-  updateDiag();
-}
-function armAutoInterval() {
-  clearAutoInterval();
-  if (role !== 'presenter') return;
-  if (!hasActiveMusic) return;
-  if (slideCount <= 0) return;
-  if (currentSlide !== slideCount - 1) return;
-  autoIntervalDeadline = Date.now() + AUTO_INTERVAL_MS;
-  autoIntervalTimer = setTimeout(function(){
-    autoIntervalTimer = null;
-    autoIntervalDeadline = 0;
-    log('Auto-intervalo: 60s no ultimo slide - mudando para modo espera');
-    selectEmptyMusic();
-  }, AUTO_INTERVAL_MS);
-  log('Auto-intervalo armado: 60s no ultimo slide');
-  updateDiag();
+  showStateImage(which, OPENING_IMG);
 }
 /* =========================================================
    PREPARACAO VISUAL
    ========================================================= */
-function startPreparation(pdfId, onDone) {
-  var p = pdfDocs[pdfId];
-  if (!p) { if (onDone) onDone(); return; }
+function startPreparation(onDone) {
   isPreparing = true;
   setPrepOverlay(true);
   setNavEnabled(false);
-  var total = totalPagesOf(pdfId);
+  var total = slideCount;
   var i = 0;
   function step() {
     if (!isPreparing) return;
@@ -1023,425 +1285,89 @@ function setNavEnabled(enabled) {
   if (next) next.disabled = !enabled;
 }
 function renderSlideForRole() {
-  if (role === 'presenter') renderPresenterSlide();
+  if (role === 'presenter') renderAllVoices();
   else renderViewerSlide();
 }
 /* =========================================================
-   CRONOMETRO
+   RENDER APRESENTADOR (grade de naipes)
    ========================================================= */
-function formatTime(ms) {
-  var total = Math.floor(ms / 1000);
-  var h = Math.floor(total / 3600);
-  var m = Math.floor((total % 3600) / 60);
-  var s = total % 60;
-  var mm = ('0' + m).slice(-2);
-  var ss = ('0' + s).slice(-2);
-  if (h > 0) return h + ':' + mm + ':' + ss;
-  return mm + ':' + ss;
+function buildVoicesGrid() {
+  var grid = document.getElementById('voicesGrid');
+  if (!grid) return;
+  var modeClass = activeVoices.length === 1 ? 1 : (activeVoices.length === 3 ? 3 : 4);
+  grid.className = 'voices-grid mode-' + modeClass;
+  var html = '';
+  for (var i = 0; i < activeVoices.length; i++) {
+    var v = activeVoices[i];
+    html += '<div class="voice-cell" id="cell-' + v + '">' +
+      '<div class="voice-cell-label">' + VOICE_LABEL[v] + '</div>' +
+      '<div class="voice-cell-empty">Sem letra</div>' +
+      '</div>';
+  }
+  grid.innerHTML = html;
 }
-function startTimer() {
-  if (timerInterval) return;
-  startTime = Date.now() - elapsedMs;
-  timerInterval = setInterval(function(){
-    if (isPaused) return;
-    elapsedMs = Date.now() - startTime;
-    var el = document.getElementById('barTimerValue');
-    if (el) el.textContent = formatTime(elapsedMs);
-  }, 1000);
-}
-function stopTimer() {
-  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
-}
-function resetTimer() {
-  stopTimer();
-  startTime = 0;
-  elapsedMs = 0;
-  isPaused = false;
-  var el = document.getElementById('barTimerValue');
-  if (el) el.textContent = '00:00';
-}
-function resetTimerClick() {
-  elapsedMs = 0;
-  startTime = Date.now();
-  var el = document.getElementById('barTimerValue');
-  if (el) el.textContent = '00:00';
-  if (!timerInterval) startTimer();
-  log('Cronometro zerado');
-}
-function getElapsed() {
-  if (timerInterval && !isPaused) return Date.now() - startTime;
-  return elapsedMs;
-}
-/* =========================================================
-   TELA CHEIA
-   ========================================================= */
-function isFullscreen() {
-  return !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
-}
-function enterFullscreen() {
-  if (isFullscreen()) return;
-  var el = document.documentElement;
-  var req = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
-  if (!req) return;
-  try {
-    var p = req.call(el);
-    if (p && p.catch) p.catch(function(e){ log('Tela cheia recusada: ' + e.message); });
-  } catch(e) {
-    log('Tela cheia falhou: ' + e.message);
+function renderAllVoices() {
+  if (showingInterval) return;
+  var myGen = ++renderGeneration;
+  for (var i = 0; i < activeVoices.length; i++) {
+    renderVoiceCell(activeVoices[i], myGen);
   }
 }
-function exitFullscreen() {
-  if (!isFullscreen()) return;
-  var exit = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
-  if (exit) exit.call(document);
-}
-function toggleFullscreen() {
-  if (!isFullscreen()) enterFullscreen();
-  else exitFullscreen();
-}
-function requestAutoFullscreen() {
-  if (autoFsRequested) return;
-  if (isFullscreen()) { autoFsRequested = true; return; }
-  autoFsRequested = true;
-  enterFullscreen();
-  log('Tela cheia automatica solicitada');
-}
-/* NOVO: restaura a tela cheia depois que o seletor de arquivos fecha */
-function restoreFullscreenAfterPicker() {
-  if (role !== 'presenter') return;
-  if (!fsPickerGuard) return;
-  fsPickerGuard = false;
-  setTimeout(function(){
-    if (currentScreen !== 'presenter') return;
-    if (isFullscreen()) return;
-    enterFullscreen();
-    log('Tela cheia restaurada apos seletor de arquivos');
-  }, FS_RESTORE_DELAY);
-}
-function onFullscreenChange() {
-  var fs = isFullscreen();
-  var bar = document.getElementById('presenterBar');
-  var controls = document.getElementById('presenterControls');
-  var vbar = document.getElementById('viewerBar');
-  var floatBtn = document.getElementById('finishFloat');
-
-  if (fs) {
-    if (bar) bar.classList.add('fs-hide');
-    if (controls) controls.classList.add('fs-hide');
-    if (vbar) vbar.classList.add('fs-hide');
-    if (floatBtn && role === 'presenter') floatBtn.classList.add('show');
-    log('Tela cheia ativada');
-  } else {
-    if (bar) bar.classList.remove('fs-hide');
-    if (controls) controls.classList.remove('fs-hide');
-    if (vbar) vbar.classList.remove('fs-hide');
-    if (floatBtn) floatBtn.classList.remove('show');
-    log('Tela cheia desativada');
-  }
-  updateDiag();
-  setTimeout(function(){ redrawCurrentState(); }, 120);
-}
-document.addEventListener('fullscreenchange', onFullscreenChange);
-document.addEventListener('webkitfullscreenchange', onFullscreenChange);
-document.addEventListener('msfullscreenchange', onFullscreenChange);
-/* =========================================================
-   WAKE LOCK
-   ========================================================= */
-function requestWakeLock() {
-  if (!('wakeLock' in navigator)) {
-    log('Wake Lock nao suportado neste navegador');
+function renderVoiceCell(voice, myGen) {
+  var cell = document.getElementById('cell-' + voice);
+  if (!cell) return;
+  var pdfId = pdfIdForVoiceAt(voice, currentSlide);
+  if (!pdfId) {
+    var label = cell.querySelector('.voice-cell-label');
+    var keep = label ? label.outerHTML : '';
+    cell.innerHTML = keep + '<div class="voice-cell-empty">Sem letra</div>';
     return;
   }
-  navigator.wakeLock.request('screen').then(function(lock) {
-    wakeLock = lock;
-    log('Wake Lock ativo - tela nao apaga');
-    lock.addEventListener('release', function(){
-      log('Wake Lock liberado');
-      wakeLock = null;
-      updateDiag();
-    });
-    updateDiag();
-  }).catch(function(e) {
-    log('Wake Lock falhou: ' + e.message);
-    updateDiag();
+  openPdfDoc(pdfId, function(doc){
+    if (showingInterval) return;
+    if (myGen !== undefined && myGen !== null && myGen !== renderGeneration) return;
+    if (!doc) return;
+    var label = cell.querySelector('.voice-cell-label');
+    var keep = label ? label.outerHTML : '';
+    cell.innerHTML = keep;
+    var pageNum = Math.min(currentSlide + 1, doc.numPages);
+    renderPageTo(doc, pageNum, cell, myGen);
   });
 }
-function releaseWakeLock() {
-  if (wakeLock) {
-    try { wakeLock.release(); } catch(e) {}
-    wakeLock = null;
+function renderViewerSlide() {
+  var el = document.getElementById('viewerSlide');
+  if (!el) return;
+  if (showingInterval) return;
+  var myGen = ++renderGeneration;
+  hideStateImage('viewer');
+  var pdfId = pdfIdForVoiceAt(myVoice, currentSlide);
+  if (!pdfId) {
+    el.innerHTML = '<div class="slide-placeholder">Aguardando...</div>';
+    return;
   }
-}
-document.addEventListener('visibilitychange', function(){
-  if (document.visibilityState === 'visible' && role) {
-    requestWakeLock();
-  }
-});
-/* =========================================================
-   CODIGO E NOME
-   ========================================================= */
-function saveLastCode(code) {
-  try {
-    localStorage.setItem('s1_last_code', code);
-    localStorage.setItem('s1_last_code_ts', String(Date.now()));
-  } catch(e) {}
-}
-function getLastCode() {
-  try {
-    var code = localStorage.getItem('s1_last_code');
-    var ts = parseInt(localStorage.getItem('s1_last_code_ts') || '0', 10);
-    if (!code || !ts) return '';
-    if (Date.now() - ts > CODE_TTL_MS) {
-      localStorage.removeItem('s1_last_code');
-      localStorage.removeItem('s1_last_code_ts');
-      return '';
+  openPdfDoc(pdfId, function(doc){
+    if (showingInterval) return;
+    if (myGen !== renderGeneration) return;
+    if (!doc) {
+      el.innerHTML = '<div class="slide-placeholder">Aguardando...</div>';
+      return;
     }
-    return code;
-  } catch(e) { return ''; }
-}
-function clearLastCode() {
-  try {
-    localStorage.removeItem('s1_last_code');
-    localStorage.removeItem('s1_last_code_ts');
-  } catch(e) {}
-  refreshLastCodeUI();
-  log('Codigo salvo removido');
-}
-function saveName(name) {
-  try {
-    localStorage.setItem('s1_name', name);
-  } catch(e) {}
-}
-function getSavedName() {
-  try {
-    var n = localStorage.getItem('s1_name');
-    if (!n) return '';
-    return n;
-  } catch(e) { return ''; }
-}
-function refreshLastCodeUI() {
-  var last = getLastCode();
-  var homeBox = document.getElementById('homeLastCode');
-  var homeVal = document.getElementById('homeLastCodeValue');
-  if (homeBox && homeVal) {
-    if (last) { homeVal.textContent = last; homeBox.classList.add('show'); }
-    else { homeBox.classList.remove('show'); }
-  }
-  var joinBtn = document.getElementById('joinLastBtn');
-  var joinCode = document.getElementById('joinLastCode');
-  if (joinBtn && joinCode) {
-    if (last) { joinCode.textContent = last; joinBtn.classList.add('show'); }
-    else { joinBtn.classList.remove('show'); }
-  }
-}
-function useLastCode() {
-  var last = getLastCode();
-  if (!last) return;
-  var input = document.getElementById('joinInput');
-  if (input) {
-    input.value = last;
-    input.focus();
-  }
-  log('Ultimo codigo aplicado ao campo: ' + last);
-}
-function focusJoinFields() {
-  var nameInput = document.getElementById('nameInput');
-  var codeInput = document.getElementById('joinInput');
-  if (!nameInput || !codeInput) return;
-  setTimeout(function(){
-    try {
-      var savedName = (nameInput.value || '').trim();
-      if (savedName.length === 0) {
-        nameInput.focus();
-        log('Foco no campo de nome');
-      } else {
-        codeInput.focus();
-        var len = codeInput.value.length;
-        if (codeInput.setSelectionRange) codeInput.setSelectionRange(len, len);
-        log('Foco no campo de codigo');
-      }
-    } catch(e) {}
-  }, 350);
-}
-function goToJoin() {
-  refreshLastCodeUI();
-  var input = document.getElementById('joinInput');
-  if (input) input.value = '';
-  var nameInput = document.getElementById('nameInput');
-  if (nameInput) nameInput.value = getSavedName();
-  showScreen('join');
-  focusJoinFields();
-}
-/* =========================================================
-   NAVEGACAO E LOG
-   ========================================================= */
-function showScreen(name) {
-  var all = document.querySelectorAll('.screen');
-  for (var i = 0; i < all.length; i++) all[i].classList.remove('active');
-  var el = document.getElementById(name);
-  if (el) el.classList.add('active');
-  currentScreen = name;
-  var floatBtn = document.getElementById('finishFloat');
-  if (floatBtn) {
-    if (name === 'presenter' && isFullscreen()) floatBtn.classList.add('show');
-    else floatBtn.classList.remove('show');
-  }
-}
-function toggleDiag() {
-  document.getElementById('diag').classList.toggle('open');
-  updateDiag();
-}
-function log(msg) {
-  var d = new Date();
-  var t = ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2)+':'+('0'+d.getSeconds()).slice(-2);
-  eventLog.unshift(t + ' - ' + msg);
-  if (eventLog.length > 40) eventLog.pop();
-  updateDiag();
-}
-function showError(msg) {
-  var b = document.getElementById('errorBanner');
-  b.textContent = msg;
-  b.classList.add('show');
-  setTimeout(function(){ b.classList.remove('show'); }, 9000);
-}
-function setDot(color, text) {
-  var dot = document.getElementById('homeDot');
-  var st = document.getElementById('homeStatus');
-  if (dot) dot.className = 'dot ' + color;
-  if (st) st.textContent = text;
-}
-/* =========================================================
-   DIAGNOSTICO
-   ========================================================= */
-function updateDiag() {
-  var libOk = (typeof Ably !== 'undefined');
-  var pdfOk = (typeof pdfjsLib !== 'undefined');
-  var dT = document.getElementById('dTransport');
-  var dL = document.getElementById('dLib');
-  if (dT) dT.textContent = 'Ably Realtime' + (pdfOk ? ' + PDF.js' : ' (PDF.js ausente)');
-  if (dL) {
-    dL.textContent = libOk ? 'carregada (ok)' : 'NAO CARREGADA';
-    dL.className = libOk ? 'green' : 'red';
-  }
-  var host = '-', state = '-';
-  if (ably) {
-    try { host = ably.connection.connectionManager.host || '-'; } catch(e) {}
-    state = ably.connection.state || '-';
-  }
-  var dH = document.getElementById('dHost'); if (dH) dH.textContent = host;
-  var dS = document.getElementById('dState'); if (dS) dS.textContent = state;
-  var dC = document.getElementById('dClient'); if (dC) dC.textContent = myClientId || '-';
-  var dCh = document.getElementById('dChannel'); if (dCh) dCh.textContent = channel ? channel.name : '-';
-  var dR = document.getElementById('dRole'); if (dR) dR.textContent = role || '-';
-  var dN = document.getElementById('dMyName'); if (dN) dN.textContent = myName || '-';
-  var dV = document.getElementById('dViewers'); if (dV) dV.textContent = viewerCount;
-  var dMC = document.getElementById('dMusicCount'); if (dMC) dMC.textContent = countPdfs();
-  var dMCur = document.getElementById('dMusicCurrent');
-  if (dMCur) dMCur.textContent = currentPdfName() || 'Modo espera';
-  var dAI = document.getElementById('dAutoInterval');
-  if (dAI) {
-    if (autoIntervalDeadline > 0) {
-      var rest = Math.max(0, Math.ceil((autoIntervalDeadline - Date.now()) / 1000));
-      dAI.textContent = 'armado (' + rest + 's)';
-      dAI.className = 'green';
-    } else {
-      dAI.textContent = 'inativo';
-      dAI.className = '';
-    }
-  }
-  var dSl = document.getElementById('dSlide');
-  if (dSl) dSl.textContent = hasActiveMusic ? ((currentSlide + 1) + ' / ' + slideCount) : '-';
-  var dEl = document.getElementById('dElapsed'); if (dEl) dEl.textContent = formatTime(getElapsed());
-  var dRe = document.getElementById('dRecv'); if (dRe) dRe.textContent = recvCount;
-  var dSe = document.getElementById('dSent'); if (dSe) dSe.textContent = sentCount;
-  var dEc = document.getElementById('dEcho'); if (dEc) dEc.textContent = echoResult;
-  var dLo = document.getElementById('dLog'); if (dLo) dLo.textContent = eventLog.length ? eventLog.join('\n') : 'Nenhum evento registrado.';
-  var fs = isFullscreen();
-  var dF = document.getElementById('dFullscreen');
-  if (dF) { dF.textContent = fs ? 'ativa' : 'inativa'; dF.className = fs ? 'green' : ''; }
-  var dW = document.getElementById('dWake');
-  if (dW) { dW.textContent = wakeLock ? 'ativo' : ('wakeLock' in navigator ? 'inativo' : 'nao suportado'); dW.className = wakeLock ? 'green' : ''; }
-  if (channel) {
-    try {
-      channel.presence.get(function(err, members) {
-        var dM = document.getElementById('dMembers');
-        if (!dM) return;
-        if (!err && members) {
-          var ids = [];
-          for (var i = 0; i < members.length; i++) ids.push(members[i].clientId);
-          dM.textContent = members.length + ' (' + ids.join(', ') + ')';
-        } else if (err) {
-          dM.textContent = 'erro: ' + err.message;
-        }
-      });
-    } catch(e) {}
-  }
-}
-function copyDiag() {
-  var txt = 'TRANSPORTE: Ably Realtime + PDF.js\n' +
-    'Biblioteca: ' + (typeof Ably !== 'undefined' ? 'carregada (ok)' : 'NAO CARREGADA') + '\n' +
-    'Host: ' + (ably ? (ably.connection.connectionManager.host || '-') : '-') + '\n' +
-    'Estado: ' + (ably ? ably.connection.state : '-') + '\n' +
-    'Client ID: ' + (myClientId || '-') + '\n' +
-    'Nome: ' + (myName || '-') + '\n' +
-    'Canal: ' + (channel ? channel.name : '-') + '\n' +
-    'Papel: ' + (role || '-') + '\n' +
-    'Coralistas ativos: ' + viewerCount + '\n' +
-    'PDFs na lista: ' + countPdfs() + '\n' +
-    'PDF atual: ' + (currentPdfName() || 'Modo espera') + '\n' +
-    'Estado visual: ' + currentStateImage + '\n' +
-    'Slide: ' + (hasActiveMusic ? ((currentSlide + 1) + '/' + slideCount) : '-') + '\n' +
-    'Tempo: ' + formatTime(getElapsed()) + '\n' +
-    'Recebidas: ' + recvCount + '\n' +
-    'Enviadas: ' + sentCount + '\n' +
-    'Eco: ' + echoResult + '\n\nLOG:\n' + eventLog.join('\n');
-  navigator.clipboard.writeText(txt).then(function(){ log('Diagnostico copiado'); });
-}
-/* =========================================================
-   ABLY
-   ========================================================= */
-function initAbly() {
-  if (typeof Ably === 'undefined') {
-    showError('ERRO: A biblioteca do Ably nao carregou. Verifique a internet e recarregue.');
-    log('ERRO: biblioteca Ably ausente');
-    return false;
-  }
-  if (ably) return true;
-  myClientId = 's1-' + Math.random().toString(36).slice(2, 10);
-  try {
-    ably = new Ably.Realtime({
-      key: API_KEY,
-      clientId: myClientId,
-      echoMessages: true,
-      disconnectedRetryTimeout: 5000,
-      suspendedRetryTimeout: 8000
-    });
-  } catch(e) {
-    showError('Erro ao criar cliente Ably: ' + e.message);
-    log('ERRO ao criar cliente: ' + e.message);
-    return false;
-  }
-  ably.connection.on('connected', function(){ log('Conexao: connected'); setDot('green','Conectado'); updateDiag(); });
-  ably.connection.on('connecting', function(){ log('Conexao: connecting'); setDot('yellow','Conectando...'); });
-  ably.connection.on('disconnected', function(){ log('Conexao: disconnected'); setDot('yellow','Desconectado'); });
-  ably.connection.on('suspended', function(){ log('Conexao: suspended'); setDot('yellow','Suspenso'); });
-  ably.connection.on('failed', function(s){
-    var r = (s && s.reason && s.reason.message) ? s.reason.message : 'motivo desconhecido';
-    log('Conexao: FAILED - ' + r);
-    setDot('red','Falhou');
-    showError('Falha na conexao com o Ably: ' + r);
+    var pageNum = Math.min(currentSlide + 1, doc.numPages);
+    renderPageTo(doc, pageNum, el, myGen);
   });
-  log('Cliente Ably criado - clientId ' + myClientId);
-  return true;
 }
-function genCode() {
-  var chars = 'ABCDEFGHJKMNPQRSTUVWXYZ';
-  var c = '';
-  for (var i = 0; i < CODE_LENGTH; i++) c += chars.charAt(Math.floor(Math.random() * chars.length));
-  return c;
+function updateCounter() {
+  var c = document.getElementById('presenterCounter');
+  if (c) c.textContent = hasActiveMusic ? ((currentSlide + 1) + ' / ' + slideCount) : '—';
+  var p = document.getElementById('musicProgress');
+  if (p) {
+    p.textContent = (hasActiveMusic && currentMusicIndex >= 0 && musicNames[currentMusicIndex])
+      ? (musicNames[currentMusicIndex] + ' - ' + (currentSlide + 1) + '/' + slideCount)
+      : '—';
+  }
 }
 /* =========================================================
-   MENU SUSPENSO DE MUSICAS
+   MENU DE MUSICAS
    ========================================================= */
 function toggleMusicMenu(ev) {
   if (ev) ev.stopPropagation();
@@ -1462,31 +1388,23 @@ function renderMusicMenu() {
   var menu = document.getElementById('musicMenu');
   var trgName = document.getElementById('musicTriggerName');
   if (!menu) return;
-
   var html = '';
   var emptyActive = (!hasActiveMusic) ? ' active' : '';
   html += '<button class="music-option empty-opt' + emptyActive + '" onclick="selectEmptyMusic()">' +
     '<span class="opt-num">0</span>' +
     '<span class="opt-name">Modo espera</span>' +
     '</button>';
-
-  for (var i = 0; i < pdfOrder.length; i++) {
-    var id = pdfOrder[i];
-    var p = pdfDocs[id];
-    if (!p) continue;
-    var active = (hasActiveMusic && id === currentPdfId) ? ' active' : '';
-    html += '<button class="music-option' + active + '" onclick="activatePdf(\'' + id + '\')">' +
+  for (var i = 0; i < musicNames.length; i++) {
+    var active = (hasActiveMusic && i === currentMusicIndex) ? ' active' : '';
+    html += '<button class="music-option' + active + '" onclick="activateMusic(' + i + ')">' +
       '<span class="opt-num">' + (i + 1) + '</span>' +
-      '<span class="opt-name">' + escapeHtml(p.nome) + '</span>' +
-      '<span class="opt-pages">' + (p.paginas || 1) + 'p</span>' +
+      '<span class="opt-name">' + escapeHtml(musicNames[i]) + '</span>' +
       '</button>';
   }
   menu.innerHTML = html;
-
   if (trgName) {
-    if (hasActiveMusic && currentPdfId && pdfDocs[currentPdfId]) {
-      var idx = pdfOrder.indexOf(currentPdfId);
-      trgName.textContent = (idx >= 0 ? (idx + 1) + '. ' : '') + pdfDocs[currentPdfId].nome;
+    if (hasActiveMusic && currentMusicIndex >= 0 && musicNames[currentMusicIndex]) {
+      trgName.textContent = (currentMusicIndex + 1) + '. ' + musicNames[currentMusicIndex];
       trgName.classList.remove('empty');
     } else {
       trgName.textContent = 'Modo espera';
@@ -1495,84 +1413,9 @@ function renderMusicMenu() {
   }
 }
 /* =========================================================
-   PDF - ENVIO
+   ATIVAR MUSICA
    ========================================================= */
-function triggerPdfPicker() {
-  if (isSendingPdf) return;
-  var picker = document.getElementById('pdfPicker');
-  if (!picker) return;
-  /* NOVO: marca que o seletor esta aberto para restaurar a tela cheia depois */
-  fsPickerGuard = true;
-  picker.click();
-  /* fallback: se o usuario cancelar, restaura ao voltar o foco */
-  window.addEventListener('focus', function onFocusBack(){
-    window.removeEventListener('focus', onFocusBack);
-    restoreFullscreenAfterPicker();
-  });
-}
-function handlePdfPicked(ev) {
-  var file = ev.target.files && ev.target.files[0];
-  if (!file) {
-    /* NOVO: usuario cancelou - restaura a tela cheia */
-    restoreFullscreenAfterPicker();
-    return;
-  }
-  ev.target.value = '';
-  if (file.type && file.type.indexOf('pdf') === -1 && !/\.pdf$/i.test(file.name)) {
-    showError('Selecione um arquivo PDF.');
-    restoreFullscreenAfterPicker();
-    return;
-  }
-  var nome = file.name.replace(/\.pdf$/i, '');
-  if (nome.length > 40) nome = nome.slice(0, 40);
-  log('PDF escolhido: ' + file.name + ' (' + Math.round(file.size / 1024) + ' KB)');
-  var reader = new FileReader();
-  reader.onload = function(){
-    var dataUrl = reader.result;
-    var base64 = String(dataUrl).split(',')[1] || '';
-    if (!base64) { showError('Nao foi possivel ler o PDF.'); return; }
-    registerPdf(nome, base64);
-  };
-  reader.onerror = function(){
-    showError('Erro ao ler o arquivo PDF.');
-    log('ERRO FileReader');
-  };
-  reader.readAsDataURL(file);
-  /* NOVO: restaura a tela cheia logo apos escolher o arquivo */
-  restoreFullscreenAfterPicker();
-}
-function registerPdf(nome, base64) {
-  pdfSeq++;
-  var pdfId = 'pdf' + pdfSeq;
-  var bytes = base64ToBytes(base64);
-  pdfDocs[pdfId] = {
-    nome: nome,
-    bytes: bytes,
-    base64: base64,
-    paginas: 1,
-    doc: null
-  };
-  pdfOrder.push(pdfId);
-  log('PDF registrado na lista: ' + nome + ' (' + Math.round(bytes.length / 1024) + ' KB)');
-  openPdfDoc(pdfId, function(doc){
-    if (doc) log('PDF pronto: ' + nome + ' - ' + doc.numPages + ' paginas');
-    renderMusicMenu();
-    updateDiag();
-  });
-  showLoadingDuringSend();
-  sendPdfToChannel(pdfId, nome, base64);
-}
-function showLoadingDuringSend() {
-  var overlay = document.getElementById('presenterPrep');
-  if (overlay) overlay.classList.add('show');
-  log('Imagem de carregamento ativada durante envio do PDF');
-}
-function hideLoadingAfterSend() {
-  var overlay = document.getElementById('presenterPrep');
-  if (overlay) overlay.classList.remove('show');
-}
-function activatePdf(pdfId) {
-  if (!pdfDocs[pdfId]) return;
+function activateMusic(index) {
   closeMusicMenu();
   clearAutoInterval();
   cancelPreparation();
@@ -1581,19 +1424,28 @@ function activatePdf(pdfId) {
   showingInterval = false;
   sessionStarted = true;
   hasActiveMusic = true;
-  currentPdfId = pdfId;
+  currentMusicIndex = index;
   currentSlide = 0;
-  slideCount = totalPagesOf(pdfId);
-  renderPresenterSlide();
-  renderMirror();
+  var maxPages = 0;
+  for (var i = 0; i < activeVoices.length; i++) {
+    var list = voicePdfs[activeVoices[i]] || [];
+    var p = list[index];
+    if (p) {
+      if (!p.doc) openPdfDoc(p.id, function(){});
+      var pages = p.paginas || 1;
+      if (pages > maxPages) maxPages = pages;
+    }
+  }
+  slideCount = maxPages || 1;
+  renderAllVoices();
   updateCounter();
   renderMusicMenu();
-  publishPrepStart(pdfId);
-  startPreparation(pdfId, function(){
+  publishPrepStart();
+  startPreparation(function(){
     publishSlide();
     armAutoInterval();
   });
-  log('PDF ativado: ' + pdfDocs[pdfId].nome);
+  log('Musica ativada: ' + (musicNames[index] || index));
 }
 function selectEmptyMusic() {
   closeMusicMenu();
@@ -1603,84 +1455,332 @@ function selectEmptyMusic() {
   hasActiveMusic = false;
   showingInterval = true;
   sessionStarted = true;
-  currentPdfId = null;
+  currentMusicIndex = -1;
   currentSlide = 0;
   slideCount = 0;
   setNavEnabled(false);
   showIntervalImage('presenter');
   publishInterval();
   renderMusicMenu();
-  document.getElementById('mirrorPreview').innerHTML = '<div class="mirror-empty">—</div>';
-  document.getElementById('mirrorNextNum').textContent = '—';
   updateCounter();
-  log('Modo espera selecionado - imagem de intervalo');
+  log('Modo espera selecionado');
 }
-function sendPdfToChannel(pdfId, nome, base64) {
-  if (!channel) {
-    log('Sem canal - PDF nao enviado aos coralistas');
-    hideLoadingAfterSend();
+/* =========================================================
+   PUBLICACAO
+   ========================================================= */
+function publishToAll(eventName, data) {
+  for (var i = 0; i < activeVoices.length; i++) {
+    var v = activeVoices[i];
+    var st = voiceState[v];
+    if (!st || !st.channel) continue;
+    try {
+      st.channel.publish(eventName, data);
+      sentCount++;
+    } catch(e) {
+      log('ERRO publish ' + eventName + ' em ' + v + ': ' + e.message);
+    }
+  }
+}
+function publishOpening() { publishToAll('opening', { ts: Date.now() }); log('opening publicado'); }
+function publishInterval() { publishToAll('interval', { ts: Date.now() }); log('interval publicado'); }
+function publishPrepStart() {
+  publishToAll('prep-start', { index: currentMusicIndex, total: slideCount, perSlide: PREP_PER_SLIDE_MS });
+  log('prep-start publicado');
+}
+function publishSlide() {
+  if (!hasActiveMusic) { publishInterval(); return; }
+  for (var i = 0; i < activeVoices.length; i++) {
+    var v = activeVoices[i];
+    var st = voiceState[v];
+    if (!st || !st.channel) continue;
+    var pdfId = pdfIdForVoiceAt(v, currentSlide);
+    try {
+      st.channel.publish('slide', { pdfId: pdfId, index: currentSlide, total: slideCount });
+      sentCount++;
+    } catch(e) {
+      log('ERRO slide em ' + v + ': ' + e.message);
+    }
+  }
+  log('slide publicado: ' + (currentSlide + 1) + '/' + slideCount);
+  updateDiag();
+}
+function publishCurrentState() {
+  if (!sessionStarted) { publishOpening(); return; }
+  if (!hasActiveMusic) { publishInterval(); return; }
+  publishSlide();
+}
+/* =========================================================
+   NAVEGACAO
+   ========================================================= */
+function nextSlide() {
+  if (isPreparing) return;
+  if (!hasActiveMusic) return;
+  if (currentSlide < slideCount - 1) {
+    currentSlide++;
+    renderAllVoices();
+    updateCounter();
+    publishSlide();
+    if (currentSlide === slideCount - 1) armAutoInterval();
+    else clearAutoInterval();
+  }
+}
+function prevSlide() {
+  if (isPreparing) return;
+  if (!hasActiveMusic) return;
+  if (currentSlide > 0) {
+    currentSlide--;
+    renderAllVoices();
+    updateCounter();
+    publishSlide();
+    if (currentSlide === slideCount - 1) armAutoInterval();
+    else clearAutoInterval();
+  }
+}
+/* =========================================================
+   PAINEL DE PDF (JANELA FLUTUANTE)
+   ========================================================= */
+function openPdfPanel() {
+  if (pendingUploads > 0) return;
+  pdfPanelDraft = {};
+  for (var i = 0; i < activeVoices.length; i++) {
+    var v = activeVoices[i];
+    pdfPanelDraft[v] = (voicePdfs[v] || []).slice();
+  }
+  renderPdfPanel();
+  var ov = document.getElementById('pdfOverlay');
+  if (ov) ov.classList.add('open');
+  var sub = document.getElementById('pdfPanelSub');
+  if (sub) {
+    sub.textContent = activeVoices.length === 1
+      ? 'Selecione os PDFs do coral'
+      : 'Selecione os PDFs de cada naipe';
+  }
+  setPdfMsg('', false);
+  log('Painel de PDF aberto');
+}
+function closePdfPanel() {
+  var ov = document.getElementById('pdfOverlay');
+  if (ov) ov.classList.remove('open');
+  pdfPanelVoice = null;
+  setPdfMsg('', false);
+  log('Painel de PDF fechado');
+}
+function renderPdfPanel() {
+  var body = document.getElementById('pdfPanelBody');
+  if (!body) return;
+  var modeClass = activeVoices.length === 1 ? 1 : (activeVoices.length === 3 ? 3 : 4);
+  body.className = 'pdf-panel-body mode-' + modeClass;
+  var html = '';
+  for (var i = 0; i < activeVoices.length; i++) {
+    var v = activeVoices[i];
+    var list = pdfPanelDraft[v] || [];
+    html += '<div class="voice-upload">' +
+      '<div class="voice-upload-head">' +
+        '<span class="voice-upload-name">' + VOICE_LABEL[v] + '</span>' +
+        '<span class="voice-upload-count">' + list.length + '</span>' +
+      '</div>' +
+      '<button class="voice-upload-btn" onclick="pickPdfsFor(\'' + v + '\')">+ Adicionar PDFs</button>' +
+      '<div class="voice-file-list">';
+    if (list.length === 0) {
+      html += '<div class="voice-file-empty">Nenhuma música</div>';
+    } else {
+      for (var j = 0; j < list.length; j++) {
+        html += '<div class="voice-file-item">' +
+          '<span class="vf-num">' + (j + 1) + '</span>' +
+          '<span class="vf-name">' + escapeHtml(list[j].nome) + '</span>' +
+          '<button class="vf-del" onclick="removeDraftPdf(\'' + v + '\',' + j + ')" title="Excluir">✕</button>' +
+          '</div>';
+      }
+    }
+    html += '</div></div>';
+  }
+  body.innerHTML = html;
+}
+function pickPdfsFor(voice) {
+  pdfPanelVoice = voice;
+  var picker = document.getElementById('pdfPicker');
+  if (!picker) return;
+  fsPickerGuard = true;
+  picker.value = '';
+  picker.click();
+  window.addEventListener('focus', function onFocusBack(){
+    window.removeEventListener('focus', onFocusBack);
+    restoreFullscreenAfterPicker();
+  });
+}
+function handlePdfPicked(ev) {
+  var files = ev.target.files;
+  if (!files || files.length === 0) {
+    restoreFullscreenAfterPicker();
     return;
   }
-  isSendingPdf = true;
-  var btn = document.getElementById('openPdfBtn');
-  if (btn) btn.disabled = true;
-  var wrap = document.getElementById('pdfProgressWrap');
-  var fill = document.getElementById('pdfProgressFill');
-  var txt = document.getElementById('pdfProgressText');
-  if (wrap) wrap.classList.add('show');
-  if (fill) fill.style.width = '0%';
-  if (txt) txt.textContent = 'Enviando 0%';
+  var voice = pdfPanelVoice;
+  if (!voice) { restoreFullscreenAfterPicker(); return; }
+  var arr = [];
+  for (var i = 0; i < files.length; i++) arr.push(files[i]);
+  ev.target.value = '';
+  var loaded = 0;
+  var results = [];
+  for (var k = 0; k < arr.length; k++) {
+    (function(file){
+      var reader = new FileReader();
+      reader.onload = function(){
+        var dataUrl = reader.result;
+        var base64 = String(dataUrl).split(',')[1] || '';
+        if (base64) {
+          results.push({
+            nome: cleanMusicName(file.name),
+            original: file.name,
+            base64: base64,
+            bytes: base64ToBytes(base64),
+            paginas: 1,
+            doc: null,
+            id: 'p' + (++pdfSeq)
+          });
+        }
+        loaded++;
+        if (loaded === arr.length) finishPick(voice, results);
+      };
+      reader.onerror = function(){
+        loaded++;
+        if (loaded === arr.length) finishPick(voice, results);
+      };
+      reader.readAsDataURL(file);
+    })(arr[k]);
+  }
+  restoreFullscreenAfterPicker();
+}
+function finishPick(voice, results) {
+  if (!pdfPanelDraft[voice]) pdfPanelDraft[voice] = [];
+  var merged = pdfPanelDraft[voice].concat(results);
+  pdfPanelDraft[voice] = sortPdfs(merged);
+  renderPdfPanel();
+  log('PDFs adicionados em ' + voice + ': ' + results.length);
+  setPdfMsg('', false);
+}
+function removeDraftPdf(voice, index) {
+  var list = pdfPanelDraft[voice] || [];
+  if (index < 0 || index >= list.length) return;
+  var removed = list.splice(index, 1)[0];
+  pdfPanelDraft[voice] = list;
+  renderPdfPanel();
+  log('PDF removido de ' + voice + ': ' + (removed ? removed.nome : ''));
+  setPdfMsg('', false);
+}
+function setPdfMsg(text, isError) {
+  var el = document.getElementById('pdfMsg');
+  if (!el) return;
+  if (!text) { el.classList.remove('show', 'error'); el.textContent = ''; return; }
+  el.textContent = text;
+  el.classList.add('show');
+  if (isError) el.classList.add('error');
+  else el.classList.remove('error');
+}
+function savePdfPanel() {
+  var counts = {};
+  var max = 0;
+  for (var i = 0; i < activeVoices.length; i++) {
+    var v = activeVoices[i];
+    var n = (pdfPanelDraft[v] || []).length;
+    counts[v] = n;
+    if (n > max) max = n;
+  }
+  if (max === 0) {
+    setPdfMsg('Adicione pelo menos uma música em algum naipe.', true);
+    return;
+  }
+  var missing = [];
+  for (var j = 0; j < activeVoices.length; j++) {
+    var vv = activeVoices[j];
+    if (counts[vv] < max) missing.push(VOICE_LABEL[vv]);
+  }
+  if (missing.length > 0) {
+    var parts = [];
+    for (var k = 0; k < activeVoices.length; k++) {
+      var vk = activeVoices[k];
+      parts.push(VOICE_LABEL[vk] + ': ' + counts[vk]);
+    }
+    setPdfMsg('Letras faltando em ' + missing.join(', ') + '. (' + parts.join(' | ') + ')', true);
+    return;
+  }
+  for (var m = 0; m < activeVoices.length; m++) {
+    var vm = activeVoices[m];
+    var list = pdfPanelDraft[vm] || [];
+    var seen = {};
+    for (var n = 0; n < list.length; n++) {
+      var key = String(list[n].nome).toLowerCase();
+      if (seen[key]) {
+        setPdfMsg('Música repetida em ' + VOICE_LABEL[vm] + ': "' + list[n].nome + '". Exclua uma delas.', true);
+        return;
+      }
+      seen[key] = true;
+    }
+  }
+  voicePdfs = {};
+  for (var q = 0; q < activeVoices.length; q++) {
+    var vq = activeVoices[q];
+    voicePdfs[vq] = (pdfPanelDraft[vq] || []).slice();
+  }
+  buildMusicNames();
+  renderMusicMenu();
+  closePdfPanel();
+  restoreFullscreenAfterPicker();
+  log('Letras salvas - ' + musicNames.length + ' musicas');
+  sendAllPdfs();
+  publishOpening();
+  showOpeningImage('presenter');
+  hasActiveMusic = false;
+  currentMusicIndex = -1;
+  currentSlide = 0;
+  slideCount = 0;
+  showingInterval = false;
+  sessionStarted = true;
+  setNavEnabled(false);
+  updateCounter();
+}
+function sendAllPdfs() {
+  pendingUploads = 0;
+  for (var i = 0; i < activeVoices.length; i++) {
+    var v = activeVoices[i];
+    var list = voicePdfs[v] || [];
+    for (var j = 0; j < list.length; j++) {
+      pendingUploads++;
+      sendPdfToVoice(v, list[j]);
+    }
+  }
+  log('Enviando ' + pendingUploads + ' PDFs aos naipes');
+}
+function sendPdfToVoice(voice, pdfObj) {
+  var st = voiceState[voice];
+  if (!st || !st.channel) { pendingUploads--; return; }
+  var base64 = pdfObj.base64;
   var total = Math.ceil(base64.length / PDF_CHUNK_SIZE);
   var sent = 0;
   var sendId = 'p' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
-  function updateProgress() {
-    var pct = Math.round((sent / total) * 100);
-    if (fill) fill.style.width = pct + '%';
-    if (txt) txt.textContent = 'Enviando ' + pct + '% (' + sent + '/' + total + ')';
-  }
   try {
-    channel.publish('pdf-meta', {
-      pdfId: pdfId,
-      nome: nome,
+    st.channel.publish('pdf-meta', {
+      pdfId: pdfObj.id,
+      nome: pdfObj.nome,
       total: total,
       sendId: sendId,
       size: base64.length
     });
     sentCount++;
-    log('pdf-meta publicado: ' + nome + ' (' + total + ' partes)');
-  } catch(e) {
-    log('ERRO ao publicar meta: ' + e.message);
-  }
+  } catch(e) { log('ERRO meta ' + voice + ': ' + e.message); }
   function sendNext() {
     if (sent >= total) {
-      finishSend();
+      pendingUploads--;
+      if (pendingUploads <= 0) { pendingUploads = 0; log('Todos os PDFs enviados'); }
       return;
     }
     var start = sent * PDF_CHUNK_SIZE;
     var chunk = base64.slice(start, start + PDF_CHUNK_SIZE);
     try {
-      channel.publish('pdf-chunk', {
-        pdfId: pdfId,
-        sendId: sendId,
-        seq: sent,
-        data: chunk
-      });
+      st.channel.publish('pdf-chunk', { pdfId: pdfObj.id, sendId: sendId, seq: sent, data: chunk });
       sentCount++;
-    } catch(e) {
-      log('ERRO ao enviar parte ' + sent + ': ' + e.message);
-    }
+    } catch(e) { log('ERRO chunk ' + voice + ': ' + e.message); }
     sent++;
-    updateProgress();
     setTimeout(sendNext, PDF_CHUNK_DELAY);
-  }
-  function finishSend() {
-    isSendingPdf = false;
-    if (btn) btn.disabled = false;
-    setTimeout(function(){
-      if (wrap) wrap.classList.remove('show');
-    }, 1200);
-    log('PDF enviado ao canal: ' + nome + ' - ativando agora');
-    activatePdf(pdfId);
   }
   sendNext();
 }
@@ -1692,34 +1792,21 @@ function base64ToBytes(base64) {
   return bytes;
 }
 /* =========================================================
-   PDF - RECEBIMENTO (CORALISTA)
+   RECEBIMENTO DE PDF (CORALISTA)
    ========================================================= */
 function handlePdfMeta(msg) {
   var d = msg.data || {};
   if (!d.pdfId || !d.nome) return;
-  var pdfId = d.pdfId;
-  if (pdfDocs[pdfId] && pdfDocs[pdfId].bytes) {
-    log('PDF ja recebido: ' + d.nome);
-    return;
-  }
-  var pending = {
-    pdfId: pdfId,
-    nome: d.nome,
-    total: d.total || 0,
-    parts: {},
-    received: 0
-  };
+  if (voicePdfsById(d.pdfId)) { log('PDF ja recebido: ' + d.nome); return; }
+  var pending = { pdfId: d.pdfId, nome: d.nome, total: d.total || 0, parts: {}, received: 0 };
   if (orphanChunks[d.sendId]) {
     pending.parts = orphanChunks[d.sendId].parts;
     pending.received = orphanChunks[d.sendId].received;
     delete orphanChunks[d.sendId];
-    log('Partes orfas recuperadas: ' + pending.received);
   }
   pendingPdfChunks[d.sendId] = pending;
   log('pdf-meta recebido: ' + d.nome + ' (' + d.total + ' partes)');
-  if (pending.total > 0 && pending.received >= pending.total) {
-    finalizePdf(d.sendId);
-  }
+  if (pending.total > 0 && pending.received >= pending.total) finalizePdf(d.sendId);
 }
 function handlePdfChunk(msg) {
   var d = msg.data || {};
@@ -1727,9 +1814,7 @@ function handlePdfChunk(msg) {
   if (!sendId || typeof d.seq !== 'number') return;
   var pending = pendingPdfChunks[sendId];
   if (!pending) {
-    if (!orphanChunks[sendId]) {
-      orphanChunks[sendId] = { parts: {}, received: 0 };
-    }
+    if (!orphanChunks[sendId]) orphanChunks[sendId] = { parts: {}, received: 0 };
     if (orphanChunks[sendId].parts[d.seq] === undefined) {
       orphanChunks[sendId].parts[d.seq] = d.data;
       orphanChunks[sendId].received++;
@@ -1739,32 +1824,35 @@ function handlePdfChunk(msg) {
   if (pending.parts[d.seq] !== undefined) return;
   pending.parts[d.seq] = d.data;
   pending.received++;
-  if (pending.total > 0 && pending.received >= pending.total) {
-    finalizePdf(sendId);
-  }
+  if (pending.total > 0 && pending.received >= pending.total) finalizePdf(sendId);
 }
 function finalizePdf(sendId) {
   var pending = pendingPdfChunks[sendId];
   if (!pending) return;
   var full = '';
-  for (var i = 0; i < pending.total; i++) {
-    full += pending.parts[i] || '';
-  }
+  for (var i = 0; i < pending.total; i++) full += pending.parts[i] || '';
   delete pendingPdfChunks[sendId];
   var bytes = base64ToBytes(full);
-  pdfDocs[pending.pdfId] = {
+  var obj = {
+    id: pending.pdfId,
     nome: pending.nome,
-    bytes: bytes,
+    original: pending.nome,
     base64: full,
+    bytes: bytes,
     paginas: 1,
     doc: null
   };
-  if (pdfOrder.indexOf(pending.pdfId) === -1) {
-    pdfOrder.push(pending.pdfId);
+  if (!voicePdfs[myVoice]) voicePdfs[myVoice] = [];
+  var exists = false;
+  for (var j = 0; j < voicePdfs[myVoice].length; j++) {
+    if (voicePdfs[myVoice][j].id === pending.pdfId) { exists = true; break; }
   }
-  log('PDF completo recebido: ' + pending.nome + ' (' + Math.round(bytes.length / 1024) + ' KB)');
+  if (!exists) voicePdfs[myVoice].push(obj);
+  voicePdfs[myVoice] = sortPdfs(voicePdfs[myVoice]);
+  buildMusicNames();
+  log('PDF completo recebido: ' + pending.nome);
   openPdfDoc(pending.pdfId, function(doc){
-    if (doc) log('PDF recebido renderizavel: ' + pending.nome + ' - ' + doc.numPages + ' paginas');
+    if (doc) log('PDF renderizavel: ' + pending.nome + ' - ' + doc.numPages + ' paginas');
     updateDiag();
     runPendingPdfAction();
   });
@@ -1772,92 +1860,72 @@ function finalizePdf(sendId) {
 function runPendingPdfAction() {
   if (!pendingPdfAction) return;
   var act = pendingPdfAction;
-  var p = pdfDocs[act.pdfId];
-  if (!p || !p.doc) return;
   pendingPdfAction = null;
-  log('Executando acao pendente para PDF ' + act.pdfId);
-  if (act.type === 'prep') {
-    applyPrepStart(act.pdfId);
-  } else if (act.type === 'slide') {
-    applySlide(act.pdfId, act.index, act.total);
-  }
+  log('Executando acao pendente: ' + act.type);
+  if (act.type === 'prep') applyPrepStart(act.index, act.total);
+  else if (act.type === 'slide') applySlide(act.pdfId, act.index, act.total);
 }
 /* =========================================================
    APRESENTADOR
    ========================================================= */
-function startPresenter() {
-  try {
-    if (!initAbly()) return;
-    sessionCode = genCode();
-    role = 'presenter';
-    document.getElementById('sessionCode').textContent = sessionCode;
-    showScreen('code-screen');
-    log('Sessao criada: ' + sessionCode);
-  } catch(e) {
-    showError('Erro ao iniciar: ' + e.message);
-    log('ERRO startPresenter: ' + e.message);
-  }
-}
-function cancelPresenterSetup() {
-  sessionCode = '';
-  role = null;
-  showScreen('home');
-  log('Criacao de sessao cancelada');
-}
-function copyCode() {
-  navigator.clipboard.writeText(sessionCode).then(function(){ log('Codigo copiado'); });
-}
 function enterPresenterMode() {
   try {
     requestAutoFullscreen();
     if (!ably) { showError('Ably nao inicializado. Recarregue a pagina.'); return; }
-    var channelName = 's1-' + sessionCode;
-    channel = ably.channels.get(channelName);
+    role = 'presenter';
+    voiceState = {};
     memberMap = {};
     sessionStarted = false;
     showingInterval = false;
-    channel.subscribe('state-request', function(){
-      log('state-request recebido - respondendo');
-      publishCurrentState();
-      updateViewerCount();
-    });
-    channel.subscribe('viewer-ready', function(){
-      log('viewer-ready recebido - respondendo');
-      publishCurrentState();
-      updateViewerCount();
-    });
-    channel.subscribe('echo-test', function(msg){
-      log('echo recebido de ' + (msg.clientId || '?'));
-    });
-    channel.subscribe('heartbeat', function(msg){
-      if (msg.clientId && msg.clientId !== myClientId) {
-        var nm = (msg.data && msg.data.name) ? String(msg.data.name).toUpperCase() : '';
-        memberMap[msg.clientId] = { name: nm, ts: Date.now() };
-        renderMembers();
-      }
-    });
-    log('subscribe(heartbeat) em ' + channelName);
-    try {
-      channel.presence.enter();
-      channel.presence.subscribe('enter', function(m){
-        log('presence enter: ' + m.clientId);
-        if (m.clientId !== myClientId && !memberMap[m.clientId]) {
-          memberMap[m.clientId] = { name: '', ts: Date.now() };
-        }
-        publishCurrentState();
-        updateViewerCount();
-      });
-      channel.presence.subscribe('leave', function(m){
-        log('presence leave: ' + m.clientId);
-        delete memberMap[m.clientId];
-        renderMembers();
-        updateViewerCount();
-      });
-      log('presence ativo');
-    } catch(pe) {
-      log('presence falhou (nao critico): ' + pe.message);
+    hasActiveMusic = false;
+    currentMusicIndex = -1;
+    currentSlide = 0;
+    slideCount = 0;
+    voicePdfs = {};
+    for (var i = 0; i < activeVoices.length; i++) {
+      var v = activeVoices[i];
+      voicePdfs[v] = [];
+      voiceState[v] = { code: voiceCodes[v], channel: null, viewers: 0 };
+      (function(voice){
+        var chName = 's1-' + voiceCodes[voice];
+        var ch = ably.channels.get(chName);
+        voiceState[voice].channel = ch;
+        ch.subscribe('state-request', function(){
+          log('state-request de ' + voice + ' - respondendo');
+          publishCurrentState();
+          updateViewerCount();
+        });
+        ch.subscribe('viewer-ready', function(){
+          publishCurrentState();
+          updateViewerCount();
+        });
+        ch.subscribe('heartbeat', function(msg){
+          if (msg.clientId && msg.clientId !== myClientId) {
+            var nm = (msg.data && msg.data.name) ? String(msg.data.name).toUpperCase() : '';
+            memberMap[msg.clientId] = { name: nm, voice: voice, ts: Date.now() };
+            renderMembers();
+          }
+        });
+        try {
+          ch.presence.enter();
+          ch.presence.subscribe('enter', function(m){
+            if (m.clientId !== myClientId && !memberMap[m.clientId]) {
+              memberMap[m.clientId] = { name: '', voice: voice, ts: Date.now() };
+            }
+            publishCurrentState();
+            updateViewerCount();
+          });
+          ch.presence.subscribe('leave', function(m){
+            delete memberMap[m.clientId];
+            renderMembers();
+            updateViewerCount();
+          });
+        } catch(pe) { log('presence falhou em ' + voice + ': ' + pe.message); }
+        log('Canal pronto: ' + voice + ' -> ' + chName);
+      })(v);
     }
-    document.getElementById('barCodeValue').textContent = sessionCode;
+    buildVoicesGrid();
+    renderBarCodes();
     showScreen('presenter');
     showOpeningImage('presenter');
     publishOpening();
@@ -1865,11 +1933,9 @@ function enterPresenterMode() {
     renderMusicMenu();
     resetTimer();
     startTimer();
-    hasActiveMusic = false;
-    currentPdfId = null;
     setNavEnabled(false);
     updateCounter();
-    setTimeout(function(){ updateViewerCount(); }, 500);
+    setTimeout(function(){ updateViewerCount(); }, 600);
     startPresencePoll();
     startMemberCleanup();
     requestWakeLock();
@@ -1879,125 +1945,26 @@ function enterPresenterMode() {
     log('ERRO enterPresenterMode: ' + e.message);
   }
 }
-function publishOpening() {
-  if (!channel) return;
-  try {
-    channel.publish('opening', { ts: Date.now() });
-    sentCount++;
-    log('opening publicado');
-  } catch(e) {}
-}
-function publishCurrentState() {
-  if (!channel) return;
-  if (!sessionStarted) {
-    publishOpening();
-    return;
+function renderBarCodes() {
+  var bar = document.getElementById('barCodes');
+  if (!bar) return;
+  var html = '';
+  for (var i = 0; i < activeVoices.length; i++) {
+    var v = activeVoices[i];
+    html += '<div class="bar-code">' +
+      '<span class="bar-code-label">' + VOICE_LABEL[v] + '</span>' +
+      '<span class="bar-code-value">' + voiceCodes[v] + '</span>' +
+      '</div>';
   }
-  if (!hasActiveMusic) {
-    publishInterval();
-    return;
-  }
-  publishSlide();
+  bar.innerHTML = html;
 }
-function publishInterval() {
-  if (!channel) return;
-  try {
-    channel.publish('interval', { ts: Date.now() });
-    sentCount++;
-    log('interval publicado');
-  } catch(e) {}
-}
-function publishPrepStart(pdfId) {
-  if (!channel) return;
-  try {
-    channel.publish('prep-start', {
-      pdfId: pdfId,
-      total: totalPagesOf(pdfId),
-      perSlide: PREP_PER_SLIDE_MS
-    });
-    sentCount++;
-    log('prep-start publicado: ' + pdfId);
-  } catch(e) {
-    log('ERRO ao publicar prep-start: ' + e.message);
-  }
-}
-function renderPresenterSlide() {
-  var el = document.getElementById('presenterSlide');
-  if (!el) return;
-  if (showingInterval) return;
-  var myGen = ++renderGeneration;
-  hideStateImage('presenter');
-  var overlay = document.getElementById('presenterPrep');
-  var keepOverlay = overlay ? overlay.outerHTML : '';
-  openPdfDoc(currentPdfId, function(doc){
-    if (showingInterval) return;
-    if (myGen !== renderGeneration) return;
-    if (!doc) {
-      el.innerHTML = '<div class="slide-placeholder">Sem PDF</div>' + keepOverlay;
-      return;
-    }
-    var pageNum = Math.min(currentSlide + 1, doc.numPages);
-    renderPageTo(doc, pageNum, el, false, myGen);
-  });
-}
-function renderViewerSlide() {
-  var el = document.getElementById('viewerSlide');
-  if (!el) return;
-  if (showingInterval) return;
-  var myGen = ++renderGeneration;
-  hideStateImage('viewer');
-  var overlay = document.getElementById('viewerPrep');
-  var keepOverlay = overlay ? overlay.outerHTML : '';
-  openPdfDoc(currentPdfId, function(doc){
-    if (showingInterval) return;
-    if (myGen !== renderGeneration) return;
-    if (!doc) {
-      el.innerHTML = '<div class="slide-placeholder">Aguardando...</div>' + keepOverlay;
-      return;
-    }
-    var pageNum = Math.min(currentSlide + 1, doc.numPages);
-    renderPageTo(doc, pageNum, el, false, myGen);
-  });
-}
-function renderMirror() {
-  var preview = document.getElementById('mirrorPreview');
-  var num = document.getElementById('mirrorNextNum');
-  if (!preview) return;
-  if (!hasActiveMusic) {
-    preview.innerHTML = '<div class="mirror-empty">—</div>';
-    if (num) num.textContent = '—';
-    return;
-  }
-  var nextIndex = currentSlide + 1;
-  if (nextIndex >= slideCount) {
-    preview.innerHTML = '<div class="mirror-empty">Fim da musica</div>';
-    if (num) num.textContent = '—';
-    return;
-  }
-  openPdfDoc(currentPdfId, function(doc){
-    if (!doc) {
-      preview.innerHTML = '<div class="mirror-empty">—</div>';
-      return;
-    }
-    var pageNum = Math.min(nextIndex + 1, doc.numPages);
-    renderPageTo(doc, pageNum, preview, true);
-    if (num) num.textContent = 'Slide ' + (nextIndex + 1) + ' de ' + slideCount;
-  });
-}
-function updateCounter() {
-  var c = document.getElementById('presenterCounter');
-  if (c) c.textContent = hasActiveMusic ? ((currentSlide + 1) + ' / ' + slideCount) : '—';
-  var p = document.getElementById('musicProgress');
-  if (p) {
-    p.textContent = (hasActiveMusic && currentPdfId) ? (currentPdfName() + ' - ' + (currentSlide + 1) + '/' + slideCount) : '—';
-  }
-}
+/* =========================================================
+   PRESENCE / MEMBROS
+   ========================================================= */
 function startPresencePoll() {
   stopPresencePoll();
   presencePollTimer = setInterval(function(){
-    if (role === 'presenter' && channel) {
-      updateViewerCount();
-    }
+    if (role === 'presenter') updateViewerCount();
   }, 2000);
 }
 function stopPresencePoll() {
@@ -2010,15 +1977,12 @@ function startMemberCleanup() {
     var now = Date.now();
     var removed = 0;
     for (var id in memberMap) {
-      if (memberMap.hasOwnProperty(id)) {
-        if (now - memberMap[id].ts > MEMBER_TIMEOUT) {
-          delete memberMap[id];
-          removed++;
-        }
+      if (memberMap.hasOwnProperty(id) && now - memberMap[id].ts > MEMBER_TIMEOUT) {
+        delete memberMap[id];
+        removed++;
       }
     }
     if (removed > 0) {
-      log('Coralista inativo removido: ' + removed);
       renderMembers();
       applyViewerCount(countActiveMembers());
     }
@@ -2035,25 +1999,35 @@ function countActiveMembers() {
   return n;
 }
 function updateViewerCount() {
-  if (!channel) return;
-  try {
-    channel.presence.get(function(err, members){
-      if (!err && members) {
-        var now = Date.now();
-        for (var i = 0; i < members.length; i++) {
-          var cid = members[i].clientId;
-          if (cid !== myClientId && !memberMap[cid]) {
-            memberMap[cid] = { name: '', ts: now };
+  var total = 0;
+  var done = 0;
+  for (var i = 0; i < activeVoices.length; i++) {
+    var v = activeVoices[i];
+    var st = voiceState[v];
+    if (!st || !st.channel) continue;
+    total++;
+    (function(voice, ch){
+      try {
+        ch.presence.get(function(err, members){
+          if (!err && members) {
+            var now = Date.now();
+            for (var j = 0; j < members.length; j++) {
+              var cid = members[j].clientId;
+              if (cid !== myClientId && !memberMap[cid]) {
+                memberMap[cid] = { name: '', voice: voice, ts: now };
+              }
+            }
           }
-        }
+          done++;
+          if (done >= total) { applyViewerCount(countActiveMembers()); renderMembers(); }
+        });
+      } catch(e) {
+        done++;
+        if (done >= total) { applyViewerCount(countActiveMembers()); renderMembers(); }
       }
-      applyViewerCount(countActiveMembers());
-      renderMembers();
-    });
-  } catch(e) {
-    applyViewerCount(countActiveMembers());
-    renderMembers();
+    })(v, st.channel);
   }
+  if (total === 0) { applyViewerCount(countActiveMembers()); renderMembers(); }
 }
 function applyViewerCount(n) {
   viewerCount = n;
@@ -2070,8 +2044,8 @@ function renderMembers() {
   var names = [];
   for (var id in memberMap) {
     if (memberMap.hasOwnProperty(id) && id !== myClientId) {
-      var nm = memberMap[id].name;
-      if (nm) names.push(nm);
+      var m = memberMap[id];
+      if (m.name) names.push(m.name + ' (' + VOICE_LABEL[m.voice] + ')');
     }
   }
   names.sort(function(a, b){ return a.localeCompare(b, 'pt-BR'); });
@@ -2085,56 +2059,6 @@ function renderMembers() {
     html += '<div class="member-item"><div class="dot green"></div>' + escapeHtml(names[i]) + '</div>';
   }
   list.innerHTML = html;
-}
-function escapeHtml(s) {
-  return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-function publishSlide() {
-  if (!channel) return;
-  if (!hasActiveMusic) { publishInterval(); return; }
-  try {
-    channel.publish('slide', {
-      pdfId: currentPdfId,
-      index: currentSlide,
-      total: slideCount
-    });
-    sentCount++;
-    log('slide publicado: ' + currentPdfId + ', slide ' + (currentSlide + 1));
-    updateDiag();
-  } catch(e) {
-    log('ERRO ao publicar slide: ' + e.message);
-  }
-}
-function nextSlide() {
-  if (isPreparing) return;
-  if (!hasActiveMusic) return;
-  if (currentSlide < slideCount - 1) {
-    currentSlide++;
-    renderPresenterSlide();
-    renderMirror();
-    updateCounter();
-    publishSlide();
-    if (currentSlide === slideCount - 1) armAutoInterval();
-    else clearAutoInterval();
-  }
-}
-function prevSlide() {
-  if (isPreparing) return;
-  if (!hasActiveMusic) return;
-  if (currentSlide > 0) {
-    currentSlide--;
-    renderPresenterSlide();
-    renderMirror();
-    updateCounter();
-    publishSlide();
-    if (currentSlide === slideCount - 1) armAutoInterval();
-    else clearAutoInterval();
-  }
 }
 /* =========================================================
    FINALIZAR
@@ -2158,12 +2082,8 @@ function endPresentation() {
   closeEndPanel();
   stopTimer();
   clearAutoInterval();
-  try {
-    if (channel) {
-      channel.publish('session-end', { ts: Date.now(), elapsedMs: finalMs });
-      log('session-end publicado - tempo ' + finalText);
-    }
-  } catch(e) {}
+  publishToAll('session-end', { ts: Date.now(), elapsedMs: finalMs });
+  log('session-end publicado - tempo ' + finalText);
   var t = document.getElementById('endedTimeValue');
   if (t) t.textContent = finalText;
   stopStateRequests();
@@ -2171,97 +2091,46 @@ function endPresentation() {
   stopMemberCleanup();
   stopHeartbeat();
   releaseWakeLock();
-  try {
-    if (channel) { channel.presence.leave(); channel.detach(); }
-  } catch(e) {}
-  channel = null;
+  for (var i = 0; i < activeVoices.length; i++) {
+    var st = voiceState[activeVoices[i]];
+    if (st && st.channel) {
+      try { st.channel.presence.leave(); st.channel.detach(); } catch(e) {}
+    }
+  }
+  voiceState = {};
   role = null;
-  sessionCode = '';
+  resetAllState();
+  showScreen('ended');
+  log('Apresentacao encerrada - tempo ' + finalText);
+}
+function resetAllState() {
+  voiceCodes = {};
+  voicePdfs = {};
+  musicNames = [];
+  currentMusicIndex = -1;
   currentSlide = 0;
-  recvCount = 0;
-  sentCount = 0;
-  viewerCount = 0;
-  memberMap = {};
-  pdfDocs = {};
-  pdfOrder = [];
-  pdfSeq = 0;
-  currentPdfId = null;
-  pendingPdfChunks = {};
-  orphanChunks = {};
-  pendingPdfAction = null;
+  slideCount = 0;
   hasActiveMusic = false;
   sessionStarted = false;
   showingInterval = false;
   currentStateImage = 'opening';
+  recvCount = 0;
+  sentCount = 0;
+  viewerCount = 0;
+  memberMap = {};
+  pendingPdfChunks = {};
+  orphanChunks = {};
+  pendingPdfAction = null;
+  pdfPanelDraft = {};
+  pdfPanelVoice = null;
+  pendingUploads = 0;
   fsPickerGuard = false;
   setPresenterOnline(null);
-  showScreen('ended');
-  log('Apresentacao encerrada - tempo ' + finalText);
+  resetTimer();
 }
 /* =========================================================
    CORALISTA
    ========================================================= */
-function applyOpening() {
-  cancelPreparation();
-  clearAutoInterval();
-  hasActiveMusic = false;
-  showingInterval = false;
-  currentPdfId = null;
-  currentSlide = 0;
-  slideCount = 0;
-  stopStateRequests();
-  setPresenterOnline(true);
-  showOpeningImage('viewer');
-  showScreen('viewer');
-  log('opening recebido - imagem de abertura');
-}
-function applyPrepStart(pdfId) {
-  log('prep-start aplicado: ' + pdfId);
-  cancelPreparation();
-  clearAutoInterval();
-  showingInterval = false;
-  sessionStarted = true;
-  hasActiveMusic = true;
-  currentPdfId = pdfId;
-  currentSlide = 0;
-  slideCount = totalPagesOf(pdfId);
-  showScreen('viewer');
-  setPresenterOnline(true);
-  stopStateRequests();
-  startPreparation(pdfId, function(){
-    log('Preparacao concluida no receptor');
-  });
-  updateDiag();
-}
-function applySlide(pdfId, index, total) {
-  if (isPreparing) return;
-  showingInterval = false;
-  sessionStarted = true;
-  hasActiveMusic = true;
-  currentPdfId = pdfId;
-  currentSlide = index;
-  slideCount = total || totalPagesOf(pdfId);
-  renderViewerSlide();
-  showScreen('viewer');
-  stopStateRequests();
-  setPresenterOnline(true);
-  log('slide aplicado: ' + pdfId + ', slide ' + (currentSlide + 1));
-}
-function applyInterval() {
-  cancelPreparation();
-  clearAutoInterval();
-  sessionStarted = true;
-  hasActiveMusic = false;
-  showingInterval = true;
-  currentPdfId = null;
-  currentSlide = 0;
-  slideCount = 0;
-  stopStateRequests();
-  setPresenterOnline(true);
-  showIntervalImage('viewer');
-  showScreen('viewer');
-  log('interval recebido - imagem de intervalo');
-}
 function joinSession() {
   try {
     requestAutoFullscreen();
@@ -2273,30 +2142,32 @@ function joinSession() {
     if (code.length !== CODE_LENGTH) { showError('Digite o codigo de ' + CODE_LENGTH + ' letras.'); input.focus(); return; }
     if (!initAbly()) return;
     myName = name;
-    sessionCode = code;
     role = 'viewer';
+    myVoice = 'SOPRANO';
     saveLastCode(code);
     saveName(name);
     memberMap = {};
-    pdfDocs = {};
-    pdfOrder = [];
-    pdfSeq = 0;
-    currentPdfId = null;
-    pendingPdfChunks = {};
-    orphanChunks = {};
-    pendingPdfAction = null;
+    voicePdfs = {};
+    voicePdfs[myVoice] = [];
+    musicNames = [];
+    currentMusicIndex = -1;
+    currentSlide = 0;
+    slideCount = 0;
     hasActiveMusic = false;
     sessionStarted = false;
     showingInterval = false;
     currentStateImage = 'opening';
+    pendingPdfChunks = {};
+    orphanChunks = {};
+    pendingPdfAction = null;
     var channelName = 's1-' + code;
-    channel = ably.channels.get(channelName);
-    channel.subscribe('slide', function(msg){
+    myChannel = ably.channels.get(channelName);
+    myChannel.subscribe('slide', function(msg){
       recvCount++;
       if (msg.data && typeof msg.data.index === 'number') {
         var pid = msg.data.pdfId;
-        var tot = msg.data.total || totalPagesOf(pid);
-        if (!pdfDocs[pid] || !pdfDocs[pid].doc) {
+        var tot = msg.data.total || 1;
+        if (!pid || !voicePdfsById(pid)) {
           pendingPdfAction = { type: 'slide', pdfId: pid, index: msg.data.index, total: tot };
           log('slide aguardando PDF: ' + pid);
           updateDiag();
@@ -2306,40 +2177,19 @@ function joinSession() {
       }
       updateDiag();
     });
-    channel.subscribe('prep-start', function(msg){
+    myChannel.subscribe('prep-start', function(msg){
       recvCount++;
-      var pid = (msg.data && msg.data.pdfId) ? msg.data.pdfId : null;
-      if (!pid) return;
-      if (!pdfDocs[pid] || !pdfDocs[pid].doc) {
-        pendingPdfAction = { type: 'prep', pdfId: pid };
-        log('prep-start aguardando PDF: ' + pid);
-        updateDiag();
-        return;
-      }
-      applyPrepStart(pid);
+      var idx = (msg.data && typeof msg.data.index === 'number') ? msg.data.index : 0;
+      var tot = (msg.data && msg.data.total) ? msg.data.total : 1;
+      applyPrepStart(idx, tot);
     });
-    channel.subscribe('opening', function(){
-      recvCount++;
-      applyOpening();
-      updateDiag();
-    });
-    channel.subscribe('interval', function(){
-      recvCount++;
-      applyInterval();
-      updateDiag();
-    });
-    channel.subscribe('pdf-meta', function(msg){
-      recvCount++;
-      handlePdfMeta(msg);
-      updateDiag();
-    });
-    channel.subscribe('pdf-chunk', function(msg){
-      recvCount++;
-      handlePdfChunk(msg);
-    });
-    channel.subscribe('session-end', function(msg){
+    myChannel.subscribe('opening', function(){ recvCount++; applyOpening(); updateDiag(); });
+    myChannel.subscribe('interval', function(){ recvCount++; applyInterval(); updateDiag(); });
+    myChannel.subscribe('pdf-meta', function(msg){ recvCount++; handlePdfMeta(msg); updateDiag(); });
+    myChannel.subscribe('pdf-chunk', function(msg){ recvCount++; handlePdfChunk(msg); });
+    myChannel.subscribe('session-end', function(msg){
       var ms = (msg.data && typeof msg.data.elapsedMs === 'number') ? msg.data.elapsedMs : 0;
-      log('apresentacao encerrada pela maestrina - tempo ' + formatTime(ms));
+      log('apresentacao encerrada - tempo ' + formatTime(ms));
       exitFullscreen();
       cancelPreparation();
       clearAutoInterval();
@@ -2350,31 +2200,17 @@ function joinSession() {
       if (t) t.textContent = formatTime(ms);
       showScreen('ended');
     });
-    channel.subscribe('echo-test', function(msg){
-      if (msg.clientId !== myClientId) log('echo de outro cliente: ' + msg.clientId);
-    });
-    log('subscribe(slide, prep-start, opening, interval, pdf) em ' + channelName);
     try {
-      channel.presence.enter();
-      channel.presence.subscribe('leave', function(m){
-        if (m.clientId !== myClientId) {
-          log('apresentador saiu');
-          setPresenterOnline(false);
-        }
+      myChannel.presence.enter();
+      myChannel.presence.subscribe('leave', function(m){
+        if (m.clientId !== myClientId) { log('apresentador saiu'); setPresenterOnline(false); }
       });
-      channel.presence.subscribe('enter', function(m){
-        if (m.clientId !== myClientId) {
-          log('apresentador presente');
-          setPresenterOnline(true);
-        }
+      myChannel.presence.subscribe('enter', function(m){
+        if (m.clientId !== myClientId) { log('apresentador presente'); setPresenterOnline(true); }
       });
-      log('presence ativo');
-    } catch(pe) {
-      log('presence falhou (nao critico): ' + pe.message);
-    }
+    } catch(pe) { log('presence falhou: ' + pe.message); }
     document.getElementById('viewerBarCode').textContent = code;
     document.getElementById('waitingCode').textContent = 'Codigo: ' + code;
-    document.getElementById('waitingText').textContent = 'Aguardando apresentacao...';
     showScreen('waiting');
     setPresenterOnline(null);
     startStateRequests();
@@ -2386,13 +2222,68 @@ function joinSession() {
     log('ERRO joinSession: ' + e.message);
   }
 }
+function applyOpening() {
+  cancelPreparation();
+  clearAutoInterval();
+  hasActiveMusic = false;
+  showingInterval = false;
+  currentMusicIndex = -1;
+  currentSlide = 0;
+  slideCount = 0;
+  stopStateRequests();
+  setPresenterOnline(true);
+  showOpeningImage('viewer');
+  showScreen('viewer');
+  log('opening recebido');
+}
+function applyPrepStart(index, total) {
+  cancelPreparation();
+  clearAutoInterval();
+  showingInterval = false;
+  sessionStarted = true;
+  hasActiveMusic = true;
+  currentMusicIndex = index;
+  currentSlide = 0;
+  slideCount = total || 1;
+  showScreen('viewer');
+  setPresenterOnline(true);
+  stopStateRequests();
+  startPreparation(function(){ log('Preparacao concluida no receptor'); });
+  updateDiag();
+}
+function applySlide(pdfId, index, total) {
+  if (isPreparing) return;
+  showingInterval = false;
+  sessionStarted = true;
+  hasActiveMusic = true;
+  currentSlide = index;
+  slideCount = total || 1;
+  renderViewerSlide();
+  showScreen('viewer');
+  stopStateRequests();
+  setPresenterOnline(true);
+  log('slide aplicado: ' + (currentSlide + 1));
+}
+function applyInterval() {
+  cancelPreparation();
+  clearAutoInterval();
+  sessionStarted = true;
+  hasActiveMusic = false;
+  showingInterval = true;
+  currentMusicIndex = -1;
+  currentSlide = 0;
+  slideCount = 0;
+  stopStateRequests();
+  setPresenterOnline(true);
+  showIntervalImage('viewer');
+  showScreen('viewer');
+  log('interval recebido');
+}
 function startHeartbeat() {
   stopHeartbeat();
   var send = function() {
-    if (!channel || role !== 'viewer') return;
-    try {
-      channel.publish('heartbeat', { ts: Date.now(), name: myName });
-    } catch(e) {}
+    if (!myChannel || role !== 'viewer') return;
+    try { myChannel.publish('heartbeat', { ts: Date.now(), name: myName }); } catch(e) {}
   };
   send();
   heartbeatTimer = setInterval(send, HEARTBEAT_INTERVAL);
@@ -2411,33 +2302,21 @@ function setPresenterOnline(online) {
   }
   if (pill && pillText) {
     pill.classList.remove('online', 'offline');
-    if (online === true) {
-      pill.classList.add('online');
-      pillText.textContent = 'Maestrina online';
-    } else if (online === false) {
-      pill.classList.add('offline');
-      pillText.textContent = 'Maestrina offline';
-    } else {
-      pillText.textContent = 'Conectando';
-    }
+    if (online === true) { pill.classList.add('online'); pillText.textContent = 'Maestrina online'; }
+    else if (online === false) { pill.classList.add('offline'); pillText.textContent = 'Maestrina offline'; }
+    else pillText.textContent = 'Conectando';
   }
 }
 function startStateRequests() {
   stopStateRequests();
   stateRequestAttempts = 0;
   var tick = function() {
-    if (!channel) return;
+    if (!myChannel) return;
     if (sessionStarted) { stopStateRequests(); return; }
     stateRequestAttempts++;
-    try {
-      channel.publish('state-request', { code: sessionCode, from: myClientId });
-      sentCount++;
-    } catch(e) {}
+    try { myChannel.publish('state-request', { from: myClientId }); sentCount++; } catch(e) {}
     log('state-request tentativa ' + stateRequestAttempts);
-    if (stateRequestAttempts >= 8) {
-      stopStateRequests();
-      log('Sincronizacao sem resposta apos 8 tentativas');
-    }
+    if (stateRequestAttempts >= 8) stopStateRequests();
     updateDiag();
   };
   tick();
@@ -2455,37 +2334,19 @@ function leaveSession() {
   stopHeartbeat();
   stopTimer();
   releaseWakeLock();
-  try {
-    if (channel) { channel.presence.leave(); channel.detach(); }
-  } catch(e) {}
-  channel = null;
+  for (var i = 0; i < activeVoices.length; i++) {
+    var st = voiceState[activeVoices[i]];
+    if (st && st.channel) {
+      try { st.channel.presence.leave(); st.channel.detach(); } catch(e) {}
+    }
+  }
+  try { if (myChannel) { myChannel.presence.leave(); myChannel.detach(); } } catch(e) {}
+  myChannel = null;
   role = null;
-  sessionCode = '';
-  currentSlide = 0;
-  currentPdfId = null;
-  hasActiveMusic = false;
-  sessionStarted = false;
-  showingInterval = false;
-  currentStateImage = 'opening';
-  recvCount = 0;
-  sentCount = 0;
-  viewerCount = 0;
-  memberMap = {};
-  pdfDocs = {};
-  pdfOrder = [];
-  pdfSeq = 0;
-  pendingPdfChunks = {};
-  orphanChunks = {};
-  pendingPdfAction = null;
-  isSendingPdf = false;
-  fsPickerGuard = false;
-  resetTimer();
-  setPresenterOnline(null);
+  myVoice = null;
+  resetAllState();
   closeMusicMenu();
-  var wrap = document.getElementById('pdfProgressWrap');
-  if (wrap) wrap.classList.remove('show');
-  var btn = document.getElementById('openPdfBtn');
-  if (btn) btn.disabled = false;
+  closePdfPanel();
   var input = document.getElementById('joinInput');
   if (input) input.value = '';
   autoFsRequested = false;
@@ -2494,7 +2355,8 @@ function leaveSession() {
   log('Sessao encerrada');
 }
 function runEchoTest() {
-  if (!channel) { echoResult = 'Conecte-se a um canal primeiro'; updateDiag(); return; }
+  var ch = myChannel || (voiceState[activeVoices[0]] ? voiceState[activeVoices[0]].channel : null);
+  if (!ch) { echoResult = 'Conecte-se a um canal primeiro'; updateDiag(); return; }
   echoResult = 'Testando...';
   updateDiag();
   var ts = Date.now();
@@ -2502,24 +2364,96 @@ function runEchoTest() {
   var handler = function(msg) {
     if (msg.data && msg.data.ts === ts) {
       got = true;
-      echoResult = 'Eco OK - o Ably esta entregando mensagens neste canal';
+      echoResult = 'Eco OK - mensagens chegando neste canal';
       log('Eco OK');
       updateDiag();
-      try { channel.unsubscribe('echo-test', handler); } catch(e) {}
+      try { ch.unsubscribe('echo-test', handler); } catch(e) {}
     }
   };
-  channel.subscribe('echo-test', handler);
-  channel.publish('echo-test', { ts: ts, clientId: myClientId });
+  ch.subscribe('echo-test', handler);
+  ch.publish('echo-test', { ts: ts, clientId: myClientId });
   sentCount++;
-  log('subscribe(echo-test) em ' + channel.name);
   setTimeout(function(){
     if (!got) {
       echoResult = 'Eco FALHOU - nenhuma mensagem retornou';
       log('Eco FALHOU');
       updateDiag();
-      try { channel.unsubscribe('echo-test', handler); } catch(e) {}
+      try { ch.unsubscribe('echo-test', handler); } catch(e) {}
     }
   }, 5000);
+}
+/* =========================================================
+   DIAGNOSTICO
+   ========================================================= */
+function toggleDiag() {
+  document.getElementById('diag').classList.toggle('open');
+  updateDiag();
+}
+function updateDiag() {
+  var libOk = (typeof Ably !== 'undefined');
+  var pdfOk = (typeof pdfjsLib !== 'undefined');
+  var dT = document.getElementById('dTransport');
+  var dL = document.getElementById('dLib');
+  if (dT) dT.textContent = 'Ably Realtime' + (pdfOk ? ' + PDF.js' : ' (PDF.js ausente)');
+  if (dL) { dL.textContent = libOk ? 'carregada (ok)' : 'NAO CARREGADA'; dL.className = libOk ? 'green' : 'red'; }
+  var host = '-', state = '-';
+  if (ably) {
+    try { host = ably.connection.connectionManager.host || '-'; } catch(e) {}
+    state = ably.connection.state || '-';
+  }
+  var dH = document.getElementById('dHost'); if (dH) dH.textContent = host;
+  var dS = document.getElementById('dState'); if (dS) dS.textContent = state;
+  var dC = document.getElementById('dClient'); if (dC) dC.textContent = myClientId || '-';
+  var chNames = [];
+  for (var i = 0; i < activeVoices.length; i++) {
+    var st = voiceState[activeVoices[i]];
+    if (st && st.channel) chNames.push(VOICE_LABEL[activeVoices[i]] + ':' + st.channel.name);
+  }
+  if (myChannel) chNames.push('viewer:' + myChannel.name);
+  var dCh = document.getElementById('dChannel'); if (dCh) dCh.textContent = chNames.length ? chNames.join(' | ') : '-';
+  var dR = document.getElementById('dRole'); if (dR) dR.textContent = role || '-';
+  var dM = document.getElementById('dMode'); if (dM) dM.textContent = activeVoices.length + ' naipe(s)';
+  var dN = document.getElementById('dMyName'); if (dN) dN.textContent = myName || '-';
+  var dV = document.getElementById('dViewers'); if (dV) dV.textContent = viewerCount;
+  var dMC = document.getElementById('dMusicCount'); if (dMC) dMC.textContent = musicNames.length;
+  var dMCur = document.getElementById('dMusicCurrent');
+  if (dMCur) dMCur.textContent = (hasActiveMusic && currentMusicIndex >= 0 && musicNames[currentMusicIndex]) ? musicNames[currentMusicIndex] : 'Modo espera';
+  var dAI = document.getElementById('dAutoInterval');
+  if (dAI) {
+    if (autoIntervalDeadline > 0) {
+      var rest = Math.max(0, Math.ceil((autoIntervalDeadline - Date.now()) / 1000));
+      dAI.textContent = 'armado (' + rest + 's)';
+      dAI.className = 'green';
+    } else { dAI.textContent = 'inativo'; dAI.className = ''; }
+  }
+  var dSl = document.getElementById('dSlide');
+  if (dSl) dSl.textContent = hasActiveMusic ? ((currentSlide + 1) + ' / ' + slideCount) : '-';
+  var dEl = document.getElementById('dElapsed'); if (dEl) dEl.textContent = formatTime(getElapsed());
+  var dRe = document.getElementById('dRecv'); if (dRe) dRe.textContent = recvCount;
+  var dSe = document.getElementById('dSent'); if (dSe) dSe.textContent = sentCount;
+  var dEc = document.getElementById('dEcho'); if (dEc) dEc.textContent = echoResult;
+  var dLo = document.getElementById('dLog'); if (dLo) dLo.textContent = eventLog.length ? eventLog.join('\n') : 'Nenhum evento registrado.';
+  var fs = isFullscreen();
+  var dF = document.getElementById('dFullscreen');
+  if (dF) { dF.textContent = fs ? 'ativa' : 'inativa'; dF.className = fs ? 'green' : ''; }
+  var dW = document.getElementById('dWake');
+  if (dW) { dW.textContent = wakeLock ? 'ativo' : ('wakeLock' in navigator ? 'inativo' : 'nao suportado'); dW.className = wakeLock ? 'green' : ''; }
+}
+function copyDiag() {
+  var txt = 'MODO: ' + activeVoices.length + ' naipe(s) - ' + activeVoices.join(', ') + '\n' +
+    'Biblioteca: ' + (typeof Ably !== 'undefined' ? 'ok' : 'NAO CARREGADA') + '\n' +
+    'Estado: ' + (ably ? ably.connection.state : '-') + '\n' +
+    'Client ID: ' + (myClientId || '-') + '\n' +
+    'Papel: ' + (role || '-') + '\n' +
+    'Nome: ' + (myName || '-') + '\n' +
+    'Coralistas ativos: ' + viewerCount + '\n' +
+    'Musicas: ' + musicNames.length + '\n' +
+    'Musica atual: ' + ((hasActiveMusic && currentMusicIndex >= 0) ? musicNames[currentMusicIndex] : 'Modo espera') + '\n' +
+    'Slide: ' + (hasActiveMusic ? ((currentSlide + 1) + '/' + slideCount) : '-') + '\n' +
+    'Tempo: ' + formatTime(getElapsed()) + '\n' +
+    'Recebidas: ' + recvCount + '\n' +
+    'Enviadas: ' + sentCount + '\n\nLOG:\n' + eventLog.join('\n');
+  navigator.clipboard.writeText(txt).then(function(){ log('Diagnostico copiado'); });
 }
 /* =========================================================
    EVENTOS
@@ -2529,6 +2463,8 @@ document.addEventListener('keydown', function(e){
   if (e.key === 'Escape') {
     var ov = document.getElementById('endOverlay');
     if (ov && ov.classList.contains('open')) { closeEndPanel(); return; }
+    var pv = document.getElementById('pdfOverlay');
+    if (pv && pv.classList.contains('open')) { closePdfPanel(); return; }
     closeMusicMenu();
   }
   if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); nextSlide(); }
@@ -2559,11 +2495,9 @@ window.addEventListener('load', function(){
   if (typeof Ably === 'undefined') {
     showError('ERRO: A biblioteca do Ably nao carregou. Verifique a internet e recarregue.');
     setDot('red', 'Biblioteca ausente');
-    log('ERRO: biblioteca Ably ausente no carregamento');
   } else if (typeof pdfjsLib === 'undefined') {
     showError('ERRO: PDF.js nao carregou. Verifique a pasta pdfjs/ no repositorio.');
     setDot('red', 'PDF.js ausente');
-    log('ERRO: pdfjsLib ausente no carregamento');
   } else {
     setDot('yellow', 'Pronto');
     log('Bibliotecas carregadas (Ably + PDF.js)');
