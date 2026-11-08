@@ -549,7 +549,7 @@
         <div class="mirror-label">Música</div>
         <div class="music-dropdown" id="musicDropdown">
           <button class="music-trigger" id="musicTrigger" onclick="toggleMusicMenu(event)">
-            <span class="trg-name empty" id="musicTriggerName">Música vazia</span>
+            <span class="trg-name empty" id="musicTriggerName">Modo espera</span>
             <span class="trg-arrow">▼</span>
           </button>
           <div class="music-menu" id="musicMenu"></div>
@@ -1396,7 +1396,7 @@ function renderMusicMenu() {
   var emptyActive = (!hasActiveMusic) ? ' active' : '';
   html += '<button class="music-option empty-opt' + emptyActive + '" onclick="selectEmptyMusic()">' +
     '<span class="opt-num">0</span>' +
-    '<span class="opt-name">Música vazia</span>' +
+    '<span class="opt-name">Modo espera</span>' +
     '</button>';
 
   for (var i = 0; i < pdfOrder.length; i++) {
@@ -1418,7 +1418,7 @@ function renderMusicMenu() {
       trgName.textContent = (idx >= 0 ? (idx + 1) + '. ' : '') + pdfDocs[currentPdfId].nome;
       trgName.classList.remove('empty');
     } else {
-      trgName.textContent = 'Música vazia';
+      trgName.textContent = 'Modo espera';
       trgName.classList.add('empty');
     }
   }
