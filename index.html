@@ -1723,7 +1723,7 @@ function copyCode() {
 }
 function enterPresenterMode() {
   try {
-   requestAutoFullscreen();
+     requestAutoFullscreen();
     if (!ably) { showError('Ably nao inicializado. Recarregue a pagina.'); return; }
     var channelName = 's1-' + sessionCode;
     channel = ably.channels.get(channelName);
