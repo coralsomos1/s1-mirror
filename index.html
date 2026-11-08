@@ -114,11 +114,58 @@
     background:#15151d; border:1px solid #2a2a36; border-radius:12px;
     padding:11px 12px; display:flex; flex-direction:column; gap:7px;
   }
-  .music-current {
-    font-size:12px; color:#e8e8f0; font-weight:600; text-align:center;
-    line-height:1.4; word-break:break-word;
+  /* LISTA SUSPENSA (dropdown) */
+  .music-dropdown { position:relative; }
+  .music-trigger {
+    width:100%; min-height:42px; border-radius:9px;
+    background:#1c1c26; border:1px solid #2a2a36; color:#e8e8f0;
+    font-size:12px; font-weight:600; font-family:inherit;
+    padding:0 30px 0 11px; cursor:pointer; text-align:left;
+    display:flex; align-items:center; gap:7px;
+    overflow:hidden; white-space:nowrap; text-overflow:ellipsis;
+    position:relative;
   }
-  .music-current.empty { color:#4a4a5a; font-style:italic; font-weight:400; }
+  .music-trigger:active { background:#262632; }
+  .music-trigger .trg-name {
+    flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .music-trigger .trg-name.empty { color:#4a4a5a; font-style:italic; font-weight:400; }
+  .music-trigger .trg-arrow {
+    position:absolute; right:10px; top:50%; transform:translateY(-50%);
+    font-size:9px; color:#6a6a7a; transition:transform .15s;
+  }
+  .music-dropdown.open .trg-arrow { transform:translateY(-50%) rotate(180deg); }
+  .music-menu {
+    display:none; position:absolute; left:0; right:0; top:calc(100% + 5px);
+    background:#1a1a24; border:1px solid #2f2f3d; border-radius:10px;
+    padding:5px; z-index:60; max-height:230px; overflow-y:auto;
+    box-shadow:0 10px 28px rgba(0,0,0,.65);
+  }
+  .music-dropdown.open .music-menu { display:block; }
+  .music-option {
+    width:100%; min-height:36px; border:none; border-radius:7px;
+    background:transparent; color:#c9c9d4; font-size:12px; font-weight:600;
+    font-family:inherit; cursor:pointer; text-align:left;
+    padding:0 9px; display:flex; align-items:center; gap:7px;
+    overflow:hidden; white-space:nowrap;
+  }
+  .music-option:active { background:#262632; }
+  .music-option.active { background:#1a1710; color:#e8b44a; }
+  .music-option .opt-num {
+    font-size:10px; color:#6a6a7a; flex-shrink:0; min-width:14px;
+    font-variant-numeric:tabular-nums;
+  }
+  .music-option.active .opt-num { color:#b8912f; }
+  .music-option .opt-name {
+    flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .music-option .opt-pages {
+    font-size:9px; color:#6a6a7a; flex-shrink:0;
+    font-variant-numeric:tabular-nums;
+  }
+  .music-option.active .opt-pages { color:#b8912f; }
+  .music-option.empty-opt { color:#8a8a99; font-style:italic; font-weight:400; }
+  .music-option.empty-opt.active { color:#e8b44a; font-style:italic; }
   .music-progress {
     font-size:11px; color:#6a6a7a; text-align:center;
     font-variant-numeric:tabular-nums;
@@ -147,32 +194,6 @@
     font-size:10px; color:#8a8a99; text-align:center;
     font-variant-numeric:tabular-nums;
   }
-  .pdf-history {
-    display:flex; flex-direction:column; gap:5px;
-  }
-  .pdf-history-item {
-    display:flex; align-items:center; gap:8px;
-    background:#15151d; border:1px solid #24242f; border-radius:9px;
-    padding:8px 10px; font-size:11px; font-weight:600;
-    color:#c9c9d4; cursor:pointer; text-align:left;
-    font-family:inherit; width:100%;
-    transition:background .12s, border-color .12s;
-  }
-  .pdf-history-item:active { background:#1f1f2a; }
-  .pdf-history-item.active {
-    border-color:#e8b44a; color:#e8b44a; background:#1a1710;
-  }
-  .pdf-history-item .pdf-ico {
-    font-size:13px; flex-shrink:0; opacity:.8;
-  }
-  .pdf-history-item .pdf-name {
-    flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-  }
-  .pdf-history-item .pdf-pages {
-    font-size:10px; color:#6a6a7a; flex-shrink:0;
-    font-variant-numeric:tabular-nums;
-  }
-  .pdf-history-item.active .pdf-pages { color:#b8912f; }
   .timer-block {
     background:#15151d; border:1px solid #2a2a36; border-radius:12px;
     padding:12px; display:flex; flex-direction:column; gap:9px;
@@ -425,9 +446,9 @@
     .mirror-panel .mirror-label { display:none; }
     .mirror-preview { aspect-ratio:auto; padding:6px; flex:1; min-height:64px; }
     .mirror-next-num { margin:0; white-space:nowrap; }
-    .music-block { padding:8px 10px; min-width:150px; }
+    .music-block { padding:8px 10px; min-width:160px; }
     .open-pdf-btn { min-height:38px; font-size:12px; }
-    .pdf-history { max-height:70px; overflow-y:auto; }
+    .music-menu { max-height:180px; }
     .timer-block { padding:8px 10px; min-width:110px; }
     .timer-block-label { display:none; }
     .timer-block-value { font-size:20px; }
@@ -512,7 +533,13 @@
       <div class="mirror-next-num" id="mirrorNextNum">—</div>
       <div class="music-block">
         <div class="mirror-label">Música</div>
-        <div class="music-current empty" id="musicCurrent">Nenhum PDF aberto</div>
+        <div class="music-dropdown" id="musicDropdown">
+          <button class="music-trigger" id="musicTrigger" onclick="toggleMusicMenu(event)">
+            <span class="trg-name empty" id="musicTriggerName">Música vazia</span>
+            <span class="trg-arrow">▼</span>
+          </button>
+          <div class="music-menu" id="musicMenu"></div>
+        </div>
         <div class="music-progress" id="musicProgress">—</div>
         <button class="open-pdf-btn" id="openPdfBtn" onclick="triggerPdfPicker()">+ Abrir PDF</button>
         <input type="file" id="pdfPicker" accept="application/pdf,.pdf" style="display:none" onchange="handlePdfPicked(event)">
@@ -521,7 +548,6 @@
           <div class="pdf-progress-text" id="pdfProgressText">Enviando 0%</div>
         </div>
       </div>
-      <div class="pdf-history" id="pdfHistory"></div>
       <div class="timer-block">
         <div class="timer-block-label">Tempo de apresentação</div>
         <div class="timer-block-value" id="barTimerValue">00:00</div>
@@ -613,9 +639,9 @@
   </div>
   <div class="diag-section">
     <h4>Músicas</h4>
-    <div class="diag-row"><span>PDFs abertos</span><span id="dMusicCount">0</span></div>
+    <div class="diag-row"><span>PDFs na lista</span><span id="dMusicCount">0</span></div>
     <div class="diag-row"><span>PDF atual</span><span id="dMusicCurrent">—</span></div>
-    <div class="diag-row"><span>PDFs em cache</span><span id="dCache">0</span></div>
+    <div class="diag-row"><span>Auto-intervalo</span><span id="dAutoInterval">inativo</span></div>
     <div class="diag-row"><span>Slide atual</span><span id="dSlide">—</span></div>
     <div class="diag-row"><span>Tempo</span><span id="dElapsed">—</span></div>
     <div class="diag-row"><span>Recebidas</span><span id="dRecv">0</span></div>
@@ -653,6 +679,7 @@ var PDF_CHUNK_DELAY = 100;
 var CODE_TTL_MS = 60 * 60 * 1000;
 var HEARTBEAT_INTERVAL = 4000;
 var MEMBER_TIMEOUT = 10000;
+var AUTO_INTERVAL_MS = 60000;
 /* =========================================================
    ESTADO GLOBAL
    ========================================================= */
@@ -680,7 +707,7 @@ var isPaused = false;
 var memberMap = {};
 var heartbeatTimer = null;
 var cleanupTimer = null;
-/* PDFs abertos: chave = id interno, valor = { nome, bytes, base64, paginas, doc } */
+/* PDFs na lista: array ordenado de ids (ordem de envio) */
 var pdfDocs = {};
 var pdfOrder = [];
 var pdfSeq = 0;
@@ -697,6 +724,8 @@ var pendingPdfChunks = {};
 var orphanChunks = {};
 var isSendingPdf = false;
 var pendingPdfAction = null;
+var autoIntervalTimer = null;
+var autoIntervalDeadline = 0;
 /* =========================================================
    PDF.JS
    ========================================================= */
@@ -704,7 +733,7 @@ if (typeof pdfjsLib !== 'undefined') {
   pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_DIR + 'pdf.worker.min.js';
 }
 /* =========================================================
-   PDFS ABERTOS
+   PDFS NA LISTA
    ========================================================= */
 function currentPdf() {
   if (!currentPdfId) return null;
@@ -720,11 +749,7 @@ function totalPagesOf(pdfId) {
   return p.paginas || 1;
 }
 function countPdfs() {
-  var n = 0;
-  for (var k in pdfDocs) {
-    if (pdfDocs.hasOwnProperty(k)) n++;
-  }
-  return n;
+  return pdfOrder.length;
 }
 function openPdfDoc(pdfId, callback) {
   var p = pdfDocs[pdfId];
@@ -742,7 +767,7 @@ function openPdfDoc(pdfId, callback) {
     p.paginas = doc.numPages;
     log('PDF aberto: ' + p.nome + ' (' + doc.numPages + ' paginas)');
     updateDiag();
-    renderPdfHistory();
+    renderMusicMenu();
     callback(doc);
   }).catch(function(e){
     log('ERRO ao abrir PDF: ' + e.message);
@@ -845,6 +870,33 @@ function showOpeningImage(which) {
 }
 function showIntervalImage(which) {
   showStateImage(which, INTERVAL_IMG);
+}
+/* =========================================================
+   AUTO-INTERVALO (60s no ultimo slide)
+   ========================================================= */
+function clearAutoInterval() {
+  if (autoIntervalTimer) {
+    clearTimeout(autoIntervalTimer);
+    autoIntervalTimer = null;
+  }
+  autoIntervalDeadline = 0;
+  updateDiag();
+}
+function armAutoInterval() {
+  clearAutoInterval();
+  if (role !== 'presenter') return;
+  if (!hasActiveMusic) return;
+  if (slideCount <= 0) return;
+  if (currentSlide !== slideCount - 1) return;
+  autoIntervalDeadline = Date.now() + AUTO_INTERVAL_MS;
+  autoIntervalTimer = setTimeout(function(){
+    autoIntervalTimer = null;
+    autoIntervalDeadline = 0;
+    log('Auto-intervalo: 60s no ultimo slide - mudando para musica vazia');
+    selectEmptyMusic();
+  }, AUTO_INTERVAL_MS);
+  log('Auto-intervalo armado: 60s no ultimo slide');
+  updateDiag();
 }
 /* =========================================================
    PREPARACAO VISUAL
@@ -1137,8 +1189,18 @@ function updateDiag() {
   var dV = document.getElementById('dViewers'); if (dV) dV.textContent = viewerCount;
   var dMC = document.getElementById('dMusicCount'); if (dMC) dMC.textContent = countPdfs();
   var dMCur = document.getElementById('dMusicCurrent');
-  if (dMCur) dMCur.textContent = currentPdfName() || '-';
-  var dCache = document.getElementById('dCache'); if (dCache) dCache.textContent = countPdfs();
+  if (dMCur) dMCur.textContent = currentPdfName() || 'Musica vazia';
+  var dAI = document.getElementById('dAutoInterval');
+  if (dAI) {
+    if (autoIntervalDeadline > 0) {
+      var rest = Math.max(0, Math.ceil((autoIntervalDeadline - Date.now()) / 1000));
+      dAI.textContent = 'armado (' + rest + 's)';
+      dAI.className = 'green';
+    } else {
+      dAI.textContent = 'inativo';
+      dAI.className = '';
+    }
+  }
   var dSl = document.getElementById('dSlide');
   if (dSl) dSl.textContent = hasActiveMusic ? ((currentSlide + 1) + ' / ' + slideCount) : '-';
   var dEl = document.getElementById('dElapsed'); if (dEl) dEl.textContent = formatTime(getElapsed());
@@ -1177,8 +1239,8 @@ function copyDiag() {
     'Canal: ' + (channel ? channel.name : '-') + '\n' +
     'Papel: ' + (role || '-') + '\n' +
     'Coralistas ativos: ' + viewerCount + '\n' +
-    'PDFs abertos: ' + countPdfs() + '\n' +
-    'PDF atual: ' + (currentPdfName() || '-') + '\n' +
+    'PDFs na lista: ' + countPdfs() + '\n' +
+    'PDF atual: ' + (currentPdfName() || 'Musica vazia') + '\n' +
     'Slide: ' + (hasActiveMusic ? ((currentSlide + 1) + '/' + slideCount) : '-') + '\n' +
     'Tempo: ' + formatTime(getElapsed()) + '\n' +
     'Recebidas: ' + recvCount + '\n' +
@@ -1230,6 +1292,62 @@ function genCode() {
   return c;
 }
 /* =========================================================
+   MENU SUSPENSO DE MUSICAS
+   ========================================================= */
+function toggleMusicMenu(ev) {
+  if (ev) ev.stopPropagation();
+  var dd = document.getElementById('musicDropdown');
+  if (!dd) return;
+  dd.classList.toggle('open');
+}
+function closeMusicMenu() {
+  var dd = document.getElementById('musicDropdown');
+  if (dd) dd.classList.remove('open');
+}
+document.addEventListener('click', function(e){
+  var dd = document.getElementById('musicDropdown');
+  if (!dd) return;
+  if (!dd.contains(e.target)) closeMusicMenu();
+});
+function renderMusicMenu() {
+  var menu = document.getElementById('musicMenu');
+  var trgName = document.getElementById('musicTriggerName');
+  if (!menu) return;
+
+  var html = '';
+  /* Posicao 0: musica vazia */
+  var emptyActive = (!hasActiveMusic) ? ' active' : '';
+  html += '<button class="music-option empty-opt' + emptyActive + '" onclick="selectEmptyMusic()">' +
+    '<span class="opt-num">0</span>' +
+    '<span class="opt-name">Música vazia</span>' +
+    '</button>';
+
+  /* Posicoes 1..N: PDFs na ordem de envio */
+  for (var i = 0; i < pdfOrder.length; i++) {
+    var id = pdfOrder[i];
+    var p = pdfDocs[id];
+    if (!p) continue;
+    var active = (hasActiveMusic && id === currentPdfId) ? ' active' : '';
+    html += '<button class="music-option' + active + '" onclick="activatePdf(\'' + id + '\')">' +
+      '<span class="opt-num">' + (i + 1) + '</span>' +
+      '<span class="opt-name">' + escapeHtml(p.nome) + '</span>' +
+      '<span class="opt-pages">' + (p.paginas || 1) + 'p</span>' +
+      '</button>';
+  }
+  menu.innerHTML = html;
+
+  if (trgName) {
+    if (hasActiveMusic && currentPdfId && pdfDocs[currentPdfId]) {
+      var idx = pdfOrder.indexOf(currentPdfId);
+      trgName.textContent = (idx >= 0 ? (idx + 1) + '. ' : '') + pdfDocs[currentPdfId].nome;
+      trgName.classList.remove('empty');
+    } else {
+      trgName.textContent = 'Música vazia';
+      trgName.classList.add('empty');
+    }
+  }
+}
+/* =========================================================
    PDF - ENVIO
    ========================================================= */
 function triggerPdfPicker() {
@@ -1253,7 +1371,7 @@ function handlePdfPicked(ev) {
     var dataUrl = reader.result;
     var base64 = String(dataUrl).split(',')[1] || '';
     if (!base64) { showError('Nao foi possivel ler o PDF.'); return; }
-    registerAndActivatePdf(nome, base64);
+    registerPdf(nome, base64);
   };
   reader.onerror = function(){
     showError('Erro ao ler o arquivo PDF.');
@@ -1261,7 +1379,7 @@ function handlePdfPicked(ev) {
   };
   reader.readAsDataURL(file);
 }
-function registerAndActivatePdf(nome, base64) {
+function registerPdf(nome, base64) {
   pdfSeq++;
   var pdfId = 'pdf' + pdfSeq;
   var bytes = base64ToBytes(base64);
@@ -1273,19 +1391,19 @@ function registerAndActivatePdf(nome, base64) {
     doc: null
   };
   pdfOrder.push(pdfId);
-  log('PDF registrado: ' + nome + ' (' + Math.round(bytes.length / 1024) + ' KB)');
+  log('PDF registrado na lista: ' + nome + ' (' + Math.round(bytes.length / 1024) + ' KB)');
   openPdfDoc(pdfId, function(doc){
-    if (doc) {
-      log('PDF pronto: ' + nome + ' - ' + doc.numPages + ' paginas');
-    }
-    renderPdfHistory();
+    if (doc) log('PDF pronto: ' + nome + ' - ' + doc.numPages + ' paginas');
+    renderMusicMenu();
     updateDiag();
-    activatePdf(pdfId);
   });
+  /* Envia ao canal; a ativacao acontece ao final do envio */
   sendPdfToChannel(pdfId, nome, base64);
 }
 function activatePdf(pdfId) {
   if (!pdfDocs[pdfId]) return;
+  closeMusicMenu();
+  clearAutoInterval();
   cancelPreparation();
   hideStateImage('presenter');
   showingInterval = false;
@@ -1297,43 +1415,33 @@ function activatePdf(pdfId) {
   renderPresenterSlide();
   renderMirror();
   updateCounter();
-  renderPdfHistory();
+  renderMusicMenu();
   publishPrepStart(pdfId);
   startPreparation(pdfId, function(){
     publishSlide();
+    armAutoInterval();
   });
   log('PDF ativado: ' + pdfDocs[pdfId].nome);
 }
-function renderPdfHistory() {
-  var box = document.getElementById('pdfHistory');
-  if (!box) return;
-  if (pdfOrder.length === 0) {
-    box.innerHTML = '';
-    return;
-  }
-  var html = '';
-  for (var i = pdfOrder.length - 1; i >= 0; i--) {
-    var id = pdfOrder[i];
-    var p = pdfDocs[id];
-    if (!p) continue;
-    var active = (id === currentPdfId) ? ' active' : '';
-    html += '<button class="pdf-history-item' + active + '" onclick="activatePdf(\'' + id + '\')">' +
-      '<span class="pdf-ico">📄</span>' +
-      '<span class="pdf-name">' + escapeHtml(p.nome) + '</span>' +
-      '<span class="pdf-pages">' + (p.paginas || 1) + 'p</span>' +
-      '</button>';
-  }
-  box.innerHTML = html;
-  var cur = document.getElementById('musicCurrent');
-  if (cur) {
-    if (currentPdfId && pdfDocs[currentPdfId]) {
-      cur.textContent = pdfDocs[currentPdfId].nome;
-      cur.classList.remove('empty');
-    } else {
-      cur.textContent = 'Nenhum PDF aberto';
-      cur.classList.add('empty');
-    }
-  }
+function selectEmptyMusic() {
+  closeMusicMenu();
+  clearAutoInterval();
+  cancelPreparation();
+  hideStateImage('presenter');
+  hasActiveMusic = false;
+  showingInterval = true;
+  sessionStarted = true;
+  currentPdfId = null;
+  currentSlide = 0;
+  slideCount = 0;
+  setNavEnabled(false);
+  showIntervalImage('presenter');
+  publishInterval();
+  renderMusicMenu();
+  document.getElementById('mirrorPreview').innerHTML = '<div class="mirror-empty">—</div>';
+  document.getElementById('mirrorNextNum').textContent = '—';
+  updateCounter();
+  log('Musica vazia selecionada - imagem de intervalo');
 }
 function sendPdfToChannel(pdfId, nome, base64) {
   if (!channel) {
@@ -1398,7 +1506,9 @@ function sendPdfToChannel(pdfId, nome, base64) {
     setTimeout(function(){
       if (wrap) wrap.classList.remove('show');
     }, 1200);
-    log('PDF enviado ao canal: ' + nome);
+    log('PDF enviado ao canal: ' + nome + ' - ativando agora');
+    /* AJUSTE 3: ativa somente depois do envio terminar */
+    activatePdf(pdfId);
   }
   sendNext();
 }
@@ -1482,9 +1592,7 @@ function finalizePdf(sendId) {
   }
   log('PDF completo recebido: ' + pending.nome + ' (' + Math.round(bytes.length / 1024) + ' KB)');
   openPdfDoc(pending.pdfId, function(doc){
-    if (doc) {
-      log('PDF recebido renderizavel: ' + pending.nome + ' - ' + doc.numPages + ' paginas');
-    }
+    if (doc) log('PDF recebido renderizavel: ' + pending.nome + ' - ' + doc.numPages + ' paginas');
     updateDiag();
     runPendingPdfAction();
   });
@@ -1581,7 +1689,7 @@ function enterPresenterMode() {
     showOpeningImage('presenter');
     publishOpening();
     renderMembers();
-    renderPdfHistory();
+    renderMusicMenu();
     resetTimer();
     startTimer();
     hasActiveMusic = false;
@@ -1838,6 +1946,9 @@ function nextSlide() {
     renderMirror();
     updateCounter();
     publishSlide();
+    /* Reinicia o auto-intervalo ao chegar no ultimo slide */
+    if (currentSlide === slideCount - 1) armAutoInterval();
+    else clearAutoInterval();
   }
 }
 function prevSlide() {
@@ -1849,6 +1960,9 @@ function prevSlide() {
     renderMirror();
     updateCounter();
     publishSlide();
+    /* Reinicia o auto-intervalo ao voltar para o ultimo slide */
+    if (currentSlide === slideCount - 1) armAutoInterval();
+    else clearAutoInterval();
   }
 }
 /* =========================================================
@@ -1871,6 +1985,7 @@ function endPresentation() {
   var finalText = formatTime(finalMs);
   closeEndPanel();
   stopTimer();
+  clearAutoInterval();
   try {
     if (channel) {
       channel.publish('session-end', { ts: Date.now(), elapsedMs: finalMs });
@@ -1914,6 +2029,7 @@ function endPresentation() {
    ========================================================= */
 function applyOpening() {
   cancelPreparation();
+  clearAutoInterval();
   hasActiveMusic = false;
   showingInterval = false;
   currentPdfId = null;
@@ -1928,6 +2044,7 @@ function applyOpening() {
 function applyPrepStart(pdfId) {
   log('prep-start aplicado: ' + pdfId);
   cancelPreparation();
+  clearAutoInterval();
   showingInterval = false;
   sessionStarted = true;
   hasActiveMusic = true;
@@ -1958,6 +2075,7 @@ function applySlide(pdfId, index, total) {
 }
 function applyInterval() {
   cancelPreparation();
+  clearAutoInterval();
   sessionStarted = true;
   hasActiveMusic = false;
   showingInterval = true;
@@ -2047,6 +2165,7 @@ function joinSession() {
       var ms = (msg.data && typeof msg.data.elapsedMs === 'number') ? msg.data.elapsedMs : 0;
       log('apresentacao encerrada pela maestrina - tempo ' + formatTime(ms));
       cancelPreparation();
+      clearAutoInterval();
       stopHeartbeat();
       stopStateRequests();
       setPresenterOnline(false);
@@ -2152,6 +2271,7 @@ function stopStateRequests() {
 }
 function leaveSession() {
   cancelPreparation();
+  clearAutoInterval();
   stopStateRequests();
   stopPresencePoll();
   stopMemberCleanup();
@@ -2182,6 +2302,7 @@ function leaveSession() {
   isSendingPdf = false;
   resetTimer();
   setPresenterOnline(null);
+  closeMusicMenu();
   var wrap = document.getElementById('pdfProgressWrap');
   if (wrap) wrap.classList.remove('show');
   var btn = document.getElementById('openPdfBtn');
@@ -2228,6 +2349,7 @@ document.addEventListener('keydown', function(e){
   if (e.key === 'Escape') {
     var ov = document.getElementById('endOverlay');
     if (ov && ov.classList.contains('open')) { closeEndPanel(); return; }
+    closeMusicMenu();
   }
   if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); nextSlide(); }
   if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); prevSlide(); }
