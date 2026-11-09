@@ -106,7 +106,6 @@
   }
   .voice-cell-label.hidden { display:none; }
   .voice-cell-empty { color:#3a3a48; font-size:12px; font-style:italic; text-align:center; padding:14px; }
-
   .grid-overlay {
     position:absolute; inset:0; z-index:40;
     display:none; align-items:center; justify-content:center;
@@ -119,7 +118,6 @@
     object-fit:contain; object-position:center;
     display:block;
   }
-
   .mirror-panel {
     width:clamp(220px,24vw,320px); flex-shrink:0;
     background:#0d0d14; border-left:1px solid #1e1e28;
@@ -384,7 +382,6 @@
   .error-banner { position:fixed; top:0; left:0; right:0; background:#e5484d; color:#fff; padding:11px 16px; font-size:13px; text-align:center; z-index:200; display:none; }
   .error-banner.show { display:block; }
   .fs-hide { display:none !important; }
-
   .viewer-emergency {
     position:fixed; top:10px; right:10px; z-index:130;
     width:40px; height:40px; border-radius:50%;
@@ -395,7 +392,6 @@
   }
   .viewer-emergency:active { opacity:1; background:#2a2a36; }
   .viewer-emergency.show { display:flex; }
-
   .stuck-overlay {
     position:fixed; inset:0; z-index:140;
     background:rgba(6,6,10,.94); backdrop-filter:blur(6px);
@@ -425,7 +421,6 @@
   .stuck-btn-primary:active { background:#d4a33f; }
   .stuck-btn-ghost { background:#1c1c26; color:#c9c9d4; border:1px solid #2a2a36; }
   .stuck-btn-ghost:active { background:#262632; }
-
   @media (max-width:860px) {
     .presenter-body { flex-direction:column; }
     .mirror-panel {
@@ -695,9 +690,6 @@ var PREP_PER_SLIDE_MS = 250;
 var PREP_HOLD_FIRST_MS = 900;
 var PDF_CHUNK_SIZE = 24576;
 var PDF_CHUNK_DELAY = 100;
-var GIF_CHUNK_SIZE = 14000;
-var GIF_CHUNK_DELAY = 90;
-var GIF_TIMEOUT_MS = 30000;
 var CODE_TTL_MS = 60 * 60 * 1000;
 var HEARTBEAT_INTERVAL = 4000;
 var MEMBER_TIMEOUT = 10000;
@@ -789,14 +781,8 @@ var lastObservedW = 0;
 var lastObservedH = 0;
 var stuckTimer = null;
 var gotAnyContent = false;
-
 /* GIFs em cache local (base64) */
 var gifCache = {};
-var gifPending = {};
-var gifOrphans = {};
-var gifSending = false;
-var gifSendQueue = [];
-var gifTimeoutTimers = {};
 /* =========================================================
    PDF.JS
    ========================================================= */
@@ -863,7 +849,7 @@ function isSingleMode() {
   return activeVoices.length === 1;
 }
 /* =========================================================
-   GIF: carregamento, cache e transmissao SERIAL
+   GIF: carregamento direto do servidor com cache local
    ========================================================= */
 function gifKeyFor(kind) {
   if (kind === 'opening') return 'opening';
@@ -914,127 +900,12 @@ function preloadAllGifs(callback) {
     })(kinds[i]);
   }
 }
-/* Enfileira GIFs para envio SERIAL (um por vez) */
-function queueGifSend(kind) {
-  var key = gifKeyFor(kind);
-  if (!key) return;
-  for (var i = 0; i < gifSendQueue.length; i++) {
-    if (gifSendQueue[i] === kind) return;
-  }
-  gifSendQueue.push(kind);
-  processGifQueue();
-}
-function processGifQueue() {
-  if (gifSending) return;
-  if (gifSendQueue.length === 0) return;
-  var kind = gifSendQueue.shift();
-  gifSending = true;
-  sendGifSerial(kind, function(){
-    gifSending = false;
-    setTimeout(processGifQueue, 300);
-  });
-}
-function sendGifSerial(kind, onDone) {
-  var key = gifKeyFor(kind);
-  if (!key) { onDone(); return; }
-  var dataUrl = gifCache[key];
-  if (!dataUrl) {
-    loadGifFromServer(kind, function(d){
-      if (d) sendGifSerial(kind, onDone);
-      else onDone();
-    });
-    return;
-  }
-  var base64 = String(dataUrl).split(',')[1] || '';
-  if (!base64) { onDone(); return; }
-  var total = Math.ceil(base64.length / GIF_CHUNK_SIZE);
-  var sendId = 'g' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
-  var voices = [];
-  for (var i = 0; i < activeVoices.length; i++) {
-    var v = activeVoices[i];
-    var st = voiceState[v];
-    if (st && st.channel) voices.push({ voice: v, ch: st.channel });
-  }
-  if (voices.length === 0) { onDone(); return; }
-  for (var j = 0; j < voices.length; j++) {
-    try {
-      voices[j].ch.publish('gif-meta', { kind: kind, total: total, sendId: sendId, size: base64.length });
-      sentCount++;
-    } catch(e) { log('ERRO gif-meta ' + voices[j].voice + ': ' + e.message); }
-  }
-  log('gif enviando: ' + kind + ' (' + total + ' partes, ' + voices.length + ' naipe(s))');
-  var seq = 0;
-  function sendNext() {
-    if (seq >= total) {
-      log('gif enviado: ' + kind + ' completo');
-      onDone();
-      return;
-    }
-    var start = seq * GIF_CHUNK_SIZE;
-    var chunk = base64.slice(start, start + GIF_CHUNK_SIZE);
-    for (var k = 0; k < voices.length; k++) {
-      try {
-        voices[k].ch.publish('gif-chunk', { kind: kind, sendId: sendId, seq: seq, data: chunk });
-        sentCount++;
-      } catch(e) { log('ERRO gif-chunk ' + voices[k].voice + ': ' + e.message); }
-    }
-    seq++;
-    setTimeout(sendNext, GIF_CHUNK_DELAY);
-  }
-  sendNext();
-}
-function sendGifToAll(kind) {
-  queueGifSend(kind);
-}
-function handleGifMeta(msg) {
-  var d = msg.data || {};
-  if (!d.kind || !d.sendId) return;
-  var key = gifKeyFor(d.kind);
-  if (!key) return;
-  if (gifCache[key]) { log('gif ja em cache: ' + d.kind); return; }
-  var pending = { kind: d.kind, total: d.total || 0, parts: {}, received: 0 };
-  if (gifOrphans[d.sendId]) {
-    pending.parts = gifOrphans[d.sendId].parts;
-    pending.received = gifOrphans[d.sendId].received;
-    delete gifOrphans[d.sendId];
-  }
-  gifPending[d.sendId] = pending;
-  log('gif-meta recebido: ' + d.kind + ' (' + d.total + ' partes)');
-  if (pending.total > 0 && pending.received >= pending.total) finalizeGif(d.sendId);
-}
-function handleGifChunk(msg) {
-  var d = msg.data || {};
-  var sendId = d.sendId;
-  if (!sendId || typeof d.seq !== 'number') return;
-  var pending = gifPending[sendId];
-  if (!pending) {
-    if (!gifOrphans[sendId]) gifOrphans[sendId] = { parts: {}, received: 0 };
-    if (gifOrphans[sendId].parts[d.seq] === undefined) {
-      gifOrphans[sendId].parts[d.seq] = d.data;
-      gifOrphans[sendId].received++;
-    }
-    return;
-  }
-  if (pending.parts[d.seq] !== undefined) return;
-  pending.parts[d.seq] = d.data;
-  pending.received++;
-  if (pending.total > 0 && pending.received >= pending.total) finalizeGif(sendId);
-}
-function finalizeGif(sendId) {
-  var pending = gifPending[sendId];
-  if (!pending) return;
-  var full = '';
-  for (var i = 0; i < pending.total; i++) full += pending.parts[i] || '';
-  delete gifPending[sendId];
-  var key = gifKeyFor(pending.kind);
-  if (!key) return;
-  gifCache[key] = 'data:image/gif;base64,' + full;
-  log('gif completo recebido: ' + pending.kind + ' (' + Math.round(full.length/1024) + 'KB)');
-  applyCurrentGifState();
-}
 function gifSrcFor(kind) {
   var key = gifKeyFor(kind);
   if (key && gifCache[key]) return gifCache[key];
+  loadGifFromServer(kind, function(){
+    applyCurrentGifState();
+  });
   return BASE_URL + gifPathFor(kind);
 }
 /* =========================================================
@@ -1831,7 +1702,6 @@ function startPreparation(onDone) {
     if (!isPreparing) return;
     if (i >= total) {
       currentSlide = 0;
-      scheduleLayoutAwareRedraw();
       updateCounter();
       prepTimer = setTimeout(function(){
         isPreparing = false;
@@ -1841,7 +1711,6 @@ function startPreparation(onDone) {
       return;
     }
     currentSlide = i;
-    scheduleLayoutAwareRedraw();
     updateCounter();
     i++;
     prepTimer = setTimeout(step, PREP_PER_SLIDE_MS);
@@ -2182,9 +2051,6 @@ function handleCatalogRequest(voice) {
   for (var i = 0; i < list.length; i++) {
     sendPdfToVoice(voice, list[i]);
   }
-  queueGifSend('opening');
-  queueGifSend('interval');
-  queueGifSend('loading');
   log('Reenvio de PDFs para ' + voice + ': ' + list.length);
 }
 function handleCatalog(msg) {
@@ -2519,18 +2385,18 @@ function savePdfPanel() {
   closePdfPanel();
   log('Letras salvas - ' + musicNames.length + ' musicas');
   sendAllPdfs();
-  publishOpening();
   hasActiveMusic = false;
   currentMusicIndex = -1;
   currentSlide = 0;
   slideCount = 0;
-  showingInterval = false;
+  showingInterval = true;
   sessionStarted = true;
   setNavEnabled(true);
   updateCounter();
-  clearPresenterArea();
+  showIntervalImage('presenter');
+  publishInterval();
   enterFullscreen();
-  log('Tela cheia solicitada apos salvar PDFs');
+  log('Letras salvas - modo espera mantido');
 }
 function sendAllPdfs() {
   pendingUploads = 0;
@@ -2750,9 +2616,6 @@ function enterPresenterMode() {
     publishOpening();
     preloadAllGifs(function(){
       log('GIFs pre-carregados no apresentador');
-      queueGifSend('opening');
-      queueGifSend('interval');
-      queueGifSend('loading');
     });
     renderMembers();
     renderMusicMenu();
@@ -2964,10 +2827,6 @@ function resetAllState() {
   catalogReceived = false;
   channelReady = false;
   gotAnyContent = false;
-  gifPending = {};
-  gifOrphans = {};
-  gifSendQueue = [];
-  gifSending = false;
   if (layoutRetryTimer) { clearTimeout(layoutRetryTimer); layoutRetryTimer = null; }
   stopStuckTimer();
   closeStuckOverlay();
@@ -3017,18 +2876,14 @@ function joinSession() {
     catalogReceived = false;
     channelReady = false;
     gotAnyContent = false;
-    gifPending = {};
-    gifOrphans = {};
     var channelName = 's1-' + code;
     myChannelName = channelName;
-
     try {
       if (ably && typeof ably.channels.release === 'function') {
         ably.channels.release(channelName);
         log('canal antigo liberado: ' + channelName);
       }
     } catch(e) { log('release falhou: ' + e.message); }
-
     myChannel = ably.channels.get(channelName);
     myChannel.subscribe('slide', function(msg){
       recvCount++;
@@ -3059,8 +2914,6 @@ function joinSession() {
     myChannel.subscribe('interval', function(){ recvCount++; applyInterval(); updateDiag(); });
     myChannel.subscribe('loading', function(){ recvCount++; applyLoading(); updateDiag(); });
     myChannel.subscribe('catalog', function(msg){ recvCount++; handleCatalog(msg); });
-    myChannel.subscribe('gif-meta', function(msg){ recvCount++; handleGifMeta(msg); });
-    myChannel.subscribe('gif-chunk', function(msg){ recvCount++; handleGifChunk(msg); });
     myChannel.subscribe('pdf-meta', function(msg){ recvCount++; handlePdfMeta(msg); updateDiag(); });
     myChannel.subscribe('pdf-chunk', function(msg){ recvCount++; handlePdfChunk(msg); });
     myChannel.subscribe('session-end', function(msg){
@@ -3110,6 +2963,10 @@ function joinSession() {
     startStuckTimer();
     requestWakeLock();
     setupResizeObserver('viewer');
+    preloadAllGifs(function(){
+      log('GIFs pre-carregados no coralista');
+      applyCurrentGifState();
+    });
     updateDiag();
   } catch(e) {
     showError('Erro ao entrar: ' + e.message);
@@ -3156,7 +3013,15 @@ function applyPrepStart(index, total) {
   showScreen('viewer');
   setPresenterOnline(true);
   stopStateRequests();
-  startPreparation(function(){ log('Preparacao concluida no receptor'); });
+  showLoadingImage('viewer');
+  startPreparation(function(){
+    log('Preparacao concluida no receptor');
+    var pdfId = pdfIdForVoiceAt(myVoice, currentMusicIndex);
+    if (pdfId && voicePdfsById(pdfId) && voicePdfsById(pdfId).bytes) {
+      clearStateImage();
+      scheduleLayoutAwareRedraw();
+    }
+  });
   updateDiag();
 }
 function applySlide(pdfId, index, total, music) {
@@ -3170,6 +3035,7 @@ function applySlide(pdfId, index, total, music) {
   showScreen('viewer');
   stopStateRequests();
   setPresenterOnline(true);
+  clearStateImage();
   scheduleLayoutAwareRedraw();
   log('slide aplicado: ' + (currentSlide + 1));
 }
