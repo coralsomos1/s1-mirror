@@ -1049,12 +1049,12 @@ function scheduleLayoutAwareRedraw() {
     }
     if (role === 'viewer') {
       if (showingInterval) return;
+      if (currentStateImage === 'loading') return;
       if (hasActiveMusic) renderViewerSlide();
       else if (currentStateImage === 'interval') showIntervalImage('viewer');
-      else if (currentStateImage === 'loading') showLoadingImage('viewer');
       else if (currentStateImage === 'opening') showOpeningImage('viewer');
-    } else {
-      if (showingInterval) return;
+    } else { 
+     if (showingInterval) return;
       if (hasActiveMusic) renderAllVoices();
     }
   }
@@ -1806,6 +1806,10 @@ function renderViewerSlide() {
   var el = document.getElementById('viewerSlide');
   if (!el) return;
   if (showingInterval) return;
+  if (currentStateImage === 'loading') {
+    log('renderViewerSlide bloqueado: GIF de carregamento ativo');
+    return;
+  }
   var myGen = ++renderGeneration;
   var pageIdx = currentSlide;
   var musicIdx = currentMusicIndex;
