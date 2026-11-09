@@ -54,6 +54,7 @@
     padding:12px 16px;
   }
   .code-row-name { font-size:12px; color:#8a8a99; text-transform:uppercase; letter-spacing:1.5px; font-weight:600; }
+  .code-row-name.hidden { display:none; }
   .code-row-value { font-size:26px; font-weight:700; color:#e8b44a; letter-spacing:7px; padding-left:7px; }
   #presenter, #viewer { position:relative; }
   .presenter-body { flex:1; display:flex; min-height:0; }
@@ -1150,16 +1151,29 @@ function openPdfDoc(pdfId, callback) {
     callback(null);
     return;
   }
+  if (p.loading) {
+    p.loading.push(callback);
+    return;
+  }
+  p.loading = [callback];
   var task = pdfjsLib.getDocument({ data: p.bytes.slice(0) });
   task.promise.then(function(doc){
     p.doc = doc;
     p.paginas = doc.numPages;
     log('PDF aberto: ' + p.nome + ' (' + doc.numPages + ' paginas)');
+    var cbs = p.loading || [];
+    p.loading = null;
     updateDiag();
-    callback(doc);
+    for (var i = 0; i < cbs.length; i++) {
+      try { cbs[i](doc); } catch(e) {}
+    }
   }).catch(function(e){
     log('ERRO ao abrir PDF: ' + e.message);
-    callback(null);
+    var cbs = p.loading || [];
+    p.loading = null;
+    for (var i = 0; i < cbs.length; i++) {
+      try { cbs[i](null); } catch(e2) {}
+    }
   });
 }
 function voicePdfsById(pdfId) {
@@ -1175,6 +1189,38 @@ function pdfIdForVoiceAt(voice, index) {
   var list = voicePdfs[voice] || [];
   if (index < 0 || index >= list.length) return null;
   return list[index].id;
+}
+function preloadAllPdfs(callback) {
+  var pending = 0;
+  var started = 0;
+  for (var i = 0; i < activeVoices.length; i++) {
+    var list = voicePdfs[activeVoices[i]] || [];
+    for (var j = 0; j < list.length; j++) {
+      if (!list[j].doc && !list[j].loading) { pending++; }
+    }
+  }
+  if (pending === 0) { callback(); return; }
+  var done = 0;
+  for (var a = 0; a < activeVoices.length; a++) {
+    var lst = voicePdfs[activeVoices[a]] || [];
+    for (var b = 0; b < lst.length; b++) {
+      (function(obj){
+        if (obj.doc) return;
+        if (obj.loading) {
+          obj.loading.push(function(){ done++; if (done >= pending) callback(); });
+          return;
+        }
+        started++;
+        openPdfDoc(obj.id, function(){
+          done++;
+          if (done >= pending) callback();
+        });
+      })(lst[b]);
+    }
+  }
+  if (started === 0 && pending > 0) {
+    setTimeout(function(){ if (done >= pending) callback(); }, 50);
+  }
 }
 /* =========================================================
    IMAGENS DE ESTADO
@@ -1339,14 +1385,16 @@ function buildVoicesGrid() {
 function renderAllVoices() {
   if (showingInterval) return;
   var myGen = ++renderGeneration;
+  var slideAtRender = currentSlide;
   for (var i = 0; i < activeVoices.length; i++) {
-    renderVoiceCell(activeVoices[i], myGen);
+    renderVoiceCell(activeVoices[i], myGen, slideAtRender);
   }
 }
-function renderVoiceCell(voice, myGen) {
+function renderVoiceCell(voice, myGen, slideIndex) {
   var cell = document.getElementById('cell-' + voice);
   if (!cell) return;
-  var pdfId = pdfIdForVoiceAt(voice, currentSlide);
+  var idx = (typeof slideIndex === 'number') ? slideIndex : currentSlide;
+  var pdfId = pdfIdForVoiceAt(voice, idx);
   if (!pdfId) {
     var label = cell.querySelector('.voice-cell-label');
     var keep = label ? label.outerHTML : '';
@@ -1360,7 +1408,7 @@ function renderVoiceCell(voice, myGen) {
     var label = cell.querySelector('.voice-cell-label');
     var keep = label ? label.outerHTML : '';
     cell.innerHTML = keep;
-    var pageNum = Math.min(currentSlide + 1, doc.numPages);
+    var pageNum = Math.min(idx + 1, doc.numPages);
     renderPageTo(doc, pageNum, cell, myGen);
   });
 }
@@ -1369,8 +1417,9 @@ function renderViewerSlide() {
   if (!el) return;
   if (showingInterval) return;
   var myGen = ++renderGeneration;
+  var idx = currentSlide;
   hideStateImage('viewer');
-  var pdfId = pdfIdForVoiceAt(myVoice, currentSlide);
+  var pdfId = pdfIdForVoiceAt(myVoice, idx);
   if (!pdfId) {
     el.innerHTML = '<div class="slide-placeholder">Aguardando...</div>';
     return;
@@ -1382,7 +1431,7 @@ function renderViewerSlide() {
       el.innerHTML = '<div class="slide-placeholder">Aguardando...</div>';
       return;
     }
-    var pageNum = Math.min(currentSlide + 1, doc.numPages);
+    var pageNum = Math.min(idx + 1, doc.numPages);
     renderPageTo(doc, pageNum, el, myGen);
   });
 }
@@ -1461,19 +1510,30 @@ function activateMusic(index) {
     var list = voicePdfs[activeVoices[i]] || [];
     var p = list[index];
     if (p) {
-      if (!p.doc) openPdfDoc(p.id, function(){});
       var pages = p.paginas || 1;
       if (pages > maxPages) maxPages = pages;
     }
   }
   slideCount = maxPages || 1;
-  renderAllVoices();
+  setNavEnabled(true);
   updateCounter();
   renderMusicMenu();
-  publishPrepStart();
-  startPreparation(function(){
-    publishSlide();
-    armAutoInterval();
+  preloadAllPdfs(function(){
+    if (!hasActiveMusic || currentMusicIndex !== index) return;
+    var mp = 0;
+    for (var k = 0; k < activeVoices.length; k++) {
+      var lst = voicePdfs[activeVoices[k]] || [];
+      var obj = lst[index];
+      if (obj && obj.paginas > mp) mp = obj.paginas;
+    }
+    slideCount = mp || slideCount || 1;
+    renderAllVoices();
+    updateCounter();
+    publishPrepStart();
+    startPreparation(function(){
+      publishSlide();
+      armAutoInterval();
+    });
   });
   log('Musica ativada: ' + (musicNames[index] || index));
 }
@@ -1665,6 +1725,7 @@ function handlePdfPicked(ev) {
             bytes: base64ToBytes(base64),
             paginas: 1,
             doc: null,
+            loading: null,
             id: 'p' + (++pdfSeq)
           });
         }
@@ -1870,7 +1931,8 @@ function finalizePdf(sendId) {
     base64: full,
     bytes: bytes,
     paginas: 1,
-    doc: null
+    doc: null,
+    loading: null
   };
   if (!voicePdfs[myVoice]) voicePdfs[myVoice] = [];
   var exists = false;
@@ -2370,175 +2432,4 @@ function leaveSession() {
       try { st.channel.presence.leave(); st.channel.detach(); } catch(e) {}
     }
   }
-  try { if (myChannel) { myChannel.presence.leave(); myChannel.detach(); } } catch(e) {}
-  myChannel = null;
-  role = null;
-  myVoice = null;
-  resetAllState();
-  closeMusicMenu();
-  closePdfPanel();
-  var input = document.getElementById('joinInput');
-  if (input) input.value = '';
-  autoFsRequested = false;
-  clearLastCode();
-  showScreen('home');
-  log('Sessao encerrada');
-}
-function runEchoTest() {
-  var ch = myChannel || (voiceState[activeVoices[0]] ? voiceState[activeVoices[0]].channel : null);
-  if (!ch) { echoResult = 'Conecte-se a um canal primeiro'; updateDiag(); return; }
-  echoResult = 'Testando...';
-  updateDiag();
-  var ts = Date.now();
-  var got = false;
-  var handler = function(msg) {
-    if (msg.data && msg.data.ts === ts) {
-      got = true;
-      echoResult = 'Eco OK - mensagens chegando neste canal';
-      log('Eco OK');
-      updateDiag();
-      try { ch.unsubscribe('echo-test', handler); } catch(e) {}
-    }
-  };
-  ch.subscribe('echo-test', handler);
-  ch.publish('echo-test', { ts: ts, clientId: myClientId });
-  sentCount++;
-  setTimeout(function(){
-    if (!got) {
-      echoResult = 'Eco FALHOU - nenhuma mensagem retornou';
-      log('Eco FALHOU');
-      updateDiag();
-      try { ch.unsubscribe('echo-test', handler); } catch(e) {}
-    }
-  }, 5000);
-}
-/* =========================================================
-   DIAGNOSTICO
-   ========================================================= */
-function toggleDiag() {
-  document.getElementById('diag').classList.toggle('open');
-  updateDiag();
-}
-function updateDiag() {
-  var libOk = (typeof Ably !== 'undefined');
-  var pdfOk = (typeof pdfjsLib !== 'undefined');
-  var dT = document.getElementById('dTransport');
-  var dL = document.getElementById('dLib');
-  if (dT) dT.textContent = 'Ably Realtime' + (pdfOk ? ' + PDF.js' : ' (PDF.js ausente)');
-  if (dL) { dL.textContent = libOk ? 'carregada (ok)' : 'NAO CARREGADA'; dL.className = libOk ? 'green' : 'red'; }
-  var host = '-', state = '-';
-  if (ably) {
-    try { host = ably.connection.connectionManager.host || '-'; } catch(e) {}
-    state = ably.connection.state || '-';
-  }
-  var dH = document.getElementById('dHost'); if (dH) dH.textContent = host;
-  var dS = document.getElementById('dState'); if (dS) dS.textContent = state;
-  var dC = document.getElementById('dClient'); if (dC) dC.textContent = myClientId || '-';
-  var chNames = [];
-  for (var i = 0; i < activeVoices.length; i++) {
-    var st = voiceState[activeVoices[i]];
-    if (st && st.channel) chNames.push(VOICE_LABEL[activeVoices[i]] + ':' + st.channel.name);
-  }
-  if (myChannel) chNames.push('viewer:' + myChannel.name);
-  var dCh = document.getElementById('dChannel'); if (dCh) dCh.textContent = chNames.length ? chNames.join(' | ') : '-';
-  var dR = document.getElementById('dRole'); if (dR) dR.textContent = role || '-';
-  var dM = document.getElementById('dMode'); if (dM) dM.textContent = activeVoices.length + ' naipe(s)';
-  var dN = document.getElementById('dMyName'); if (dN) dN.textContent = myName || '-';
-  var dV = document.getElementById('dViewers'); if (dV) dV.textContent = viewerCount;
-  var dMC = document.getElementById('dMusicCount'); if (dMC) dMC.textContent = musicNames.length;
-  var dMCur = document.getElementById('dMusicCurrent');
-  if (dMCur) dMCur.textContent = (hasActiveMusic && currentMusicIndex >= 0 && musicNames[currentMusicIndex]) ? musicNames[currentMusicIndex] : 'Modo espera';
-  var dAI = document.getElementById('dAutoInterval');
-  if (dAI) {
-    if (autoIntervalDeadline > 0) {
-      var rest = Math.max(0, Math.ceil((autoIntervalDeadline - Date.now()) / 1000));
-      dAI.textContent = 'armado (' + rest + 's)';
-      dAI.className = 'green';
-    } else { dAI.textContent = 'inativo'; dAI.className = ''; }
-  }
-  var dSl = document.getElementById('dSlide');
-  if (dSl) dSl.textContent = hasActiveMusic ? ((currentSlide + 1) + ' / ' + slideCount) : '-';
-  var dEl = document.getElementById('dElapsed'); if (dEl) dEl.textContent = formatTime(getElapsed());
-  var dRe = document.getElementById('dRecv'); if (dRe) dRe.textContent = recvCount;
-  var dSe = document.getElementById('dSent'); if (dSe) dSe.textContent = sentCount;
-  var dEc = document.getElementById('dEcho'); if (dEc) dEc.textContent = echoResult;
-  var dLo = document.getElementById('dLog'); if (dLo) dLo.textContent = eventLog.length ? eventLog.join('\n') : 'Nenhum evento registrado.';
-  var fs = isFullscreen();
-  var dF = document.getElementById('dFullscreen');
-  if (dF) { dF.textContent = fs ? 'ativa' : 'inativa'; dF.className = fs ? 'green' : ''; }
-  var dW = document.getElementById('dWake');
-  if (dW) { dW.textContent = wakeLock ? 'ativo' : ('wakeLock' in navigator ? 'inativo' : 'nao suportado'); dW.className = wakeLock ? 'green' : ''; }
-}
-function copyDiag() {
-  var txt = 'MODO: ' + activeVoices.length + ' naipe(s) - ' + activeVoices.join(', ') + '\n' +
-    'Biblioteca: ' + (typeof Ably !== 'undefined' ? 'ok' : 'NAO CARREGADA') + '\n' +
-    'Estado: ' + (ably ? ably.connection.state : '-') + '\n' +
-    'Client ID: ' + (myClientId || '-') + '\n' +
-    'Papel: ' + (role || '-') + '\n' +
-    'Nome: ' + (myName || '-') + '\n' +
-    'Coralistas ativos: ' + viewerCount + '\n' +
-    'Musicas: ' + musicNames.length + '\n' +
-    'Musica atual: ' + ((hasActiveMusic && currentMusicIndex >= 0) ? musicNames[currentMusicIndex] : 'Modo espera') + '\n' +
-    'Slide: ' + (hasActiveMusic ? ((currentSlide + 1) + '/' + slideCount) : '-') + '\n' +
-    'Tempo: ' + formatTime(getElapsed()) + '\n' +
-    'Recebidas: ' + recvCount + '\n' +
-    'Enviadas: ' + sentCount + '\n\nLOG:\n' + eventLog.join('\n');
-  navigator.clipboard.writeText(txt).then(function(){ log('Diagnostico copiado'); });
-}
-/* =========================================================
-   EVENTOS
-   ========================================================= */
-document.addEventListener('keydown', function(e){
-  if (currentScreen !== 'presenter') return;
-  if (e.key === 'Escape') {
-    var ov = document.getElementById('endOverlay');
-    if (ov && ov.classList.contains('open')) { closeEndPanel(); return; }
-    var pv = document.getElementById('pdfOverlay');
-    if (pv && pv.classList.contains('open')) { closePdfPanel(); return; }
-    closeMusicMenu();
-  }
-  if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); nextSlide(); }
-  if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); prevSlide(); }
-  if (e.key === 'f' || e.key === 'F') { e.preventDefault(); toggleFullscreen(); }
-});
-var touchStartX = 0;
-document.addEventListener('touchstart', function(e){ touchStartX = e.changedTouches[0].clientX; }, {passive:true});
-document.addEventListener('touchend', function(e){
-  if (currentScreen !== 'presenter') return;
-  var dx = e.changedTouches[0].clientX - touchStartX;
-  if (dx < -50) nextSlide();
-  if (dx > 50) prevSlide();
-}, {passive:true});
-document.getElementById('joinInput').addEventListener('input', function(e){
-  e.target.value = e.target.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, CODE_LENGTH);
-});
-document.getElementById('joinInput').addEventListener('keydown', function(e){
-  if (e.key === 'Enter') joinSession();
-});
-document.getElementById('nameInput').addEventListener('input', function(e){
-  e.target.value = e.target.value.toUpperCase().slice(0, 18);
-});
-document.getElementById('nameInput').addEventListener('keydown', function(e){
-  if (e.key === 'Enter') document.getElementById('joinInput').focus();
-});
-document.getElementById('pdfPicker').addEventListener('change', handlePdfPicked);
-window.addEventListener('load', function(){
-  if (typeof Ably === 'undefined') {
-    showError('ERRO: A biblioteca do Ably nao carregou. Verifique a internet e recarregue.');
-    setDot('red', 'Biblioteca ausente');
-  } else if (typeof pdfjsLib === 'undefined') {
-    showError('ERRO: PDF.js nao carregou. Verifique a pasta pdfjs/ no repositorio.');
-    setDot('red', 'PDF.js ausente');
-  } else {
-    setDot('yellow', 'Pronto');
-    log('Bibliotecas carregadas (Ably + PDF.js)');
-  }
-  refreshLastCodeUI();
-  updateDiag();
-});
-window.addEventListener('resize', function(){
-  redrawCurrentState();
-});
-</script>
-</body>
-</html>
+  try { if (myChannel) { 
