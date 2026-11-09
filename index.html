@@ -624,6 +624,8 @@ var AUTO_INTERVAL_MS = 60000;
 var CODE_LENGTH = 5;
 var FS_RESTORE_DELAY = 250;
 var RESYNC_DELAY_MS = 1200;
+var LAYOUT_RETRY_MAX = 12;
+var LAYOUT_RETRY_MS = 120;
 var VOICE_LABEL = {
   SOPRANO: 'Soprano',
   CONTRALTO: 'Contralto',
@@ -691,6 +693,8 @@ var awaitingResync = false;
 var lastKnownMusic = -1;
 var lastKnownSlide = 0;
 var lastKnownTotal = 0;
+var layoutRetryTimer = null;
+var pendingRenderRequest = false;
 /* =========================================================
    PDF.JS
    ========================================================= */
@@ -748,9 +752,50 @@ function showScreen(name) {
     if (name === 'presenter' && isFullscreen()) floatBtn.classList.add('show');
     else floatBtn.classList.remove('show');
   }
+  if (name === 'viewer' || name === 'presenter') {
+    scheduleLayoutAwareRedraw();
+  }
 }
 function isSingleMode() {
   return activeVoices.length === 1;
+}
+/* =========================================================
+   LAYOUT-AWARE REDRAW
+   ========================================================= */
+function containerHasLayout(el) {
+  if (!el) return false;
+  return el.clientWidth > 20 && el.clientHeight > 20;
+}
+function scheduleLayoutAwareRedraw() {
+  if (layoutRetryTimer) { clearTimeout(layoutRetryTimer); layoutRetryTimer = null; }
+  var tries = 0;
+  function attempt() {
+    layoutRetryTimer = null;
+    if (role !== 'viewer' && role !== 'presenter') return;
+    if (currentScreen !== 'viewer' && currentScreen !== 'presenter') return;
+    var el = role === 'viewer'
+      ? document.getElementById('viewerSlide')
+      : document.getElementById('voicesGrid');
+    if (!containerHasLayout(el)) {
+      tries++;
+      if (tries < LAYOUT_RETRY_MAX) {
+        layoutRetryTimer = setTimeout(attempt, LAYOUT_RETRY_MS);
+      }
+      return;
+    }
+    if (role === 'viewer') {
+      if (showingInterval) return;
+      if (hasActiveMusic) renderViewerSlide();
+      else if (currentStateImage === 'interval') showIntervalImage('viewer');
+      else if (currentStateImage === 'opening') showOpeningImage('viewer');
+    } else {
+      if (showingInterval) return;
+      if (hasActiveMusic) renderAllVoices();
+    }
+  }
+  requestAnimationFrame(function(){
+    requestAnimationFrame(attempt);
+  });
 }
 /* =========================================================
    NOMES DE MUSICA
@@ -965,7 +1010,10 @@ function releaseWakeLock() {
   if (wakeLock) { try { wakeLock.release(); } catch(e) {} wakeLock = null; }
 }
 document.addEventListener('visibilitychange', function(){
-  if (document.visibilityState === 'visible' && role) requestWakeLock();
+  if (document.visibilityState === 'visible' && role) {
+    requestWakeLock();
+    scheduleLayoutAwareRedraw();
+  }
 });
 /* =========================================================
    CODIGO E NOME SALVOS
@@ -1123,10 +1171,14 @@ function renderPageTo(doc, pageNum, container, renderKey, expectedGen) {
   doc.getPage(pageNum).then(function(page){
     if (showingInterval) return;
     if (expectedGen !== undefined && expectedGen !== null && expectedGen !== renderGeneration) return;
+    var maxW = container.clientWidth;
+    var maxH = container.clientHeight;
+    if (maxW < 20 || maxH < 20) {
+      log('render adiado: container sem layout (' + maxW + 'x' + maxH + ')');
+      scheduleLayoutAwareRedraw();
+      return;
+    }
     var viewport = page.getViewport({ scale: 1 });
-    var maxW = container.clientWidth || 400;
-    var maxH = container.clientHeight || 300;
-    if (maxW < 20 || maxH < 20) { maxW = 400; maxH = 300; }
     var scale = Math.min(maxW / viewport.width, maxH / viewport.height);
     var scaled = page.getViewport({ scale: scale });
     var canvas = document.createElement('canvas');
@@ -1724,7 +1776,7 @@ function applyResyncState() {
   slideCount = lastKnownTotal || 1;
   showScreen('viewer');
   setPresenterOnline(true);
-  renderViewerSlide();
+  scheduleLayoutAwareRedraw();
   log('ressincronizado: musica ' + (currentMusicIndex + 1) + ' slide ' + (currentSlide + 1));
 }
 function requestCatalog() {
@@ -2114,7 +2166,7 @@ function finalizePdf(sendId) {
     if (awaitingResync) {
       applyResyncState();
     } else if (role === 'viewer' && hasActiveMusic) {
-      renderViewerSlide();
+      scheduleLayoutAwareRedraw();
     }
   });
 }
@@ -2398,6 +2450,7 @@ function resetAllState() {
   lastKnownMusic = -1;
   lastKnownSlide = 0;
   lastKnownTotal = 0;
+  if (layoutRetryTimer) { clearTimeout(layoutRetryTimer); layoutRetryTimer = null; }
   setPresenterOnline(null);
   resetTimer();
 }
@@ -2542,10 +2595,10 @@ function applySlide(pdfId, index, total, music) {
   if (typeof music === 'number' && music >= 0) currentMusicIndex = music;
   currentSlide = index;
   slideCount = total || 1;
-  renderViewerSlide();
   showScreen('viewer');
   stopStateRequests();
   setPresenterOnline(true);
+  scheduleLayoutAwareRedraw();
   log('slide aplicado: ' + (currentSlide + 1));
 }
 function applyInterval() {
@@ -2619,6 +2672,7 @@ function leaveSession() {
   stopTimer();
   releaseWakeLock();
   if (resyncTimer) { clearTimeout(resyncTimer); resyncTimer = null; }
+  if (layoutRetryTimer) { clearTimeout(layoutRetryTimer); layoutRetryTimer = null; }
   awaitingResync = false;
   for (var i = 0; i < activeVoices.length; i++) {
     var st = voiceState[activeVoices[i]];
@@ -2799,6 +2853,9 @@ window.addEventListener('load', function(){
 });
 window.addEventListener('resize', function(){
   redrawCurrentState();
+});
+window.addEventListener('orientationchange', function(){
+  setTimeout(function(){ scheduleLayoutAwareRedraw(); }, 250);
 });
 </script>
 </body>
