@@ -623,6 +623,7 @@ var MEMBER_TIMEOUT = 10000;
 var AUTO_INTERVAL_MS = 60000;
 var CODE_LENGTH = 5;
 var FS_RESTORE_DELAY = 250;
+var RESYNC_DELAY_MS = 1200;
 var VOICE_LABEL = {
   SOPRANO: 'Soprano',
   CONTRALTO: 'Contralto',
@@ -685,6 +686,11 @@ var pdfSeq = 0;
 var pendingUploads = 0;
 var myChannel = null;
 var renderTasks = {};
+var resyncTimer = null;
+var awaitingResync = false;
+var lastKnownMusic = -1;
+var lastKnownSlide = 0;
+var lastKnownTotal = 0;
 /* =========================================================
    PDF.JS
    ========================================================= */
@@ -1622,6 +1628,114 @@ function publishCurrentState() {
   publishSlide();
 }
 /* =========================================================
+   RESSINCRONIZACAO (coralista que volta)
+   ========================================================= */
+function publishVoiceCatalog(voice) {
+  var st = voiceState[voice];
+  if (!st || !st.channel) return;
+  var list = voicePdfs[voice] || [];
+  var catalog = [];
+  for (var i = 0; i < list.length; i++) {
+    catalog.push({ id: list[i].id, nome: list[i].nome, original: list[i].original });
+  }
+  try {
+    st.channel.publish('catalog', {
+      voice: voice,
+      items: catalog,
+      music: currentMusicIndex,
+      slide: currentSlide,
+      total: slideCount,
+      active: hasActiveMusic,
+      interval: showingInterval,
+      started: sessionStarted
+    });
+    sentCount++;
+    log('catalog enviado para ' + voice + ' (' + catalog.length + ' musicas)');
+  } catch(e) {
+    log('ERRO catalog ' + voice + ': ' + e.message);
+  }
+}
+function handleCatalogRequest(voice) {
+  if (role !== 'presenter') return;
+  publishVoiceCatalog(voice);
+  var list = voicePdfs[voice] || [];
+  for (var i = 0; i < list.length; i++) {
+    sendPdfToVoice(voice, list[i]);
+  }
+  log('Reenvio de PDFs para ' + voice + ': ' + list.length);
+}
+function handleCatalog(msg) {
+  var d = msg.data || {};
+  if (!d.items) return;
+  if (!voicePdfs[myVoice]) voicePdfs[myVoice] = [];
+  var existing = {};
+  for (var e = 0; e < voicePdfs[myVoice].length; e++) {
+    existing[voicePdfs[myVoice][e].id] = true;
+  }
+  for (var i = 0; i < d.items.length; i++) {
+    var it = d.items[i];
+    if (!existing[it.id]) {
+      voicePdfs[myVoice].push({
+        id: it.id,
+        nome: it.nome,
+        original: it.original || it.nome,
+        base64: null,
+        bytes: null,
+        paginas: 1,
+        doc: null,
+        loading: null,
+        pending: true
+      });
+    }
+  }
+  voicePdfs[myVoice] = sortPdfs(voicePdfs[myVoice]);
+  buildMusicNames();
+  lastKnownMusic = (typeof d.music === 'number') ? d.music : -1;
+  lastKnownSlide = (typeof d.slide === 'number') ? d.slide : 0;
+  lastKnownTotal = (typeof d.total === 'number') ? d.total : 0;
+  log('catalog recebido: ' + d.items.length + ' musicas');
+  updateDiag();
+  scheduleResync();
+}
+function scheduleResync() {
+  if (resyncTimer) { clearTimeout(resyncTimer); resyncTimer = null; }
+  awaitingResync = true;
+  resyncTimer = setTimeout(function(){
+    resyncTimer = null;
+    if (role !== 'viewer') return;
+    awaitingResync = false;
+    applyResyncState();
+  }, RESYNC_DELAY_MS);
+}
+function applyResyncState() {
+  if (role !== 'viewer') return;
+  if (lastKnownMusic < 0) {
+    if (lastKnownTotal === 0 && !hasActiveMusic) {
+      showOpeningImage('viewer');
+      showScreen('viewer');
+    }
+    return;
+  }
+  hasActiveMusic = true;
+  showingInterval = false;
+  sessionStarted = true;
+  currentMusicIndex = lastKnownMusic;
+  currentSlide = lastKnownSlide;
+  slideCount = lastKnownTotal || 1;
+  showScreen('viewer');
+  setPresenterOnline(true);
+  renderViewerSlide();
+  log('ressincronizado: musica ' + (currentMusicIndex + 1) + ' slide ' + (currentSlide + 1));
+}
+function requestCatalog() {
+  if (!myChannel || role !== 'viewer') return;
+  try {
+    myChannel.publish('catalog-request', { from: myClientId, voice: myVoice });
+    sentCount++;
+    log('catalog-request enviado');
+  } catch(e) {}
+}
+/* =========================================================
    NAVEGACAO
    ========================================================= */
 function nextSlide() {
@@ -1881,6 +1995,7 @@ function sendAllPdfs() {
 function sendPdfToVoice(voice, pdfObj) {
   var st = voiceState[voice];
   if (!st || !st.channel) { pendingUploads--; return; }
+  if (!pdfObj.base64) { pendingUploads--; return; }
   var base64 = pdfObj.base64;
   var total = Math.ceil(base64.length / PDF_CHUNK_SIZE);
   var sent = 0;
@@ -1925,7 +2040,12 @@ function base64ToBytes(base64) {
 function handlePdfMeta(msg) {
   var d = msg.data || {};
   if (!d.pdfId || !d.nome) return;
-  if (voicePdfsById(d.pdfId)) { log('PDF ja recebido: ' + d.nome); return; }
+  var existing = voicePdfsById(d.pdfId);
+  if (existing && existing.bytes) { log('PDF ja recebido: ' + d.nome); return; }
+  if (existing && existing.pending) {
+    existing.base64 = '';
+    existing.pending = false;
+  }
   var pending = { pdfId: d.pdfId, nome: d.nome, total: d.total || 0, parts: {}, received: 0 };
   if (orphanChunks[d.sendId]) {
     pending.parts = orphanChunks[d.sendId].parts;
@@ -1961,22 +2081,29 @@ function finalizePdf(sendId) {
   for (var i = 0; i < pending.total; i++) full += pending.parts[i] || '';
   delete pendingPdfChunks[sendId];
   var bytes = base64ToBytes(full);
-  var obj = {
-    id: pending.pdfId,
-    nome: pending.nome,
-    original: pending.nome,
-    base64: full,
-    bytes: bytes,
-    paginas: 1,
-    doc: null,
-    loading: null
-  };
   if (!voicePdfs[myVoice]) voicePdfs[myVoice] = [];
-  var exists = false;
+  var target = null;
   for (var j = 0; j < voicePdfs[myVoice].length; j++) {
-    if (voicePdfs[myVoice][j].id === pending.pdfId) { exists = true; break; }
+    if (voicePdfs[myVoice][j].id === pending.pdfId) { target = voicePdfs[myVoice][j]; break; }
   }
-  if (!exists) voicePdfs[myVoice].push(obj);
+  if (target) {
+    target.base64 = full;
+    target.bytes = bytes;
+    target.pending = false;
+    target.doc = null;
+    target.loading = null;
+  } else {
+    voicePdfs[myVoice].push({
+      id: pending.pdfId,
+      nome: pending.nome,
+      original: pending.nome,
+      base64: full,
+      bytes: bytes,
+      paginas: 1,
+      doc: null,
+      loading: null
+    });
+  }
   voicePdfs[myVoice] = sortPdfs(voicePdfs[myVoice]);
   buildMusicNames();
   log('PDF completo recebido: ' + pending.nome);
@@ -1984,6 +2111,11 @@ function finalizePdf(sendId) {
     if (doc) log('PDF renderizavel: ' + pending.nome + ' - ' + doc.numPages + ' paginas');
     updateDiag();
     runPendingPdfAction();
+    if (awaitingResync) {
+      applyResyncState();
+    } else if (role === 'viewer' && hasActiveMusic) {
+      renderViewerSlide();
+    }
   });
 }
 function runPendingPdfAction() {
@@ -2024,6 +2156,10 @@ function enterPresenterMode() {
           log('state-request de ' + voice + ' - respondendo');
           publishCurrentState();
           updateViewerCount();
+        });
+        ch.subscribe('catalog-request', function(msg){
+          log('catalog-request de ' + voice);
+          handleCatalogRequest(voice);
         });
         ch.subscribe('viewer-ready', function(){
           publishCurrentState();
@@ -2257,6 +2393,11 @@ function resetAllState() {
   pendingUploads = 0;
   fsPickerGuard = false;
   renderTasks = {};
+  resyncTimer = null;
+  awaitingResync = false;
+  lastKnownMusic = -1;
+  lastKnownSlide = 0;
+  lastKnownTotal = 0;
   setPresenterOnline(null);
   resetTimer();
 }
@@ -2292,6 +2433,11 @@ function joinSession() {
     pendingPdfChunks = {};
     orphanChunks = {};
     pendingPdfAction = null;
+    resyncTimer = null;
+    awaitingResync = false;
+    lastKnownMusic = -1;
+    lastKnownSlide = 0;
+    lastKnownTotal = 0;
     var channelName = 's1-' + code;
     myChannel = ably.channels.get(channelName);
     myChannel.subscribe('slide', function(msg){
@@ -2300,6 +2446,9 @@ function joinSession() {
         var pid = msg.data.pdfId;
         var tot = msg.data.total || 1;
         var mus = (typeof msg.data.music === 'number') ? msg.data.music : -1;
+        lastKnownMusic = mus;
+        lastKnownSlide = msg.data.index;
+        lastKnownTotal = tot;
         if (!pid || !voicePdfsById(pid)) {
           pendingPdfAction = { type: 'slide', pdfId: pid, index: msg.data.index, total: tot };
           log('slide aguardando PDF: ' + pid);
@@ -2318,6 +2467,7 @@ function joinSession() {
     });
     myChannel.subscribe('opening', function(){ recvCount++; applyOpening(); updateDiag(); });
     myChannel.subscribe('interval', function(){ recvCount++; applyInterval(); updateDiag(); });
+    myChannel.subscribe('catalog', function(msg){ recvCount++; handleCatalog(msg); });
     myChannel.subscribe('pdf-meta', function(msg){ recvCount++; handlePdfMeta(msg); updateDiag(); });
     myChannel.subscribe('pdf-chunk', function(msg){ recvCount++; handlePdfChunk(msg); });
     myChannel.subscribe('session-end', function(msg){
@@ -2468,6 +2618,8 @@ function leaveSession() {
   stopHeartbeat();
   stopTimer();
   releaseWakeLock();
+  if (resyncTimer) { clearTimeout(resyncTimer); resyncTimer = null; }
+  awaitingResync = false;
   for (var i = 0; i < activeVoices.length; i++) {
     var st = voiceState[activeVoices[i]];
     if (st && st.channel) {
