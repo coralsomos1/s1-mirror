@@ -624,8 +624,8 @@ var AUTO_INTERVAL_MS = 60000;
 var CODE_LENGTH = 5;
 var FS_RESTORE_DELAY = 250;
 var RESYNC_DELAY_MS = 1200;
-var LAYOUT_RETRY_MAX = 12;
-var LAYOUT_RETRY_MS = 120;
+var LAYOUT_RETRY_MAX = 40;
+var LAYOUT_RETRY_MS = 100;
 var CATALOG_RETRY_MS = 3000;
 var CATALOG_RETRY_MAX = 10;
 var VOICE_LABEL = {
@@ -700,6 +700,10 @@ var catalogRetryTimer = null;
 var catalogRetryCount = 0;
 var catalogReceived = false;
 var channelReady = false;
+var viewerResizeObserver = null;
+var presenterResizeObserver = null;
+var lastObservedW = 0;
+var lastObservedH = 0;
 /* =========================================================
    PDF.JS
    ========================================================= */
@@ -765,11 +769,64 @@ function isSingleMode() {
   return activeVoices.length === 1;
 }
 /* =========================================================
-   LAYOUT-AWARE REDRAW
+   LAYOUT-AWARE REDRAW (com ResizeObserver)
    ========================================================= */
 function containerHasLayout(el) {
   if (!el) return false;
   return el.clientWidth > 20 && el.clientHeight > 20;
+}
+function setupResizeObserver(which) {
+  if (typeof ResizeObserver === 'undefined') {
+    log('ResizeObserver nao suportado');
+    return;
+  }
+  if (which === 'viewer') {
+    var el = document.getElementById('viewerSlide');
+    if (!el) return;
+    if (viewerResizeObserver) { try { viewerResizeObserver.disconnect(); } catch(e) {} }
+    viewerResizeObserver = new ResizeObserver(function(entries){
+      for (var i = 0; i < entries.length; i++) {
+        var r = entries[i].contentRect;
+        if (r.width <= 20 || r.height <= 20) continue;
+        if (role !== 'viewer') return;
+        if (currentScreen !== 'viewer') return;
+        if (showingInterval) return;
+        if (!hasActiveMusic) return;
+        var w = Math.round(r.width);
+        var h = Math.round(r.height);
+        if (w === lastObservedW && h === lastObservedH) return;
+        lastObservedW = w;
+        lastObservedH = h;
+        log('ResizeObserver viewer: ' + w + 'x' + h);
+        renderViewerSlide();
+      }
+    });
+    viewerResizeObserver.observe(el);
+    log('ResizeObserver viewer ativo');
+  } else {
+    var grid = document.getElementById('voicesGrid');
+    if (!grid) return;
+    if (presenterResizeObserver) { try { presenterResizeObserver.disconnect(); } catch(e) {} }
+    presenterResizeObserver = new ResizeObserver(function(entries){
+      for (var i = 0; i < entries.length; i++) {
+        var r = entries[i].contentRect;
+        if (r.width <= 20 || r.height <= 20) continue;
+        if (role !== 'presenter') return;
+        if (currentScreen !== 'presenter') return;
+        if (showingInterval) return;
+        if (!hasActiveMusic) return;
+        renderAllVoices();
+      }
+    });
+    presenterResizeObserver.observe(grid);
+    log('ResizeObserver presenter ativo');
+  }
+}
+function teardownResizeObservers() {
+  if (viewerResizeObserver) { try { viewerResizeObserver.disconnect(); } catch(e) {} viewerResizeObserver = null; }
+  if (presenterResizeObserver) { try { presenterResizeObserver.disconnect(); } catch(e) {} presenterResizeObserver = null; }
+  lastObservedW = 0;
+  lastObservedH = 0;
 }
 function scheduleLayoutAwareRedraw() {
   if (layoutRetryTimer) { clearTimeout(layoutRetryTimer); layoutRetryTimer = null; }
@@ -785,6 +842,8 @@ function scheduleLayoutAwareRedraw() {
       tries++;
       if (tries < LAYOUT_RETRY_MAX) {
         layoutRetryTimer = setTimeout(attempt, LAYOUT_RETRY_MS);
+      } else {
+        log('layout: desistiu apos ' + tries + ' tentativas');
       }
       return;
     }
@@ -1383,7 +1442,7 @@ function startPreparation(onDone) {
     if (!isPreparing) return;
     if (i >= total) {
       currentSlide = 0;
-      renderSlideForRole();
+      scheduleLayoutAwareRedraw();
       updateCounter();
       prepTimer = setTimeout(function(){
         isPreparing = false;
@@ -1393,7 +1452,7 @@ function startPreparation(onDone) {
       return;
     }
     currentSlide = i;
-    renderSlideForRole();
+    scheduleLayoutAwareRedraw();
     updateCounter();
     i++;
     prepTimer = setTimeout(step, PREP_PER_SLIDE_MS);
@@ -2288,6 +2347,7 @@ function enterPresenterMode() {
     startPresencePoll();
     startMemberCleanup();
     requestWakeLock();
+    setupResizeObserver('presenter');
     updateDiag();
   } catch(e) {
     showError('Erro ao iniciar apresentacao: ' + e.message);
@@ -2440,6 +2500,7 @@ function endPresentation() {
   stopMemberCleanup();
   stopHeartbeat();
   releaseWakeLock();
+  teardownResizeObservers();
   for (var i = 0; i < activeVoices.length; i++) {
     var st = voiceState[activeVoices[i]];
     if (st && st.channel) {
@@ -2486,6 +2547,7 @@ function resetAllState() {
   catalogReceived = false;
   channelReady = false;
   if (layoutRetryTimer) { clearTimeout(layoutRetryTimer); layoutRetryTimer = null; }
+  teardownResizeObservers();
   setPresenterOnline(null);
   resetTimer();
 }
@@ -2601,6 +2663,7 @@ function joinSession() {
     startCatalogRetry();
     startHeartbeat();
     requestWakeLock();
+    setupResizeObserver('viewer');
     updateDiag();
   } catch(e) {
     showError('Erro ao entrar: ' + e.message);
@@ -2723,6 +2786,7 @@ function leaveSession() {
   if (resyncTimer) { clearTimeout(resyncTimer); resyncTimer = null; }
   if (layoutRetryTimer) { clearTimeout(layoutRetryTimer); layoutRetryTimer = null; }
   stopCatalogRetry();
+  teardownResizeObservers();
   awaitingResync = false;
   channelReady = false;
   for (var i = 0; i < activeVoices.length; i++) {
