@@ -366,6 +366,50 @@
   .error-banner { position:fixed; top:0; left:0; right:0; background:#e5484d; color:#fff; padding:11px 16px; font-size:13px; text-align:center; z-index:200; display:none; }
   .error-banner.show { display:block; }
   .fs-hide { display:none !important; }
+
+  /* Botão de emergência do coralista */
+  .viewer-emergency {
+    position:fixed; top:10px; right:10px; z-index:130;
+    width:40px; height:40px; border-radius:50%;
+    background:rgba(28,28,38,.75); border:1px solid #2a2a36;
+    color:#c9c9d4; font-size:16px; cursor:pointer;
+    display:none; align-items:center; justify-content:center;
+    opacity:.45; transition:opacity .2s;
+  }
+  .viewer-emergency:active { opacity:1; background:#2a2a36; }
+  .viewer-emergency.show { display:flex; }
+
+  /* Overlay de conexão perdida */
+  .stuck-overlay {
+    position:fixed; inset:0; z-index:140;
+    background:rgba(6,6,10,.94); backdrop-filter:blur(6px);
+    display:none; align-items:center; justify-content:center; padding:24px;
+  }
+  .stuck-overlay.open { display:flex; }
+  .stuck-card {
+    background:#12121a; border:1px solid #2a2a36; border-radius:20px;
+    padding:28px 24px; width:100%; max-width:380px;
+    display:flex; flex-direction:column; gap:16px; text-align:center;
+  }
+  .stuck-icon {
+    width:56px; height:56px; border-radius:50%; margin:0 auto;
+    background:#3a2f14; border:1px solid #6b5520;
+    display:flex; align-items:center; justify-content:center;
+    font-size:24px; color:#e8b44a;
+  }
+  .stuck-title { font-size:18px; font-weight:700; }
+  .stuck-sub { font-size:13px; color:#8a8a99; line-height:1.5; }
+  .stuck-actions { display:flex; flex-direction:column; gap:10px; margin-top:4px; }
+  .stuck-btn {
+    width:100%; min-height:50px; border-radius:12px; border:none;
+    font-size:14px; font-weight:700; cursor:pointer; font-family:inherit;
+    letter-spacing:.5px;
+  }
+  .stuck-btn-primary { background:#e8b44a; color:#12121a; }
+  .stuck-btn-primary:active { background:#d4a33f; }
+  .stuck-btn-ghost { background:#1c1c26; color:#c9c9d4; border:1px solid #2a2a36; }
+  .stuck-btn-ghost:active { background:#262632; }
+
   @media (max-width:860px) {
     .presenter-body { flex-direction:column; }
     .mirror-panel {
@@ -394,6 +438,7 @@
 <body>
 <div class="error-banner" id="errorBanner"></div>
 <button class="finish-float" id="finishFloat" onclick="openEndPanel()">FINALIZAR</button>
+<button class="viewer-emergency" id="viewerEmergency" onclick="openEmergency()" title="Problemas? Toque aqui">⚙</button>
 <div class="screen active" id="home">
   <div class="logo">S1 <span>Mirror</span></div>
   <div class="tagline">Somos Um</div>
@@ -554,6 +599,18 @@
     </div>
   </div>
 </div>
+<div class="stuck-overlay" id="stuckOverlay">
+  <div class="stuck-card">
+    <div class="stuck-icon">!</div>
+    <div class="stuck-title">Não foi possível carregar</div>
+    <div class="stuck-sub" id="stuckSub">A conexão não completou. Toque em "Tentar novamente" para reconectar.</div>
+    <div class="stuck-actions">
+      <button class="stuck-btn stuck-btn-primary" onclick="retryConnection()">TENTAR NOVAMENTE</button>
+      <button class="stuck-btn stuck-btn-ghost" onclick="openEmergency()">VER DIAGNÓSTICO</button>
+      <button class="stuck-btn stuck-btn-ghost" onclick="leaveSession()">SAIR</button>
+    </div>
+  </div>
+</div>
 <input type="file" id="pdfPicker" accept="application/pdf,.pdf" multiple style="display:none">
 <div id="diag">
   <div class="diag-head">
@@ -626,8 +683,9 @@ var FS_RESTORE_DELAY = 250;
 var RESYNC_DELAY_MS = 1200;
 var LAYOUT_RETRY_MAX = 40;
 var LAYOUT_RETRY_MS = 100;
-var CATALOG_RETRY_MS = 3000;
-var CATALOG_RETRY_MAX = 10;
+var CATALOG_RETRY_MS = 2500;
+var CATALOG_RETRY_MAX = 14;
+var STUCK_TIMEOUT_MS = 10000;
 var VOICE_LABEL = {
   SOPRANO: 'Soprano',
   CONTRALTO: 'Contralto',
@@ -689,6 +747,7 @@ var pdfPanelDraft = {};
 var pdfSeq = 0;
 var pendingUploads = 0;
 var myChannel = null;
+var myChannelName = '';
 var renderTasks = {};
 var resyncTimer = null;
 var awaitingResync = false;
@@ -704,6 +763,8 @@ var viewerResizeObserver = null;
 var presenterResizeObserver = null;
 var lastObservedW = 0;
 var lastObservedH = 0;
+var stuckTimer = null;
+var gotAnyContent = false;
 /* =========================================================
    PDF.JS
    ========================================================= */
@@ -761,12 +822,73 @@ function showScreen(name) {
     if (name === 'presenter' && isFullscreen()) floatBtn.classList.add('show');
     else floatBtn.classList.remove('show');
   }
+  updateEmergencyButton();
   if (name === 'viewer' || name === 'presenter') {
     scheduleLayoutAwareRedraw();
   }
 }
 function isSingleMode() {
   return activeVoices.length === 1;
+}
+/* =========================================================
+   BOTAO DE EMERGENCIA
+   ========================================================= */
+function updateEmergencyButton() {
+  var btn = document.getElementById('viewerEmergency');
+  if (!btn) return;
+  var shouldShow = (role === 'viewer' && currentScreen === 'viewer' && isFullscreen());
+  if (shouldShow) btn.classList.add('show');
+  else btn.classList.remove('show');
+}
+function openEmergency() {
+  closeStuckOverlay();
+  if (isFullscreen()) exitFullscreen();
+  setTimeout(function(){
+    var d = document.getElementById('diag');
+    if (d && !d.classList.contains('open')) d.classList.add('open');
+    updateDiag();
+  }, 200);
+}
+/* =========================================================
+   OVERLAY DE CONEXAO PERDIDA
+   ========================================================= */
+function startStuckTimer() {
+  stopStuckTimer();
+  gotAnyContent = false;
+  stuckTimer = setTimeout(function(){
+    stuckTimer = null;
+    if (role !== 'viewer') return;
+    if (gotAnyContent) return;
+    if (currentScreen !== 'viewer' && currentScreen !== 'waiting') return;
+    log('timeout: nenhum conteudo recebido em ' + (STUCK_TIMEOUT_MS/1000) + 's');
+    showStuckOverlay();
+  }, STUCK_TIMEOUT_MS);
+}
+function stopStuckTimer() {
+  if (stuckTimer) { clearTimeout(stuckTimer); stuckTimer = null; }
+}
+function showStuckOverlay() {
+  var ov = document.getElementById('stuckOverlay');
+  if (ov) ov.classList.add('open');
+  if (isFullscreen()) exitFullscreen();
+}
+function closeStuckOverlay() {
+  var ov = document.getElementById('stuckOverlay');
+  if (ov) ov.classList.remove('open');
+}
+function retryConnection() {
+  closeStuckOverlay();
+  log('Tentativa manual de reconexao');
+  var code = myChannelName ? myChannelName.replace(/^s1-/, '') : '';
+  if (!code) { leaveSession(); return; }
+  leaveSession();
+  setTimeout(function(){
+    var nameInput = document.getElementById('nameInput');
+    var input = document.getElementById('joinInput');
+    if (nameInput) nameInput.value = myName || getSavedName();
+    if (input) input.value = code;
+    joinSession();
+  }, 350);
 }
 /* =========================================================
    LAYOUT-AWARE REDRAW (com ResizeObserver)
@@ -1052,6 +1174,7 @@ function onFullscreenChange() {
     if (floatBtn) floatBtn.classList.remove('show');
     log('Tela cheia desativada');
   }
+  updateEmergencyButton();
   updateDiag();
   setTimeout(function(){ redrawCurrentState(); }, 120);
 }
@@ -1263,6 +1386,9 @@ function renderPageTo(doc, pageNum, container, renderKey, expectedGen) {
     renderTasks[key] = task;
     task.promise.then(function(){
       renderTasks[key] = null;
+      gotAnyContent = true;
+      closeStuckOverlay();
+      stopStuckTimer();
     }).catch(function(e){
       if (e && e.name === 'RenderingCancelledException') return;
       log('ERRO ao renderizar pagina: ' + (e && e.message ? e.message : e));
@@ -1387,10 +1513,12 @@ function hideStateImage(which) {
 function showOpeningImage(which) {
   currentStateImage = 'opening';
   showStateImage(which, OPENING_IMG);
+  if (which === 'viewer') { gotAnyContent = true; stopStuckTimer(); closeStuckOverlay(); }
 }
 function showIntervalImage(which) {
   currentStateImage = 'interval';
   showStateImage(which, INTERVAL_IMG);
+  if (which === 'viewer') { gotAnyContent = true; stopStuckTimer(); closeStuckOverlay(); }
 }
 function clearStateImage() { currentStateImage = 'none'; }
 function redrawCurrentState() {
@@ -2546,7 +2674,10 @@ function resetAllState() {
   catalogRetryCount = 0;
   catalogReceived = false;
   channelReady = false;
+  gotAnyContent = false;
   if (layoutRetryTimer) { clearTimeout(layoutRetryTimer); layoutRetryTimer = null; }
+  stopStuckTimer();
+  closeStuckOverlay();
   teardownResizeObservers();
   setPresenterOnline(null);
   resetTimer();
@@ -2591,7 +2722,18 @@ function joinSession() {
     catalogRetryCount = 0;
     catalogReceived = false;
     channelReady = false;
+    gotAnyContent = false;
     var channelName = 's1-' + code;
+    myChannelName = channelName;
+
+    /* LIBERA O CANAL ANTIGO ANTES DE PEGAR UM NOVO */
+    try {
+      if (ably && typeof ably.channels.release === 'function') {
+        ably.channels.release(channelName);
+        log('canal antigo liberado: ' + channelName);
+      }
+    } catch(e) { log('release falhou: ' + e.message); }
+
     myChannel = ably.channels.get(channelName);
     myChannel.subscribe('slide', function(msg){
       recvCount++;
@@ -2632,6 +2774,8 @@ function joinSession() {
       stopHeartbeat();
       stopStateRequests();
       stopCatalogRetry();
+      stopStuckTimer();
+      closeStuckOverlay();
       setPresenterOnline(false);
       var t = document.getElementById('endedTimeValue');
       if (t) t.textContent = formatTime(ms);
@@ -2645,6 +2789,9 @@ function joinSession() {
     myChannel.on('detached', function(){
       channelReady = false;
       log('canal desanexado');
+    });
+    myChannel.on('failed', function(err){
+      log('canal falhou: ' + (err && err.message ? err.message : err));
     });
     try {
       myChannel.presence.enter();
@@ -2662,6 +2809,7 @@ function joinSession() {
     startStateRequests();
     startCatalogRetry();
     startHeartbeat();
+    startStuckTimer();
     requestWakeLock();
     setupResizeObserver('viewer');
     updateDiag();
@@ -2786,9 +2934,12 @@ function leaveSession() {
   if (resyncTimer) { clearTimeout(resyncTimer); resyncTimer = null; }
   if (layoutRetryTimer) { clearTimeout(layoutRetryTimer); layoutRetryTimer = null; }
   stopCatalogRetry();
+  stopStuckTimer();
+  closeStuckOverlay();
   teardownResizeObservers();
   awaitingResync = false;
   channelReady = false;
+  gotAnyContent = false;
   for (var i = 0; i < activeVoices.length; i++) {
     var st = voiceState[activeVoices[i]];
     if (st && st.channel) {
@@ -2801,7 +2952,15 @@ function leaveSession() {
       myChannel.detach();
     }
   } catch(e) {}
+  /* LIBERA O CANAL PARA PERMITIR RECONEXAO LIMPA */
+  try {
+    if (ably && myChannelName && typeof ably.channels.release === 'function') {
+      ably.channels.release(myChannelName);
+      log('canal liberado no leave: ' + myChannelName);
+    }
+  } catch(e) {}
   myChannel = null;
+  myChannelName = '';
   role = null;
   myVoice = null;
   resetAllState();
@@ -2869,7 +3028,7 @@ function updateDiag() {
     var st = voiceState[activeVoices[i]];
     if (st && st.channel) chNames.push(VOICE_LABEL[activeVoices[i]] + ':' + st.channel.name);
   }
-  if (myChannel) chNames.push('viewer:' + myChannel.name);
+  if (myChannel) chNames.push('viewer:' + myChannel.name + (channelReady ? ' (ok)' : ' (pendente)'));
   var dCh = document.getElementById('dChannel'); if (dCh) dCh.textContent = chNames.length ? chNames.join(' | ') : '-';
   var dR = document.getElementById('dRole'); if (dR) dR.textContent = role || '-';
   var dM = document.getElementById('dMode'); if (dM) dM.textContent = activeVoices.length + ' naipe(s)';
