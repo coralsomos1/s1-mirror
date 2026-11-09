@@ -626,6 +626,8 @@ var FS_RESTORE_DELAY = 250;
 var RESYNC_DELAY_MS = 1200;
 var LAYOUT_RETRY_MAX = 12;
 var LAYOUT_RETRY_MS = 120;
+var CATALOG_RETRY_MS = 3000;
+var CATALOG_RETRY_MAX = 10;
 var VOICE_LABEL = {
   SOPRANO: 'Soprano',
   CONTRALTO: 'Contralto',
@@ -694,7 +696,10 @@ var lastKnownMusic = -1;
 var lastKnownSlide = 0;
 var lastKnownTotal = 0;
 var layoutRetryTimer = null;
-var pendingRenderRequest = false;
+var catalogRetryTimer = null;
+var catalogRetryCount = 0;
+var catalogReceived = false;
+var channelReady = false;
 /* =========================================================
    PDF.JS
    ========================================================= */
@@ -1709,6 +1714,7 @@ function publishVoiceCatalog(voice) {
 }
 function handleCatalogRequest(voice) {
   if (role !== 'presenter') return;
+  log('catalog-request recebido de ' + voice);
   publishVoiceCatalog(voice);
   var list = voicePdfs[voice] || [];
   for (var i = 0; i < list.length; i++) {
@@ -1719,6 +1725,8 @@ function handleCatalogRequest(voice) {
 function handleCatalog(msg) {
   var d = msg.data || {};
   if (!d.items) return;
+  catalogReceived = true;
+  stopCatalogRetry();
   if (!voicePdfs[myVoice]) voicePdfs[myVoice] = [];
   var existing = {};
   for (var e = 0; e < voicePdfs[myVoice].length; e++) {
@@ -1781,11 +1789,34 @@ function applyResyncState() {
 }
 function requestCatalog() {
   if (!myChannel || role !== 'viewer') return;
+  if (!channelReady) {
+    log('catalog-request adiado: canal nao anexado');
+    return;
+  }
   try {
     myChannel.publish('catalog-request', { from: myClientId, voice: myVoice });
     sentCount++;
-    log('catalog-request enviado');
-  } catch(e) {}
+    log('catalog-request enviado (tentativa ' + (catalogRetryCount + 1) + ')');
+  } catch(e) {
+    log('ERRO catalog-request: ' + e.message);
+  }
+}
+function startCatalogRetry() {
+  stopCatalogRetry();
+  catalogReceived = false;
+  catalogRetryCount = 0;
+  var tick = function() {
+    if (role !== 'viewer') { stopCatalogRetry(); return; }
+    if (catalogReceived) { stopCatalogRetry(); return; }
+    if (catalogRetryCount >= CATALOG_RETRY_MAX) { stopCatalogRetry(); return; }
+    catalogRetryCount++;
+    requestCatalog();
+    catalogRetryTimer = setTimeout(tick, CATALOG_RETRY_MS);
+  };
+  catalogRetryTimer = setTimeout(tick, 400);
+}
+function stopCatalogRetry() {
+  if (catalogRetryTimer) { clearTimeout(catalogRetryTimer); catalogRetryTimer = null; }
 }
 /* =========================================================
    NAVEGACAO
@@ -2450,6 +2481,10 @@ function resetAllState() {
   lastKnownMusic = -1;
   lastKnownSlide = 0;
   lastKnownTotal = 0;
+  catalogRetryTimer = null;
+  catalogRetryCount = 0;
+  catalogReceived = false;
+  channelReady = false;
   if (layoutRetryTimer) { clearTimeout(layoutRetryTimer); layoutRetryTimer = null; }
   setPresenterOnline(null);
   resetTimer();
@@ -2491,6 +2526,9 @@ function joinSession() {
     lastKnownMusic = -1;
     lastKnownSlide = 0;
     lastKnownTotal = 0;
+    catalogRetryCount = 0;
+    catalogReceived = false;
+    channelReady = false;
     var channelName = 's1-' + code;
     myChannel = ably.channels.get(channelName);
     myChannel.subscribe('slide', function(msg){
@@ -2531,10 +2569,20 @@ function joinSession() {
       clearAutoInterval();
       stopHeartbeat();
       stopStateRequests();
+      stopCatalogRetry();
       setPresenterOnline(false);
       var t = document.getElementById('endedTimeValue');
       if (t) t.textContent = formatTime(ms);
       showScreen('ended');
+    });
+    myChannel.on('attached', function(){
+      channelReady = true;
+      log('canal anexado');
+      requestCatalog();
+    });
+    myChannel.on('detached', function(){
+      channelReady = false;
+      log('canal desanexado');
     });
     try {
       myChannel.presence.enter();
@@ -2550,6 +2598,7 @@ function joinSession() {
     showScreen('waiting');
     setPresenterOnline(null);
     startStateRequests();
+    startCatalogRetry();
     startHeartbeat();
     requestWakeLock();
     updateDiag();
@@ -2639,8 +2688,8 @@ function setPresenterOnline(online) {
   }
   if (pill && pillText) {
     pill.classList.remove('online', 'offline');
-    if (online === true) { pill.classList.add('online'); pillText.textContent = 'Maestrina online'; }
-    else if (online === false) { pill.classList.add('offline'); pillText.textContent = 'Maestrina offline'; }
+    if (online === true) { pill.className = 'conn-pill online'; pillText.textContent = 'Maestrina online'; }
+    else if (online === false) { pill.className = 'conn-pill offline'; pillText.textContent = 'Maestrina offline'; }
     else pillText.textContent = 'Conectando';
   }
 }
@@ -2673,7 +2722,9 @@ function leaveSession() {
   releaseWakeLock();
   if (resyncTimer) { clearTimeout(resyncTimer); resyncTimer = null; }
   if (layoutRetryTimer) { clearTimeout(layoutRetryTimer); layoutRetryTimer = null; }
+  stopCatalogRetry();
   awaitingResync = false;
+  channelReady = false;
   for (var i = 0; i < activeVoices.length; i++) {
     var st = voiceState[activeVoices[i]];
     if (st && st.channel) {
