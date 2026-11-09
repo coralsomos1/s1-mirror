@@ -686,8 +686,8 @@ var PDFJS_DIR = 'pdfjs/';
 var OPENING_IMG = 'imagens/apresentacao/imagem-de-abertura.gif';
 var LOADING_IMG = 'imagens/apresentacao/carregando-arquivo-pdf.gif';
 var INTERVAL_IMG = 'imagens/intervalo/aguardando-letra.gif';
-var PREP_PER_SLIDE_MS = 350;
-var PREP_HOLD_FIRST_MS = 900;
+var PREP_PER_SLIDE_MS = 450;
+var PREP_HOLD_FIRST_MS = 1000;
 var PDF_CHUNK_SIZE = 24576;
 var PDF_CHUNK_DELAY = 100;
 var CODE_TTL_MS = 60 * 60 * 1000;
@@ -891,7 +891,7 @@ function loadGifFromServer(kind, callback) {
   xhr.send();
 }
 function preloadAllGifs(callback) {
-  var kinds = ['opening', 'interval', 'loading'];
+  var kinds = ['opening', 'interval'];
   var done = 0;
   var total = kinds.length;
   for (var i = 0; i < kinds.length; i++) {
@@ -1052,7 +1052,6 @@ function scheduleLayoutAwareRedraw() {
     }
     if (role === 'viewer') {
       if (showingInterval) return;
-      if (currentStateImage === 'loading') return;
       if (hasActiveMusic) renderViewerSlide();
       else if (currentStateImage === 'interval') showIntervalImage('viewer');
       else if (currentStateImage === 'opening') showOpeningImage('viewer');
@@ -1081,19 +1080,9 @@ function cleanMusicName(raw) {
     return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
   }).join(' ');
 }
+/* Ordem de chegada: preserva a sequencia em que as musicas foram adicionadas */
 function sortPdfs(list) {
-  return list.slice().sort(function(a, b){
-    var ma = String(a.original || '').match(/^\s*(\d+)/);
-    var mb = String(b.original || '').match(/^\s*(\d+)/);
-    var na = ma ? parseInt(ma[1], 10) : NaN;
-    var nb = mb ? parseInt(mb[1], 10) : NaN;
-    var hasA = !isNaN(na);
-    var hasB = !isNaN(nb);
-    if (hasA && hasB && na !== nb) return na - nb;
-    if (hasA && !hasB) return -1;
-    if (!hasA && hasB) return 1;
-    return String(a.nome).localeCompare(String(b.nome), 'pt-BR');
-  });
+  return list.slice();
 }
 function buildMusicNames() {
   var base = null;
@@ -1626,16 +1615,9 @@ function showIntervalImage(which) {
     closeStuckOverlay();
   }
 }
+/* GIF de carregamento desativado: usa modo espera */
 function showLoadingImage(which) {
-  currentStateImage = 'loading';
-  if (which === 'presenter') {
-    showGridOverlay('loading');
-  } else {
-    showStateImage('viewer', gifSrcFor('loading'));
-    gotAnyContent = true;
-    stopStuckTimer();
-    closeStuckOverlay();
-  }
+  showIntervalImage(which);
 }
 function clearStateImage() { currentStateImage = 'none'; }
 function applyCurrentGifState() {
@@ -1645,9 +1627,6 @@ function applyCurrentGifState() {
   } else if (currentStateImage === 'interval') {
     if (role === 'presenter') showGridOverlay('interval');
     else if (role === 'viewer') showStateImage('viewer', gifSrcFor('interval'));
-  } else if (currentStateImage === 'loading') {
-    if (role === 'presenter') showGridOverlay('loading');
-    else if (role === 'viewer') showStateImage('viewer', gifSrcFor('loading'));
   }
 }
 function redrawCurrentState() {
@@ -1659,10 +1638,6 @@ function redrawCurrentState() {
   }
   if (currentStateImage === 'interval') {
     showIntervalImage(which);
-    return;
-  }
-  if (currentStateImage === 'loading') {
-    showLoadingImage(which);
     return;
   }
   if (hasActiveMusic) {
@@ -1809,10 +1784,6 @@ function renderViewerSlideById(pdfId, pageIdx) {
   var el = document.getElementById('viewerSlide');
   if (!el) return;
   if (showingInterval) return;
-  if (currentStateImage === 'loading') {
-    log('renderViewerSlideById bloqueado: GIF ativo');
-    return;
-  }
   var myGen = ++renderGeneration;
   hideStateImage('viewer');
   openPdfDoc(pdfId, function(doc){
@@ -1833,10 +1804,6 @@ function renderViewerSlide() {
   var el = document.getElementById('viewerSlide');
   if (!el) return;
   if (showingInterval) return;
-  if (currentStateImage === 'loading') {
-    log('renderViewerSlide bloqueado: GIF de carregamento ativo');
-    return;
-  }
   if (currentPdfId) {
     renderViewerSlideById(currentPdfId, currentSlide);
     return;
@@ -1942,8 +1909,8 @@ function activateMusic(index) {
   setNavEnabled(true);
   updateCounter();
   renderMusicMenu();
-  showLoadingImage('presenter');
-  publishLoading();
+  showIntervalImage('presenter');
+  publishInterval();
   preloadAllPdfs(function(){
     if (!hasActiveMusic || currentMusicIndex !== index) return;
     var mp = 0;
@@ -1975,6 +1942,7 @@ function selectEmptyMusic() {
   currentMusicIndex = -1;
   currentSlide = 0;
   slideCount = 0;
+  currentPdfId = null;
   setNavEnabled(true);
   showIntervalImage('presenter');
   publishInterval();
@@ -2005,10 +1973,6 @@ function publishOpening() {
 function publishInterval() {
   publishToAll('interval', { ts: Date.now() });
   log('interval publicado');
-}
-function publishLoading() {
-  publishToAll('loading', { ts: Date.now() });
-  log('loading publicado');
 }
 function publishPrepStart() {
   publishToAll('prep-start', { index: currentMusicIndex, total: slideCount, perSlide: PREP_PER_SLIDE_MS });
@@ -2362,6 +2326,15 @@ function removeDraftPdf(voice, index) {
   if (index < 0 || index >= list.length) return;
   var removed = list.splice(index, 1)[0];
   pdfPanelDraft[voice] = list;
+  if (removed && removed.doc) {
+    try { removed.doc.destroy(); } catch(e) {}
+  }
+  if (removed) {
+    removed.doc = null;
+    removed.bytes = null;
+    removed.base64 = null;
+    removed.loading = null;
+  }
   renderPdfPanel();
   log('PDF removido de ' + voice + ': ' + (removed ? removed.nome : ''));
   setPdfMsg('', false);
@@ -2417,10 +2390,26 @@ function savePdfPanel() {
     setPdfMsg('Letras faltando em ' + missing.join(', ') + '. (' + parts.join(' | ') + ')', true);
     return;
   }
+  var oldPdfs = voicePdfs;
   voicePdfs = {};
   for (var q = 0; q < activeVoices.length; q++) {
     var vq = activeVoices[q];
     voicePdfs[vq] = (pdfPanelDraft[vq] || []).slice();
+  }
+  var keepIds = {};
+  for (var r = 0; r < activeVoices.length; r++) {
+    var lr = voicePdfs[activeVoices[r]] || [];
+    for (var s = 0; s < lr.length; s++) keepIds[lr[s].id] = true;
+  }
+  for (var ov in oldPdfs) {
+    if (!oldPdfs.hasOwnProperty(ov)) continue;
+    var lo = oldPdfs[ov] || [];
+    for (var t = 0; t < lo.length; t++) {
+      if (!keepIds[lo[t].id]) {
+        if (lo[t].doc) { try { lo[t].doc.destroy(); } catch(e) {} }
+        log('PDF descartado da memoria: ' + lo[t].nome);
+      }
+    }
   }
   buildMusicNames();
   renderMusicMenu();
@@ -2963,7 +2952,6 @@ function joinSession() {
     });
     myChannel.subscribe('opening', function(){ recvCount++; applyOpening(); updateDiag(); });
     myChannel.subscribe('interval', function(){ recvCount++; applyInterval(); updateDiag(); });
-    myChannel.subscribe('loading', function(){ recvCount++; applyLoading(); updateDiag(); });
     myChannel.subscribe('catalog', function(msg){ recvCount++; handleCatalog(msg); });
     myChannel.subscribe('pdf-meta', function(msg){ recvCount++; handlePdfMeta(msg); updateDiag(); });
     myChannel.subscribe('pdf-chunk', function(msg){ recvCount++; handlePdfChunk(msg); });
@@ -3039,21 +3027,6 @@ function applyOpening() {
   showScreen('viewer');
   log('opening recebido');
 }
-function applyLoading() {
-  cancelPreparation();
-  clearAutoInterval();
-  hasActiveMusic = false;
-  showingInterval = false;
-  currentMusicIndex = -1;
-  currentSlide = 0;
-  slideCount = 0;
-  currentPdfId = null;
-  stopStateRequests();
-  setPresenterOnline(true);
-  showLoadingImage('viewer');
-  showScreen('viewer');
-  log('loading recebido');
-}
 function applyPrepStart(index, total) {
   cancelPreparation();
   clearAutoInterval();
@@ -3066,7 +3039,7 @@ function applyPrepStart(index, total) {
   showScreen('viewer');
   setPresenterOnline(true);
   stopStateRequests();
-  showLoadingImage('viewer');
+  showIntervalImage('viewer');
   startPreparation(function(){
     log('Preparacao concluida no receptor');
     var pdfId = currentPdfId || pdfIdForVoiceAt(myVoice, currentMusicIndex);
@@ -3075,7 +3048,7 @@ function applyPrepStart(index, total) {
       clearStateImage();
       renderViewerSlideById(pdfId, currentSlide);
     } else {
-      log('preparacao concluida, PDF ainda nao chegou - mantendo GIF');
+      log('preparacao concluida, PDF ainda nao chegou - mantendo modo espera');
     }
   });
   updateDiag();
@@ -3098,8 +3071,8 @@ function applySlide(pdfId, index, total, music) {
     renderViewerSlideById(pdfId, index);
   } else {
     if (pdfId) pendingPdfAction = { type: 'slide', pdfId: pdfId, index: index, total: total };
-    showLoadingImage('viewer');
-    log('slide aguardando PDF, mantendo GIF: ' + pdfId);
+    showIntervalImage('viewer');
+    log('slide aguardando PDF, mantendo modo espera: ' + pdfId);
   }
   log('slide aplicado: ' + (currentSlide + 1));
 }
