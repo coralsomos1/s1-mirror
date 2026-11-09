@@ -79,6 +79,11 @@
     max-width:none; max-height:none; object-fit:contain; object-position:center;
     display:block; z-index:2; pointer-events:none;
   }
+  /* WRAPPER DA GRADE + OVERLAY UNICO */
+  .grid-wrap {
+    flex:1; position:relative; min-width:0; min-height:0;
+    display:flex; background:#000;
+  }
   .voices-grid {
     flex:1; display:grid; gap:clamp(6px,1vw,12px);
     padding:clamp(6px,1vw,12px); min-height:0; min-width:0; background:#000;
@@ -102,6 +107,21 @@
   }
   .voice-cell-label.hidden { display:none; }
   .voice-cell-empty { color:#3a3a48; font-size:12px; font-style:italic; text-align:center; padding:14px; }
+
+  /* OVERLAY QUE COBRE A GRADE INTEIRA (nao cobre a coluna lateral) */
+  .grid-overlay {
+    position:absolute; inset:0; z-index:40;
+    display:none; align-items:center; justify-content:center;
+    background:#000; pointer-events:none;
+  }
+  .grid-overlay.show { display:flex; }
+  .grid-overlay img {
+    width:100%; height:100%;
+    max-width:none; max-height:none;
+    object-fit:contain; object-position:center;
+    display:block;
+  }
+
   .mirror-panel {
     width:clamp(220px,24vw,320px); flex-shrink:0;
     background:#0d0d14; border-left:1px solid #1e1e28;
@@ -367,7 +387,6 @@
   .error-banner.show { display:block; }
   .fs-hide { display:none !important; }
 
-  /* Botão de emergência do coralista */
   .viewer-emergency {
     position:fixed; top:10px; right:10px; z-index:130;
     width:40px; height:40px; border-radius:50%;
@@ -379,7 +398,6 @@
   .viewer-emergency:active { opacity:1; background:#2a2a36; }
   .viewer-emergency.show { display:flex; }
 
-  /* Overlay de conexão perdida */
   .stuck-overlay {
     position:fixed; inset:0; z-index:140;
     background:rgba(6,6,10,.94); backdrop-filter:blur(6px);
@@ -504,7 +522,12 @@
     <button class="finish-btn" onclick="openEndPanel()">FINALIZAR</button>
   </div>
   <div class="presenter-body">
-    <div class="voices-grid mode-1" id="voicesGrid"></div>
+    <div class="grid-wrap" id="gridWrap">
+      <div class="voices-grid mode-1" id="voicesGrid"></div>
+      <div class="grid-overlay" id="gridOverlay">
+        <img id="gridOverlayImg" alt="Estado" src="">
+      </div>
+    </div>
     <div class="mirror-panel" id="mirrorPanel">
       <div class="music-block">
         <div class="mirror-label">Música</div>
@@ -553,9 +576,9 @@
     <button class="icon-btn" onclick="toggleDiag()" title="Diagnóstico" style="width:40px;height:40px">⚙</button>
   </div>
   <div class="slide-area" id="viewerSlide">
-    <img class="opening-img" id="viewerOpening" src="imagens/apresentacao/imagem-de-abertura.gif" alt="Abertura" style="display:none">
+    <img class="opening-img" id="viewerOpening" alt="Estado" style="display:none">
     <div class="prep-overlay" id="viewerPrep">
-      <img class="prep-img" id="viewerPrepImg" src="imagens/apresentacao/carregando-arquivo-pdf.gif" alt="Carregando">
+      <img class="prep-img" id="viewerPrepImg" alt="Carregando">
     </div>
   </div>
 </div>
@@ -674,6 +697,8 @@ var PREP_PER_SLIDE_MS = 250;
 var PREP_HOLD_FIRST_MS = 900;
 var PDF_CHUNK_SIZE = 24576;
 var PDF_CHUNK_DELAY = 100;
+var GIF_CHUNK_SIZE = 12000;
+var GIF_CHUNK_DELAY = 60;
 var CODE_TTL_MS = 60 * 60 * 1000;
 var HEARTBEAT_INTERVAL = 4000;
 var MEMBER_TIMEOUT = 10000;
@@ -765,6 +790,13 @@ var lastObservedW = 0;
 var lastObservedH = 0;
 var stuckTimer = null;
 var gotAnyContent = false;
+
+/* GIFs em cache local (base64) */
+var gifCache = {};
+var gifPending = {};
+var gifOrphans = {};
+var gifSeq = 0;
+var gifSending = false;
 /* =========================================================
    PDF.JS
    ========================================================= */
@@ -829,6 +861,150 @@ function showScreen(name) {
 }
 function isSingleMode() {
   return activeVoices.length === 1;
+}
+/* =========================================================
+   GIF: carregamento, cache e transmissao
+   ========================================================= */
+function gifKeyFor(kind) {
+  if (kind === 'opening') return 'opening';
+  if (kind === 'interval') return 'interval';
+  if (kind === 'loading') return 'loading';
+  return null;
+}
+function gifPathFor(kind) {
+  if (kind === 'opening') return OPENING_IMG;
+  if (kind === 'interval') return INTERVAL_IMG;
+  if (kind === 'loading') return LOADING_IMG;
+  return null;
+}
+function loadGifFromServer(kind, callback) {
+  var key = gifKeyFor(kind);
+  if (!key) { callback(null); return; }
+  if (gifCache[key]) { callback(gifCache[key]); return; }
+  var path = gifPathFor(kind);
+  var url = BASE_URL + path;
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', url, true);
+  xhr.responseType = 'blob';
+  xhr.onload = function(){
+    if (xhr.status !== 200) { log('ERRO gif ' + kind + ': HTTP ' + xhr.status); callback(null); return; }
+    var reader = new FileReader();
+    reader.onload = function(){
+      var dataUrl = String(reader.result);
+      gifCache[key] = dataUrl;
+      log('gif carregado: ' + kind + ' (' + Math.round(dataUrl.length/1024) + 'KB)');
+      callback(dataUrl);
+    };
+    reader.onerror = function(){ log('ERRO leitura gif ' + kind); callback(null); };
+    reader.readAsDataURL(xhr.response);
+  };
+  xhr.onerror = function(){ log('ERRO download gif ' + kind); callback(null); };
+  xhr.send();
+}
+function preloadAllGifs(callback) {
+  var kinds = ['opening', 'interval', 'loading'];
+  var done = 0;
+  var total = kinds.length;
+  for (var i = 0; i < kinds.length; i++) {
+    (function(k){
+      loadGifFromServer(k, function(){
+        done++;
+        if (done >= total) { if (callback) callback(); }
+      });
+    })(kinds[i]);
+  }
+}
+function sendGifToAll(kind) {
+  var key = gifKeyFor(kind);
+  if (!key) return;
+  var dataUrl = gifCache[key];
+  if (!dataUrl) {
+    log('gif ' + kind + ' ainda nao carregado, enviando quando pronto');
+    loadGifFromServer(kind, function(d){
+      if (d) sendGifToAll(kind);
+    });
+    return;
+  }
+  var base64 = String(dataUrl).split(',')[1] || '';
+  if (!base64) return;
+  var total = Math.ceil(base64.length / GIF_CHUNK_SIZE);
+  var sendId = 'g' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
+  for (var i = 0; i < activeVoices.length; i++) {
+    var v = activeVoices[i];
+    var st = voiceState[v];
+    if (!st || !st.channel) continue;
+    (function(voice, ch){
+      try {
+        ch.publish('gif-meta', { kind: kind, total: total, sendId: sendId, size: base64.length });
+        sentCount++;
+      } catch(e) { log('ERRO gif-meta ' + voice + ': ' + e.message); return; }
+      var seq = 0;
+      function sendNext() {
+        if (seq >= total) return;
+        var start = seq * GIF_CHUNK_SIZE;
+        var chunk = base64.slice(start, start + GIF_CHUNK_SIZE);
+        try {
+          ch.publish('gif-chunk', { kind: kind, sendId: sendId, seq: seq, data: chunk });
+          sentCount++;
+        } catch(e) { log('ERRO gif-chunk ' + voice + ': ' + e.message); }
+        seq++;
+        setTimeout(sendNext, GIF_CHUNK_DELAY);
+      }
+      sendNext();
+    })(v, st.channel);
+  }
+  log('gif enviado: ' + kind + ' (' + total + ' partes)');
+}
+function handleGifMeta(msg) {
+  var d = msg.data || {};
+  if (!d.kind || !d.sendId) return;
+  var key = gifKeyFor(d.kind);
+  if (!key) return;
+  if (gifCache[key]) { log('gif ja em cache: ' + d.kind); return; }
+  var pending = { kind: d.kind, total: d.total || 0, parts: {}, received: 0 };
+  if (gifOrphans[d.sendId]) {
+    pending.parts = gifOrphans[d.sendId].parts;
+    pending.received = gifOrphans[d.sendId].received;
+    delete gifOrphans[d.sendId];
+  }
+  gifPending[d.sendId] = pending;
+  log('gif-meta recebido: ' + d.kind + ' (' + d.total + ' partes)');
+  if (pending.total > 0 && pending.received >= pending.total) finalizeGif(d.sendId);
+}
+function handleGifChunk(msg) {
+  var d = msg.data || {};
+  var sendId = d.sendId;
+  if (!sendId || typeof d.seq !== 'number') return;
+  var pending = gifPending[sendId];
+  if (!pending) {
+    if (!gifOrphans[sendId]) gifOrphans[sendId] = { parts: {}, received: 0 };
+    if (gifOrphans[sendId].parts[d.seq] === undefined) {
+      gifOrphans[sendId].parts[d.seq] = d.data;
+      gifOrphans[sendId].received++;
+    }
+    return;
+  }
+  if (pending.parts[d.seq] !== undefined) return;
+  pending.parts[d.seq] = d.data;
+  pending.received++;
+  if (pending.total > 0 && pending.received >= pending.total) finalizeGif(sendId);
+}
+function finalizeGif(sendId) {
+  var pending = gifPending[sendId];
+  if (!pending) return;
+  var full = '';
+  for (var i = 0; i < pending.total; i++) full += pending.parts[i] || '';
+  delete gifPending[sendId];
+  var key = gifKeyFor(pending.kind);
+  if (!key) return;
+  gifCache[key] = 'data:image/gif;base64,' + full;
+  log('gif completo recebido: ' + pending.kind + ' (' + Math.round(full.length/1024) + 'KB)');
+  applyCurrentGifState();
+}
+function gifSrcFor(kind) {
+  var key = gifKeyFor(kind);
+  if (key && gifCache[key]) return gifCache[key];
+  return BASE_URL + gifPathFor(kind);
 }
 /* =========================================================
    BOTAO DE EMERGENCIA
@@ -1466,8 +1642,20 @@ function preloadAllPdfs(callback) {
   }
 }
 /* =========================================================
-   IMAGENS DE ESTADO
+   IMAGENS DE ESTADO (apresentador: overlay unico na grade)
    ========================================================= */
+function showGridOverlay(kind) {
+  var ov = document.getElementById('gridOverlay');
+  var img = document.getElementById('gridOverlayImg');
+  if (!ov || !img) return;
+  img.src = gifSrcFor(kind);
+  ov.classList.add('show');
+  log('gridOverlay: ' + kind);
+}
+function hideGridOverlay() {
+  var ov = document.getElementById('gridOverlay');
+  if (ov) ov.classList.remove('show');
+}
 function showStateImage(which, imgPath) {
   var areaId = which === 'presenter' ? 'voicesGrid' : 'viewerSlide';
   var imgId = which === 'presenter' ? 'presenterOpening' : 'viewerOpening';
@@ -1501,7 +1689,7 @@ function showStateImage(which, imgPath) {
     el.style.objectFit = 'contain';
     el.style.objectPosition = 'center';
     el.style.pointerEvents = 'none';
-    el.src = BASE_URL + imgPath + '?t=' + Date.now();
+    el.src = imgPath;
   } catch(e) {}
   log('showStateImage(' + which + ') src=' + imgPath);
 }
@@ -1512,31 +1700,72 @@ function hideStateImage(which) {
 }
 function showOpeningImage(which) {
   currentStateImage = 'opening';
-  showStateImage(which, OPENING_IMG);
-  if (which === 'viewer') { gotAnyContent = true; stopStuckTimer(); closeStuckOverlay(); }
+  if (which === 'presenter') {
+    showGridOverlay('opening');
+  } else {
+    showStateImage('viewer', gifSrcFor('opening'));
+    gotAnyContent = true;
+    stopStuckTimer();
+    closeStuckOverlay();
+  }
 }
 function showIntervalImage(which) {
   currentStateImage = 'interval';
-  showStateImage(which, INTERVAL_IMG);
-  if (which === 'viewer') { gotAnyContent = true; stopStuckTimer(); closeStuckOverlay(); }
+  if (which === 'presenter') {
+    showGridOverlay('interval');
+  } else {
+    showStateImage('viewer', gifSrcFor('interval'));
+    gotAnyContent = true;
+    stopStuckTimer();
+    closeStuckOverlay();
+  }
+}
+function showLoadingImage(which) {
+  currentStateImage = 'loading';
+  if (which === 'presenter') {
+    showGridOverlay('loading');
+  } else {
+    showStateImage('viewer', gifSrcFor('loading'));
+    gotAnyContent = true;
+    stopStuckTimer();
+    closeStuckOverlay();
+  }
 }
 function clearStateImage() { currentStateImage = 'none'; }
+function applyCurrentGifState() {
+  if (currentStateImage === 'opening') {
+    if (role === 'presenter') showGridOverlay('opening');
+    else if (role === 'viewer') showStateImage('viewer', gifSrcFor('opening'));
+  } else if (currentStateImage === 'interval') {
+    if (role === 'presenter') showGridOverlay('interval');
+    else if (role === 'viewer') showStateImage('viewer', gifSrcFor('interval'));
+  } else if (currentStateImage === 'loading') {
+    if (role === 'presenter') showGridOverlay('loading');
+    else if (role === 'viewer') showStateImage('viewer', gifSrcFor('loading'));
+  }
+}
 function redrawCurrentState() {
   if (role !== 'presenter' && role !== 'viewer') return;
   var which = role === 'presenter' ? 'presenter' : 'viewer';
   if (currentStateImage === 'opening') {
-    if (which === 'presenter') { clearPresenterArea(); return; }
-    showStateImage(which, OPENING_IMG);
+    showOpeningImage(which);
     return;
   }
-  if (currentStateImage === 'interval') { showStateImage(which, INTERVAL_IMG); return; }
+  if (currentStateImage === 'interval') {
+    showIntervalImage(which);
+    return;
+  }
+  if (currentStateImage === 'loading') {
+    showLoadingImage(which);
+    return;
+  }
   if (hasActiveMusic) {
     if (role === 'presenter') renderAllVoices();
     else renderViewerSlide();
     return;
   }
   if (which === 'presenter') { clearPresenterArea(); return; }
-  showStateImage(which, OPENING_IMG);
+  showOpeningImage('viewer');
 }
 function clearPresenterArea() {
   var area = document.getElementById('voicesGrid');
@@ -1769,7 +1998,7 @@ function activateMusic(index) {
   closeMusicMenu();
   clearAutoInterval();
   cancelPreparation();
-  hideStateImage('presenter');
+  hideGridOverlay();
   clearStateImage();
   showingInterval = false;
   sessionStarted = true;
@@ -1790,6 +2019,9 @@ function activateMusic(index) {
   setNavEnabled(true);
   updateCounter();
   renderMusicMenu();
+  /* Mostra o GIF de carregamento cobrindo a grade inteira */
+  showLoadingImage('presenter');
+  publishLoading();
   preloadAllPdfs(function(){
     if (!hasActiveMusic || currentMusicIndex !== index) return;
     var mp = 0;
@@ -1803,6 +2035,8 @@ function activateMusic(index) {
     updateCounter();
     publishPrepStart();
     startPreparation(function(){
+      hideGridOverlay();
+      clearStateImage();
       publishSlide();
       armAutoInterval();
     });
@@ -1813,7 +2047,6 @@ function selectEmptyMusic() {
   closeMusicMenu();
   clearAutoInterval();
   cancelPreparation();
-  hideStateImage('presenter');
   hasActiveMusic = false;
   showingInterval = true;
   sessionStarted = true;
@@ -1843,8 +2076,18 @@ function publishToAll(eventName, data) {
     }
   }
 }
-function publishOpening() { publishToAll('opening', { ts: Date.now() }); log('opening publicado'); }
-function publishInterval() { publishToAll('interval', { ts: Date.now() }); log('interval publicado'); }
+function publishOpening() {
+  publishToAll('opening', { ts: Date.now() });
+  log('opening publicado');
+}
+function publishInterval() {
+  publishToAll('interval', { ts: Date.now() });
+  log('interval publicado');
+}
+function publishLoading() {
+  publishToAll('loading', { ts: Date.now() });
+  log('loading publicado');
+}
 function publishPrepStart() {
   publishToAll('prep-start', { index: currentMusicIndex, total: slideCount, perSlide: PREP_PER_SLIDE_MS });
   log('prep-start publicado');
@@ -1891,7 +2134,8 @@ function publishVoiceCatalog(voice) {
       total: slideCount,
       active: hasActiveMusic,
       interval: showingInterval,
-      started: sessionStarted
+      started: sessionStarted,
+      stateImage: currentStateImage
     });
     sentCount++;
     log('catalog enviado para ' + voice + ' (' + catalog.length + ' musicas)');
@@ -1907,6 +2151,10 @@ function handleCatalogRequest(voice) {
   for (var i = 0; i < list.length; i++) {
     sendPdfToVoice(voice, list[i]);
   }
+  /* Reenvia os GIFs para o coralista que acabou de entrar */
+  sendGifToAll('opening');
+  sendGifToAll('interval');
+  sendGifToAll('loading');
   log('Reenvio de PDFs para ' + voice + ': ' + list.length);
 }
 function handleCatalog(msg) {
@@ -2051,6 +2299,11 @@ function prevSlide() {
    ========================================================= */
 function openPdfPanel() {
   if (pendingUploads > 0) return;
+  /* ITEM 3: ativa modo espera ao abrir o painel */
+  if (!showingInterval) {
+    selectEmptyMusic();
+    log('Modo espera ativado ao abrir painel de PDF');
+  }
   pdfPanelDraft = {};
   for (var i = 0; i < activeVoices.length; i++) {
     var v = activeVoices[i];
@@ -2464,7 +2717,16 @@ function enterPresenterMode() {
     renderBarCodes();
     showScreen('presenter');
     clearPresenterArea();
+    /* ITEM 1: abertura cobre a grade inteira */
+    showOpeningImage('presenter');
     publishOpening();
+    /* Pre-carrega os GIFs e envia aos coralistas */
+    preloadAllGifs(function(){
+      log('GIFs pre-carregados no apresentador');
+      sendGifToAll('opening');
+      sendGifToAll('interval');
+      sendGifToAll('loading');
+    });
     renderMembers();
     renderMusicMenu();
     resetTimer();
@@ -2675,10 +2937,13 @@ function resetAllState() {
   catalogReceived = false;
   channelReady = false;
   gotAnyContent = false;
+  gifPending = {};
+  gifOrphans = {};
   if (layoutRetryTimer) { clearTimeout(layoutRetryTimer); layoutRetryTimer = null; }
   stopStuckTimer();
   closeStuckOverlay();
   teardownResizeObservers();
+  hideGridOverlay();
   setPresenterOnline(null);
   resetTimer();
 }
@@ -2723,10 +2988,11 @@ function joinSession() {
     catalogReceived = false;
     channelReady = false;
     gotAnyContent = false;
+    gifPending = {};
+    gifOrphans = {};
     var channelName = 's1-' + code;
     myChannelName = channelName;
 
-    /* LIBERA O CANAL ANTIGO ANTES DE PEGAR UM NOVO */
     try {
       if (ably && typeof ably.channels.release === 'function') {
         ably.channels.release(channelName);
@@ -2762,7 +3028,10 @@ function joinSession() {
     });
     myChannel.subscribe('opening', function(){ recvCount++; applyOpening(); updateDiag(); });
     myChannel.subscribe('interval', function(){ recvCount++; applyInterval(); updateDiag(); });
+    myChannel.subscribe('loading', function(){ recvCount++; applyLoading(); updateDiag(); });
     myChannel.subscribe('catalog', function(msg){ recvCount++; handleCatalog(msg); });
+    myChannel.subscribe('gif-meta', function(msg){ recvCount++; handleGifMeta(msg); });
+    myChannel.subscribe('gif-chunk', function(msg){ recvCount++; handleGifChunk(msg); });
     myChannel.subscribe('pdf-meta', function(msg){ recvCount++; handlePdfMeta(msg); updateDiag(); });
     myChannel.subscribe('pdf-chunk', function(msg){ recvCount++; handlePdfChunk(msg); });
     myChannel.subscribe('session-end', function(msg){
@@ -2831,6 +3100,20 @@ function applyOpening() {
   showOpeningImage('viewer');
   showScreen('viewer');
   log('opening recebido');
+}
+function applyLoading() {
+  cancelPreparation();
+  clearAutoInterval();
+  hasActiveMusic = false;
+  showingInterval = false;
+  currentMusicIndex = -1;
+  currentSlide = 0;
+  slideCount = 0;
+  stopStateRequests();
+  setPresenterOnline(true);
+  showLoadingImage('viewer');
+  showScreen('viewer');
+  log('loading recebido');
 }
 function applyPrepStart(index, total) {
   cancelPreparation();
@@ -2952,7 +3235,6 @@ function leaveSession() {
       myChannel.detach();
     }
   } catch(e) {}
-  /* LIBERA O CANAL PARA PERMITIR RECONEXAO LIMPA */
   try {
     if (ably && myChannelName && typeof ably.channels.release === 'function') {
       ably.channels.release(myChannelName);
