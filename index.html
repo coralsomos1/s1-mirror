@@ -686,7 +686,7 @@ var PDFJS_DIR = 'pdfjs/';
 var OPENING_IMG = 'imagens/apresentacao/imagem-de-abertura.gif';
 var LOADING_IMG = 'imagens/apresentacao/carregando-arquivo-pdf.gif';
 var INTERVAL_IMG = 'imagens/intervalo/aguardando-letra.gif';
-var PREP_PER_SLIDE_MS = 250;
+var PREP_PER_SLIDE_MS = 350;
 var PREP_HOLD_FIRST_MS = 900;
 var PDF_CHUNK_SIZE = 24576;
 var PDF_CHUNK_DELAY = 100;
@@ -1544,7 +1544,7 @@ function preloadAllPdfs(callback) {
     })(targets[k]);
   }
 }
-/* =========================================================
+ /* =========================================================
    IMAGENS DE ESTADO
    ========================================================= */
 function showGridOverlay(kind) {
@@ -2011,6 +2011,7 @@ function publishSlide() {
 }
 function publishCurrentState() {
   if (!sessionStarted) { publishOpening(); return; }
+  if (showingInterval) { publishInterval(); return; }
   if (!hasActiveMusic) { publishInterval(); return; }
   publishSlide();
 }
@@ -2051,6 +2052,9 @@ function handleCatalogRequest(voice) {
   for (var i = 0; i < list.length; i++) {
     sendPdfToVoice(voice, list[i]);
   }
+  setTimeout(function(){
+    publishCurrentState();
+  }, 400);
   log('Reenvio de PDFs para ' + voice + ': ' + list.length);
 }
 function handleCatalog(msg) {
@@ -2084,6 +2088,14 @@ function handleCatalog(msg) {
   lastKnownMusic = (typeof d.music === 'number') ? d.music : -1;
   lastKnownSlide = (typeof d.slide === 'number') ? d.slide : 0;
   lastKnownTotal = (typeof d.total === 'number') ? d.total : 0;
+  if (d.stateImage === 'interval') {
+    showingInterval = true;
+    hasActiveMusic = false;
+    sessionStarted = true;
+    showIntervalImage('viewer');
+    showScreen('viewer');
+    log('catalog: estado = modo espera');
+  }
   log('catalog recebido: ' + d.items.length + ' musicas');
   updateDiag();
   scheduleResync();
@@ -2102,7 +2114,8 @@ function applyResyncState() {
   if (role !== 'viewer') return;
   if (lastKnownMusic < 0) {
     if (lastKnownTotal === 0 && !hasActiveMusic) {
-      showOpeningImage('viewer');
+      if (showingInterval) showIntervalImage('viewer');
+      else showOpeningImage('viewer');
       showScreen('viewer');
     }
     return;
@@ -2348,17 +2361,19 @@ function savePdfPanel() {
     setPdfMsg('Adicione pelo menos uma música em algum naipe.', true);
     return;
   }
-  for (var m = 0; m < activeVoices.length; m++) {
-    var vm = activeVoices[m];
-    var list = pdfPanelDraft[vm] || [];
-    var seen = {};
-    for (var n = 0; n < list.length; n++) {
-      var key = String(list[n].nome).toLowerCase();
-      if (seen[key]) {
-        setPdfMsg('Música repetida em ' + VOICE_LABEL[vm] + ': "' + list[n].nome + '". Exclua uma delas.', true);
-        return;
+  if (!isSingleMode()) {
+    for (var m = 0; m < activeVoices.length; m++) {
+      var vm = activeVoices[m];
+      var list = pdfPanelDraft[vm] || [];
+      var seen = {};
+      for (var n = 0; n < list.length; n++) {
+        var key = String(list[n].nome).toLowerCase();
+        if (seen[key]) {
+          setPdfMsg('Música repetida em ' + VOICE_LABEL[vm] + ': "' + list[n].nome + '". Exclua uma delas.', true);
+          return;
+        }
+        seen[key] = true;
       }
-      seen[key] = true;
     }
   }
   var missing = [];
@@ -2384,7 +2399,6 @@ function savePdfPanel() {
   renderMusicMenu();
   closePdfPanel();
   log('Letras salvas - ' + musicNames.length + ' musicas');
-  sendAllPdfs();
   hasActiveMusic = false;
   currentMusicIndex = -1;
   currentSlide = 0;
@@ -2395,6 +2409,7 @@ function savePdfPanel() {
   updateCounter();
   showIntervalImage('presenter');
   publishInterval();
+  sendAllPdfs();
   enterFullscreen();
   log('Letras salvas - modo espera mantido');
 }
@@ -2532,6 +2547,7 @@ function finalizePdf(sendId) {
     if (awaitingResync) {
       applyResyncState();
     } else if (role === 'viewer' && hasActiveMusic) {
+      clearStateImage();
       scheduleLayoutAwareRedraw();
     }
   });
@@ -3017,9 +3033,12 @@ function applyPrepStart(index, total) {
   startPreparation(function(){
     log('Preparacao concluida no receptor');
     var pdfId = pdfIdForVoiceAt(myVoice, currentMusicIndex);
-    if (pdfId && voicePdfsById(pdfId) && voicePdfsById(pdfId).bytes) {
+    var pdf = pdfId ? voicePdfsById(pdfId) : null;
+    if (pdf && pdf.bytes) {
       clearStateImage();
       scheduleLayoutAwareRedraw();
+    } else {
+      log('preparacao concluida, PDF ainda nao chegou - mantendo GIF');
     }
   });
   updateDiag();
@@ -3035,8 +3054,15 @@ function applySlide(pdfId, index, total, music) {
   showScreen('viewer');
   stopStateRequests();
   setPresenterOnline(true);
-  clearStateImage();
-  scheduleLayoutAwareRedraw();
+  var pdf = pdfId ? voicePdfsById(pdfId) : null;
+  if (pdf && pdf.bytes) {
+    clearStateImage();
+    scheduleLayoutAwareRedraw();
+  } else {
+    if (pdfId) pendingPdfAction = { type: 'slide', pdfId: pdfId, index: index, total: total };
+    showLoadingImage('viewer');
+    log('slide aguardando PDF, mantendo GIF: ' + pdfId);
+  }
   log('slide aplicado: ' + (currentSlide + 1));
 }
 function applyInterval() {
@@ -3077,8 +3103,8 @@ function setPresenterOnline(online) {
   }
   if (pill && pillText) {
     pill.classList.remove('online', 'offline');
-    if (online === true) { pill.className = 'conn-pill online'; pillText.textContent = 'Maestrina online'; }
-    else if (online === false) { pill.className = 'conn-pill offline'; pillText.textContent = 'Maestrina offline'; }
+    if (online === true) { pill.className = 'conn-pill online'; pillText.textContent = 'Apresentador online'; }
+    else if (online === false) { pill.className = 'conn-pill offline'; pillText.textContent = 'Apresentador offline'; }
     else pillText.textContent = 'Conectando';
   }
 }
@@ -3149,6 +3175,7 @@ function leaveSession() {
   clearLastCode();
   showScreen('home');
   log('Sessao encerrada');
+  setTimeout(function(){ location.reload(); }, 150);
 }
 function runEchoTest() {
   var ch = myChannel || (voiceState[activeVoices[0]] ? voiceState[activeVoices[0]].channel : null);
