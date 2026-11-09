@@ -493,9 +493,9 @@
     </div>
   </div>
   <div class="controls" id="presenterControls">
-    <button class="ctrl-btn" id="btnPrev" onclick="prevSlide()" disabled>◀ Anterior</button>
+    <button class="ctrl-btn" id="btnPrev" onclick="prevSlide()">◀ Anterior</button>
     <div class="counter" id="presenterCounter">—</div>
-    <button class="ctrl-btn" id="btnNext" onclick="nextSlide()" disabled>Próximo ▶</button>
+    <button class="ctrl-btn" id="btnNext" onclick="nextSlide()">Próximo ▶</button>
   </div>
 </div>
 
@@ -654,6 +654,7 @@ var currentSlide = 0;
 var slideCount = 0;
 var hasActiveMusic = false;
 var currentMusicIndex = -1;
+var lastMusicIndex = -1;
 var musicNames = [];
 var recvCount = 0;
 var sentCount = 0;
@@ -693,6 +694,7 @@ var pdfPanelDraft = {};
 var pdfSeq = 0;
 var pendingUploads = 0;
 var myChannel = null;
+var renderTasks = {};
 /* =========================================================
    PDF.JS
    ========================================================= */
@@ -1109,10 +1111,19 @@ function armAutoInterval() {
   updateDiag();
 }
 /* =========================================================
-   RENDER
+   RENDER (com cancelamento de tarefa)
    ========================================================= */
-function renderPageTo(doc, pageNum, container, expectedGen) {
+function cancelRenderTask(key) {
+  var t = renderTasks[key];
+  if (t) {
+    try { t.cancel(); } catch(e) {}
+    renderTasks[key] = null;
+  }
+}
+function renderPageTo(doc, pageNum, container, renderKey, expectedGen) {
   if (!doc || !container) return;
+  var key = renderKey || 'default';
+  cancelRenderTask(key);
   doc.getPage(pageNum).then(function(page){
     if (showingInterval) return;
     if (expectedGen !== undefined && expectedGen !== null && expectedGen !== renderGeneration) return;
@@ -1136,9 +1147,16 @@ function renderPageTo(doc, pageNum, container, expectedGen) {
     container.innerHTML = '';
     container.appendChild(canvas);
     if (keepOverlay) container.insertAdjacentHTML('beforeend', keepOverlay);
-    page.render({ canvasContext: ctx, viewport: scaled });
+    var task = page.render({ canvasContext: ctx, viewport: scaled });
+    renderTasks[key] = task;
+    task.promise.then(function(){
+      renderTasks[key] = null;
+    }).catch(function(e){
+      if (e && e.name === 'RenderingCancelledException') return;
+      log('ERRO ao renderizar pagina: ' + (e && e.message ? e.message : e));
+    });
   }).catch(function(e){
-    log('ERRO ao renderizar pagina: ' + e.message);
+    log('ERRO ao obter pagina: ' + (e && e.message ? e.message : e));
   });
 }
 function openPdfDoc(pdfId, callback) {
@@ -1283,6 +1301,7 @@ function clearPresenterArea() {
   var area = document.getElementById('voicesGrid');
   if (!area) return;
   renderGeneration++;
+  for (var k in renderTasks) { if (renderTasks.hasOwnProperty(k)) cancelRenderTask(k); }
   try {
     var nodes = area.querySelectorAll('.slide-canvas, .slide-placeholder, .opening-img');
     for (var i = 0; i < nodes.length; i++) {
@@ -1304,7 +1323,6 @@ function clearPresenterArea() {
 function startPreparation(onDone) {
   isPreparing = true;
   setPrepOverlay(true);
-  setNavEnabled(false);
   var total = slideCount;
   var i = 0;
   function step() {
@@ -1316,7 +1334,6 @@ function startPreparation(onDone) {
       prepTimer = setTimeout(function(){
         isPreparing = false;
         setPrepOverlay(false);
-        setNavEnabled(true);
         if (onDone) onDone();
       }, PREP_HOLD_FIRST_MS);
       return;
@@ -1333,7 +1350,6 @@ function cancelPreparation() {
   if (prepTimer) { clearTimeout(prepTimer); prepTimer = null; }
   isPreparing = false;
   setPrepOverlay(false);
-  setNavEnabled(true);
 }
 function setPrepOverlay(show) {
   var p = document.getElementById('presenterPrep');
@@ -1383,6 +1399,7 @@ function renderVoiceCell(voice, myGen, slideIndex) {
   var idx = (typeof slideIndex === 'number') ? slideIndex : currentSlide;
   var pdfId = pdfIdForVoiceAt(voice, idx);
   if (!pdfId) {
+    cancelRenderTask('cell-' + voice);
     var label = cell.querySelector('.voice-cell-label');
     var keep = label ? label.outerHTML : '';
     cell.innerHTML = keep + '<div class="voice-cell-empty">Sem letra</div>';
@@ -1396,7 +1413,7 @@ function renderVoiceCell(voice, myGen, slideIndex) {
     var keep = label ? label.outerHTML : '';
     cell.innerHTML = keep;
     var pageNum = Math.min(idx + 1, doc.numPages);
-    renderPageTo(doc, pageNum, cell, myGen);
+    renderPageTo(doc, pageNum, cell, 'cell-' + voice, myGen);
   });
 }
 function renderViewerSlide() {
@@ -1408,6 +1425,7 @@ function renderViewerSlide() {
   hideStateImage('viewer');
   var pdfId = pdfIdForVoiceAt(myVoice, idx);
   if (!pdfId) {
+    cancelRenderTask('viewer');
     el.innerHTML = '<div class="slide-placeholder">Aguardando...</div>';
     return;
   }
@@ -1419,7 +1437,7 @@ function renderViewerSlide() {
       return;
     }
     var pageNum = Math.min(idx + 1, doc.numPages);
-    renderPageTo(doc, pageNum, el, myGen);
+    renderPageTo(doc, pageNum, el, 'viewer', myGen);
   });
 }
 function updateCounter() {
@@ -1491,6 +1509,7 @@ function activateMusic(index) {
   sessionStarted = true;
   hasActiveMusic = true;
   currentMusicIndex = index;
+  lastMusicIndex = index;
   currentSlide = 0;
   var maxPages = 0;
   for (var i = 0; i < activeVoices.length; i++) {
@@ -1535,7 +1554,7 @@ function selectEmptyMusic() {
   currentMusicIndex = -1;
   currentSlide = 0;
   slideCount = 0;
-  setNavEnabled(false);
+  setNavEnabled(true);
   showIntervalImage('presenter');
   publishInterval();
   renderMusicMenu();
@@ -1591,7 +1610,14 @@ function publishCurrentState() {
    ========================================================= */
 function nextSlide() {
   if (isPreparing) return;
-  if (!hasActiveMusic) return;
+  if (!hasActiveMusic) {
+    if (lastMusicIndex >= 0 && musicNames.length > 0) {
+      activateMusic(lastMusicIndex);
+    } else if (musicNames.length > 0) {
+      activateMusic(0);
+    }
+    return;
+  }
   if (currentSlide < slideCount - 1) {
     currentSlide++;
     renderAllVoices();
@@ -1603,7 +1629,14 @@ function nextSlide() {
 }
 function prevSlide() {
   if (isPreparing) return;
-  if (!hasActiveMusic) return;
+  if (!hasActiveMusic) {
+    if (lastMusicIndex >= 0 && musicNames.length > 0) {
+      activateMusic(lastMusicIndex);
+    } else if (musicNames.length > 0) {
+      activateMusic(0);
+    }
+    return;
+  }
   if (currentSlide > 0) {
     currentSlide--;
     renderAllVoices();
@@ -1812,7 +1845,7 @@ function savePdfPanel() {
   slideCount = 0;
   showingInterval = false;
   sessionStarted = true;
-  setNavEnabled(false);
+  setNavEnabled(true);
   updateCounter();
   clearPresenterArea();
 }
@@ -1958,6 +1991,7 @@ function enterPresenterMode() {
     showingInterval = false;
     hasActiveMusic = false;
     currentMusicIndex = -1;
+    lastMusicIndex = -1;
     currentSlide = 0;
     slideCount = 0;
     voicePdfs = {};
@@ -2012,7 +2046,7 @@ function enterPresenterMode() {
     renderMusicMenu();
     resetTimer();
     startTimer();
-    setNavEnabled(false);
+    setNavEnabled(true);
     updateCounter();
     setTimeout(function(){ updateViewerCount(); }, 600);
     startPresencePoll();
@@ -2187,6 +2221,7 @@ function resetAllState() {
   voicePdfs = {};
   musicNames = [];
   currentMusicIndex = -1;
+  lastMusicIndex = -1;
   currentSlide = 0;
   slideCount = 0;
   hasActiveMusic = false;
@@ -2204,6 +2239,7 @@ function resetAllState() {
   pdfPanelVoice = null;
   pendingUploads = 0;
   fsPickerGuard = false;
+  renderTasks = {};
   setPresenterOnline(null);
   resetTimer();
 }
