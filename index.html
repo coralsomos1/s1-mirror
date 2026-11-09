@@ -65,15 +65,6 @@
   }
   .slide-canvas { max-width:100%; max-height:100%; width:auto; height:auto; object-fit:contain; display:block; position:relative; z-index:1; }
   .slide-placeholder { color:#4a4a5a; font-size:14px; text-align:center; padding:30px; line-height:1.6; position:relative; z-index:1; }
-  .prep-overlay {
-    position:absolute; inset:0; display:none; align-items:center; justify-content:center;
-    background:#000; pointer-events:none; z-index:50;
-  }
-  .prep-overlay.show { display:flex; }
-  .prep-img {
-    position:absolute; inset:0; width:100%; height:100%;
-    max-width:none; max-height:none; object-fit:contain; object-position:center; display:block;
-  }
   .opening-img {
     position:absolute; inset:0; width:100%; height:100%;
     max-width:none; max-height:none; object-fit:contain; object-position:center;
@@ -570,9 +561,6 @@
   </div>
   <div class="slide-area" id="viewerSlide">
     <img class="opening-img" id="viewerOpening" alt="Estado" style="display:none">
-    <div class="prep-overlay" id="viewerPrep">
-      <img class="prep-img" id="viewerPrepImg" alt="Carregando">
-    </div>
   </div>
 </div>
 <div class="screen" id="ended">
@@ -684,24 +672,19 @@ var API_KEY = 'VEgT6Q.8-6OmA:cpAVi0_Gtfdj7FpD9Sg7TkW40fBBw7295Tj7hz7XkPE';
 var BASE_URL = 'https://coralsomos1.github.io/s1-mirror/';
 var PDFJS_DIR = 'pdfjs/';
 var OPENING_IMG = 'imagens/apresentacao/imagem-de-abertura.gif';
-var LOADING_IMG = 'imagens/apresentacao/carregando-arquivo-pdf.gif';
 var INTERVAL_IMG = 'imagens/intervalo/aguardando-letra.gif';
-var PREP_PER_SLIDE_MS = 450;
+var SLIDE_MAX_WIDTH = 1600;
+var SLIDE_JPEG_QUALITY = 0.82;
+var SLIDE_CHUNK_SIZE = 14000;
+var SLIDE_CHUNK_DELAY = 60;
 var PREP_HOLD_FIRST_MS = 1000;
-var PDF_CHUNK_SIZE = 24576;
-var PDF_CHUNK_DELAY = 100;
 var CODE_TTL_MS = 60 * 60 * 1000;
 var HEARTBEAT_INTERVAL = 4000;
 var MEMBER_TIMEOUT = 10000;
 var AUTO_INTERVAL_MS = 60000;
 var CODE_LENGTH = 5;
 var FS_RESTORE_DELAY = 250;
-var RESYNC_DELAY_MS = 1200;
-var LAYOUT_RETRY_MAX = 40;
-var LAYOUT_RETRY_MS = 100;
-var CATALOG_RETRY_MS = 2500;
-var CATALOG_RETRY_MAX = 14;
-var STUCK_TIMEOUT_MS = 10000;
+var STUCK_TIMEOUT_MS = 15000;
 var VOICE_LABEL = {
   SOPRANO: 'Soprano',
   CONTRALTO: 'Contralto',
@@ -714,7 +697,6 @@ var VOICE_LABEL = {
 var ably = null;
 var currentScreen = 'home';
 var role = null;
-var sessionMode = 1;
 var activeVoices = ['SOPRANO'];
 var voiceState = {};
 var voiceCodes = {};
@@ -745,47 +727,38 @@ var isPaused = false;
 var memberMap = {};
 var heartbeatTimer = null;
 var cleanupTimer = null;
-var isPreparing = false;
-var prepTimer = null;
 var sessionStarted = false;
 var showingInterval = false;
-var renderGeneration = 0;
-var pendingPdfChunks = {};
-var orphanChunks = {};
-var pendingPdfAction = null;
-var autoIntervalTimer = null;
-var autoIntervalDeadline = 0;
 var currentStateImage = 'opening';
 var autoFsRequested = false;
 var fsPickerGuard = false;
 var pdfPanelVoice = null;
 var pdfPanelDraft = {};
 var pdfSeq = 0;
-var pendingUploads = 0;
 var myChannel = null;
 var myChannelName = '';
-var renderTasks = {};
 var resyncTimer = null;
 var awaitingResync = false;
 var lastKnownMusic = -1;
 var lastKnownSlide = 0;
 var lastKnownTotal = 0;
-var lastKnownPdfId = null;
-var layoutRetryTimer = null;
 var catalogRetryTimer = null;
 var catalogRetryCount = 0;
 var catalogReceived = false;
 var channelReady = false;
 var viewerResizeObserver = null;
 var presenterResizeObserver = null;
-var lastObservedW = 0;
-var lastObservedH = 0;
 var stuckTimer = null;
 var gotAnyContent = false;
-/* PDF atual sendo exibido no coralista (vinculo por ID, nao por indice) */
-var currentPdfId = null;
+var autoIntervalTimer = null;
+var autoIntervalDeadline = 0;
 /* GIFs em cache local (base64) */
 var gifCache = {};
+/* Recebimento de imagem de slide no coralista */
+var slidePending = {};
+var slideOrphans = {};
+/* Imagem atual exibida no coralista */
+var currentSlideImage = null;
 /* =========================================================
    PDF.JS
    ========================================================= */
@@ -844,9 +817,6 @@ function showScreen(name) {
     else floatBtn.classList.remove('show');
   }
   updateEmergencyButton();
-  if (name === 'viewer' || name === 'presenter') {
-    scheduleLayoutAwareRedraw();
-  }
 }
 function isSingleMode() {
   return activeVoices.length === 1;
@@ -857,13 +827,11 @@ function isSingleMode() {
 function gifKeyFor(kind) {
   if (kind === 'opening') return 'opening';
   if (kind === 'interval') return 'interval';
-  if (kind === 'loading') return 'loading';
   return null;
 }
 function gifPathFor(kind) {
   if (kind === 'opening') return OPENING_IMG;
   if (kind === 'interval') return INTERVAL_IMG;
-  if (kind === 'loading') return LOADING_IMG;
   return null;
 }
 function loadGifFromServer(kind, callback) {
@@ -972,99 +940,6 @@ function retryConnection() {
   }, 350);
 }
 /* =========================================================
-   LAYOUT-AWARE REDRAW (com ResizeObserver)
-   ========================================================= */
-function containerHasLayout(el) {
-  if (!el) return false;
-  return el.clientWidth > 20 && el.clientHeight > 20;
-}
-function setupResizeObserver(which) {
-  if (typeof ResizeObserver === 'undefined') {
-    log('ResizeObserver nao suportado');
-    return;
-  }
-  if (which === 'viewer') {
-    var el = document.getElementById('viewerSlide');
-    if (!el) return;
-    if (viewerResizeObserver) { try { viewerResizeObserver.disconnect(); } catch(e) {} }
-    viewerResizeObserver = new ResizeObserver(function(entries){
-      for (var i = 0; i < entries.length; i++) {
-        var r = entries[i].contentRect;
-        if (r.width <= 20 || r.height <= 20) continue;
-        if (role !== 'viewer') return;
-        if (currentScreen !== 'viewer') return;
-        if (showingInterval) return;
-        if (!hasActiveMusic) return;
-        var w = Math.round(r.width);
-        var h = Math.round(r.height);
-        if (w === lastObservedW && h === lastObservedH) return;
-        lastObservedW = w;
-        lastObservedH = h;
-        log('ResizeObserver viewer: ' + w + 'x' + h);
-        renderViewerSlide();
-      }
-    });
-    viewerResizeObserver.observe(el);
-    log('ResizeObserver viewer ativo');
-  } else {
-    var grid = document.getElementById('voicesGrid');
-    if (!grid) return;
-    if (presenterResizeObserver) { try { presenterResizeObserver.disconnect(); } catch(e) {} }
-    presenterResizeObserver = new ResizeObserver(function(entries){
-      for (var i = 0; i < entries.length; i++) {
-        var r = entries[i].contentRect;
-        if (r.width <= 20 || r.height <= 20) continue;
-        if (role !== 'presenter') return;
-        if (currentScreen !== 'presenter') return;
-        if (showingInterval) return;
-        if (!hasActiveMusic) return;
-        renderAllVoices();
-      }
-    });
-    presenterResizeObserver.observe(grid);
-    log('ResizeObserver presenter ativo');
-  }
-}
-function teardownResizeObservers() {
-  if (viewerResizeObserver) { try { viewerResizeObserver.disconnect(); } catch(e) {} viewerResizeObserver = null; }
-  if (presenterResizeObserver) { try { presenterResizeObserver.disconnect(); } catch(e) {} presenterResizeObserver = null; }
-  lastObservedW = 0;
-  lastObservedH = 0;
-}
-function scheduleLayoutAwareRedraw() {
-  if (layoutRetryTimer) { clearTimeout(layoutRetryTimer); layoutRetryTimer = null; }
-  var tries = 0;
-  function attempt() {
-    layoutRetryTimer = null;
-    if (role !== 'viewer' && role !== 'presenter') return;
-    if (currentScreen !== 'viewer' && currentScreen !== 'presenter') return;
-    var el = role === 'viewer'
-      ? document.getElementById('viewerSlide')
-      : document.getElementById('voicesGrid');
-    if (!containerHasLayout(el)) {
-      tries++;
-      if (tries < LAYOUT_RETRY_MAX) {
-        layoutRetryTimer = setTimeout(attempt, LAYOUT_RETRY_MS);
-      } else {
-        log('layout: desistiu apos ' + tries + ' tentativas');
-      }
-      return;
-    }
-    if (role === 'viewer') {
-      if (showingInterval) return;
-      if (hasActiveMusic) renderViewerSlide();
-      else if (currentStateImage === 'interval') showIntervalImage('viewer');
-      else if (currentStateImage === 'opening') showOpeningImage('viewer');
-    } else {
-      if (showingInterval) return;
-      if (hasActiveMusic) renderAllVoices();
-    }
-  }
-  requestAnimationFrame(function(){
-    requestAnimationFrame(attempt);
-  });
-}
-/* =========================================================
    NOMES DE MUSICA
    ========================================================= */
 function cleanMusicName(raw) {
@@ -1079,10 +954,6 @@ function cleanMusicName(raw) {
     if (!w) return w;
     return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
   }).join(' ');
-}
-/* Ordem de chegada: preserva a sequencia em que as musicas foram adicionadas */
-function sortPdfs(list) {
-  return list.slice();
 }
 function buildMusicNames() {
   var base = null;
@@ -1101,7 +972,6 @@ function goToModeSelect() {
 }
 function chooseMode(n) {
   if (!initAbly()) return;
-  sessionMode = n;
   if (n === 1) activeVoices = ['SOPRANO'];
   else if (n === 3) activeVoices = ['SOPRANO', 'CONTRALTO', 'TENOR'];
   else activeVoices = ['SOPRANO', 'CONTRALTO', 'TENOR', 'BARITONO'];
@@ -1270,7 +1140,6 @@ function releaseWakeLock() {
 document.addEventListener('visibilitychange', function(){
   if (document.visibilityState === 'visible' && role) {
     requestWakeLock();
-    scheduleLayoutAwareRedraw();
   }
 });
 /* =========================================================
@@ -1413,61 +1282,8 @@ function armAutoInterval() {
   updateDiag();
 }
 /* =========================================================
-   RENDER (com cancelamento de tarefa)
+   PDF: ABERTURA E RENDERIZACAO EM IMAGEM
    ========================================================= */
-function cancelRenderTask(key) {
-  var t = renderTasks[key];
-  if (t) {
-    try { t.cancel(); } catch(e) {}
-    renderTasks[key] = null;
-  }
-}
-function renderPageTo(doc, pageNum, container, renderKey, expectedGen) {
-  if (!doc || !container) return;
-  var key = renderKey || 'default';
-  cancelRenderTask(key);
-  doc.getPage(pageNum).then(function(page){
-    if (showingInterval) return;
-    if (expectedGen !== undefined && expectedGen !== null && expectedGen !== renderGeneration) return;
-    var maxW = container.clientWidth;
-    var maxH = container.clientHeight;
-    if (maxW < 20 || maxH < 20) {
-      log('render adiado: container sem layout (' + maxW + 'x' + maxH + ')');
-      scheduleLayoutAwareRedraw();
-      return;
-    }
-    var viewport = page.getViewport({ scale: 1 });
-    var scale = Math.min(maxW / viewport.width, maxH / viewport.height);
-    var scaled = page.getViewport({ scale: scale });
-    var canvas = document.createElement('canvas');
-    canvas.className = 'slide-canvas';
-    var ratio = window.devicePixelRatio || 1;
-    canvas.width = Math.floor(scaled.width * ratio);
-    canvas.height = Math.floor(scaled.height * ratio);
-    canvas.style.width = Math.floor(scaled.width) + 'px';
-    canvas.style.height = Math.floor(scaled.height) + 'px';
-    var ctx = canvas.getContext('2d');
-    ctx.scale(ratio, ratio);
-    var overlay = container.querySelector('.prep-overlay');
-    var keepOverlay = overlay ? overlay.outerHTML : '';
-    container.innerHTML = '';
-    container.appendChild(canvas);
-    if (keepOverlay) container.insertAdjacentHTML('beforeend', keepOverlay);
-    var task = page.render({ canvasContext: ctx, viewport: scaled });
-    renderTasks[key] = task;
-    task.promise.then(function(){
-      renderTasks[key] = null;
-      gotAnyContent = true;
-      closeStuckOverlay();
-      stopStuckTimer();
-    }).catch(function(e){
-      if (e && e.name === 'RenderingCancelledException') return;
-      log('ERRO ao renderizar pagina: ' + (e && e.message ? e.message : e));
-    });
-  }).catch(function(e){
-    log('ERRO ao obter pagina: ' + (e && e.message ? e.message : e));
-  });
-}
 function openPdfDoc(pdfId, callback) {
   var p = voicePdfsById(pdfId);
   if (!p) { callback(null); return; }
@@ -1536,6 +1352,81 @@ function preloadAllPdfs(callback) {
     })(targets[k]);
   }
 }
+/* Renderiza uma pagina do PDF em canvas e devolve o canvas */
+function renderPageToCanvas(doc, pageNum, maxWidth, callback) {
+  doc.getPage(pageNum).then(function(page){
+    var viewport = page.getViewport({ scale: 1 });
+    var scale = Math.min(1, maxWidth / viewport.width);
+    var scaled = page.getViewport({ scale: scale });
+    var canvas = document.createElement('canvas');
+    canvas.width = Math.floor(scaled.width);
+    canvas.height = Math.floor(scaled.height);
+    var ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    var task = page.render({ canvasContext: ctx, viewport: scaled });
+    task.promise.then(function(){
+      callback(canvas);
+    }).catch(function(e){
+      log('ERRO ao renderizar pagina: ' + (e && e.message ? e.message : e));
+      callback(null);
+    });
+  }).catch(function(e){
+    log('ERRO ao obter pagina: ' + (e && e.message ? e.message : e));
+    callback(null);
+  });
+}
+/* Renderiza a pagina e devolve JPEG em base64 */
+function renderPageToJpeg(doc, pageNum, callback) {
+  renderPageToCanvas(doc, pageNum, SLIDE_MAX_WIDTH, function(canvas){
+    if (!canvas) { callback(null); return; }
+    try {
+      var dataUrl = canvas.toDataURL('image/jpeg', SLIDE_JPEG_QUALITY);
+      var base64 = String(dataUrl).split(',')[1] || '';
+      callback(base64);
+    } catch(e) {
+      log('ERRO ao converter slide em JPEG: ' + e.message);
+      callback(null);
+    }
+  });
+}
+/* Desenha a pagina do PDF num container do apresentador */
+function renderPageToContainer(doc, pageNum, container, callback) {
+  if (!doc || !container) { if (callback) callback(false); return; }
+  var maxW = container.clientWidth;
+  var maxH = container.clientHeight;
+  if (maxW < 20 || maxH < 20) { if (callback) callback(false); return; }
+  doc.getPage(pageNum).then(function(page){
+    var viewport = page.getViewport({ scale: 1 });
+    var scale = Math.min(maxW / viewport.width, maxH / viewport.height);
+    var scaled = page.getViewport({ scale: scale });
+    var canvas = document.createElement('canvas');
+    canvas.className = 'slide-canvas';
+    var ratio = window.devicePixelRatio || 1;
+    canvas.width = Math.floor(scaled.width * ratio);
+    canvas.height = Math.floor(scaled.height * ratio);
+    canvas.style.width = Math.floor(scaled.width) + 'px';
+    canvas.style.height = Math.floor(scaled.height) + 'px';
+    var ctx = canvas.getContext('2d');
+    ctx.scale(ratio, ratio);
+    container.innerHTML = '';
+    container.appendChild(canvas);
+    var task = page.render({ canvasContext: ctx, viewport: scaled });
+    task.promise.then(function(){
+      gotAnyContent = true;
+      closeStuckOverlay();
+      stopStuckTimer();
+      if (callback) callback(true);
+    }).catch(function(e){
+      if (e && e.name === 'RenderingCancelledException') return;
+      log('ERRO ao renderizar pagina: ' + (e && e.message ? e.message : e));
+      if (callback) callback(false);
+    });
+  }).catch(function(e){
+    log('ERRO ao obter pagina: ' + (e && e.message ? e.message : e));
+    if (callback) callback(false);
+  });
+}
 /* =========================================================
    IMAGENS DE ESTADO
    ========================================================= */
@@ -1556,7 +1447,6 @@ function showStateImage(which, imgPath) {
   var imgId = which === 'presenter' ? 'presenterOpening' : 'viewerOpening';
   var area = document.getElementById(areaId);
   if (!area) return;
-  renderGeneration++;
   try {
     var nodes = area.querySelectorAll('.slide-canvas, .slide-placeholder');
     for (var i = 0; i < nodes.length; i++) {
@@ -1586,7 +1476,7 @@ function showStateImage(which, imgPath) {
     el.style.pointerEvents = 'none';
     el.src = imgPath;
   } catch(e) {}
-  log('showStateImage(' + which + ') src=' + imgPath.substring(0, 60));
+  log('showStateImage(' + which + ')');
 }
 function hideStateImage(which) {
   var imgId = which === 'presenter' ? 'presenterOpening' : 'viewerOpening';
@@ -1615,10 +1505,6 @@ function showIntervalImage(which) {
     closeStuckOverlay();
   }
 }
-/* GIF de carregamento desativado: usa modo espera */
-function showLoadingImage(which) {
-  showIntervalImage(which);
-}
 function clearStateImage() { currentStateImage = 'none'; }
 function applyCurrentGifState() {
   if (currentStateImage === 'opening') {
@@ -1632,17 +1518,11 @@ function applyCurrentGifState() {
 function redrawCurrentState() {
   if (role !== 'presenter' && role !== 'viewer') return;
   var which = role === 'presenter' ? 'presenter' : 'viewer';
-  if (currentStateImage === 'opening') {
-    showOpeningImage(which);
-    return;
-  }
-  if (currentStateImage === 'interval') {
-    showIntervalImage(which);
-    return;
-  }
+  if (currentStateImage === 'opening') { showOpeningImage(which); return; }
+  if (currentStateImage === 'interval') { showIntervalImage(which); return; }
   if (hasActiveMusic) {
     if (role === 'presenter') renderAllVoices();
-    else renderViewerSlide();
+    else if (currentSlideImage) showSlideImage(currentSlideImage);
     return;
   }
   if (which === 'presenter') { clearPresenterArea(); return; }
@@ -1651,8 +1531,6 @@ function redrawCurrentState() {
 function clearPresenterArea() {
   var area = document.getElementById('voicesGrid');
   if (!area) return;
-  renderGeneration++;
-  for (var k in renderTasks) { if (renderTasks.hasOwnProperty(k)) cancelRenderTask(k); }
   try {
     var nodes = area.querySelectorAll('.slide-canvas, .slide-placeholder, .opening-img');
     for (var i = 0; i < nodes.length; i++) {
@@ -1667,54 +1545,6 @@ function clearPresenterArea() {
       cell.innerHTML = keep + '<div class="voice-cell-empty">Sem letra</div>';
     }
   }
-}
-/* =========================================================
-   PREPARACAO VISUAL
-   ========================================================= */
-function startPreparation(onDone) {
-  isPreparing = true;
-  setPrepOverlay(true);
-  var total = slideCount;
-  var i = 0;
-  function step() {
-    if (!isPreparing) return;
-    if (i >= total) {
-      currentSlide = 0;
-      updateCounter();
-      prepTimer = setTimeout(function(){
-        isPreparing = false;
-        setPrepOverlay(false);
-        if (onDone) onDone();
-      }, PREP_HOLD_FIRST_MS);
-      return;
-    }
-    currentSlide = i;
-    updateCounter();
-    i++;
-    prepTimer = setTimeout(step, PREP_PER_SLIDE_MS);
-  }
-  step();
-}
-function cancelPreparation() {
-  if (prepTimer) { clearTimeout(prepTimer); prepTimer = null; }
-  isPreparing = false;
-  setPrepOverlay(false);
-}
-function setPrepOverlay(show) {
-  var p = document.getElementById('presenterPrep');
-  var v = document.getElementById('viewerPrep');
-  if (p) { if (show) p.classList.add('show'); else p.classList.remove('show'); }
-  if (v) { if (show) v.classList.add('show'); else v.classList.remove('show'); }
-}
-function setNavEnabled(enabled) {
-  var prev = document.getElementById('btnPrev');
-  var next = document.getElementById('btnNext');
-  if (prev) prev.disabled = !enabled;
-  if (next) next.disabled = !enabled;
-}
-function renderSlideForRole() {
-  if (role === 'presenter') renderAllVoices();
-  else renderViewerSlide();
 }
 /* =========================================================
    RENDER APRESENTADOR (grade de naipes)
@@ -1736,19 +1566,17 @@ function buildVoicesGrid() {
 }
 function renderAllVoices() {
   if (showingInterval) return;
-  var myGen = ++renderGeneration;
   var slideAtRender = currentSlide;
   for (var i = 0; i < activeVoices.length; i++) {
-    renderVoiceCell(activeVoices[i], myGen, slideAtRender);
+    renderVoiceCell(activeVoices[i], slideAtRender);
   }
 }
-function renderVoiceCell(voice, myGen, slideIndex) {
+function renderVoiceCell(voice, slideIndex) {
   var cell = document.getElementById('cell-' + voice);
   if (!cell) return;
   var pageIdx = (typeof slideIndex === 'number') ? slideIndex : currentSlide;
   var musicIdx = currentMusicIndex;
   if (musicIdx < 0) {
-    cancelRenderTask('cell-' + voice);
     var lbl0 = cell.querySelector('.voice-cell-label');
     var keep0 = lbl0 ? lbl0.outerHTML : '';
     cell.innerHTML = keep0 + '<div class="voice-cell-empty">Sem letra</div>';
@@ -1756,7 +1584,6 @@ function renderVoiceCell(voice, myGen, slideIndex) {
   }
   var pdfId = pdfIdForVoiceAt(voice, musicIdx);
   if (!pdfId) {
-    cancelRenderTask('cell-' + voice);
     var label = cell.querySelector('.voice-cell-label');
     var keep = label ? label.outerHTML : '';
     cell.innerHTML = keep + '<div class="voice-cell-empty">Sem letra</div>';
@@ -1764,10 +1591,8 @@ function renderVoiceCell(voice, myGen, slideIndex) {
   }
   openPdfDoc(pdfId, function(doc){
     if (showingInterval) return;
-    if (myGen !== undefined && myGen !== null && myGen !== renderGeneration) return;
     if (!doc) return;
     if (pageIdx >= doc.numPages) {
-      cancelRenderTask('cell-' + voice);
       var lbl2 = cell.querySelector('.voice-cell-label');
       var keep2 = lbl2 ? lbl2.outerHTML : '';
       cell.innerHTML = keep2 + '<div class="voice-cell-empty">Sem letra</div>';
@@ -1776,54 +1601,8 @@ function renderVoiceCell(voice, myGen, slideIndex) {
     var label2 = cell.querySelector('.voice-cell-label');
     var keep3 = label2 ? label2.outerHTML : '';
     cell.innerHTML = keep3;
-    var pageNum = pageIdx + 1;
-    renderPageTo(doc, pageNum, cell, 'cell-' + voice, myGen);
+    renderPageToContainer(doc, pageIdx + 1, cell);
   });
-}
-function renderViewerSlideById(pdfId, pageIdx) {
-  var el = document.getElementById('viewerSlide');
-  if (!el) return;
-  if (showingInterval) return;
-  var myGen = ++renderGeneration;
-  hideStateImage('viewer');
-  openPdfDoc(pdfId, function(doc){
-    if (showingInterval) return;
-    if (myGen !== renderGeneration) return;
-    if (!doc) {
-      el.innerHTML = '<div class="slide-placeholder">Aguardando...</div>';
-      return;
-    }
-    if (pageIdx >= doc.numPages) {
-      el.innerHTML = '<div class="slide-placeholder">Sem letra</div>';
-      return;
-    }
-    renderPageTo(doc, pageIdx + 1, el, 'viewer', myGen);
-  });
-}
-function renderViewerSlide() {
-  var el = document.getElementById('viewerSlide');
-  if (!el) return;
-  if (showingInterval) return;
-  if (currentPdfId) {
-    renderViewerSlideById(currentPdfId, currentSlide);
-    return;
-  }
-  var myGen = ++renderGeneration;
-  var pageIdx = currentSlide;
-  var musicIdx = currentMusicIndex;
-  hideStateImage('viewer');
-  if (musicIdx < 0) {
-    cancelRenderTask('viewer');
-    el.innerHTML = '<div class="slide-placeholder">Aguardando...</div>';
-    return;
-  }
-  var pdfId = pdfIdForVoiceAt(myVoice, musicIdx);
-  if (!pdfId) {
-    cancelRenderTask('viewer');
-    el.innerHTML = '<div class="slide-placeholder">Aguardando...</div>';
-    return;
-  }
-  renderViewerSlideById(pdfId, pageIdx);
 }
 function updateCounter() {
   var c = document.getElementById('presenterCounter');
@@ -1887,7 +1666,6 @@ function renderMusicMenu() {
 function activateMusic(index) {
   closeMusicMenu();
   clearAutoInterval();
-  cancelPreparation();
   hideGridOverlay();
   clearStateImage();
   showingInterval = false;
@@ -1909,8 +1687,7 @@ function activateMusic(index) {
   setNavEnabled(true);
   updateCounter();
   renderMusicMenu();
-  showIntervalImage('presenter');
-  publishInterval();
+  publishPrepStart();
   preloadAllPdfs(function(){
     if (!hasActiveMusic || currentMusicIndex !== index) return;
     var mp = 0;
@@ -1922,27 +1699,22 @@ function activateMusic(index) {
     slideCount = mp || slideCount || 1;
     renderAllVoices();
     updateCounter();
-    publishPrepStart();
-    startPreparation(function(){
-      hideGridOverlay();
-      clearStateImage();
+    setTimeout(function(){
       publishSlide();
       armAutoInterval();
-    });
+    }, PREP_HOLD_FIRST_MS);
   });
   log('Musica ativada: ' + (musicNames[index] || index));
 }
 function selectEmptyMusic() {
   closeMusicMenu();
   clearAutoInterval();
-  cancelPreparation();
   hasActiveMusic = false;
   showingInterval = true;
   sessionStarted = true;
   currentMusicIndex = -1;
   currentSlide = 0;
   slideCount = 0;
-  currentPdfId = null;
   setNavEnabled(true);
   showIntervalImage('presenter');
   publishInterval();
@@ -1975,25 +1747,64 @@ function publishInterval() {
   log('interval publicado');
 }
 function publishPrepStart() {
-  publishToAll('prep-start', { index: currentMusicIndex, total: slideCount, perSlide: PREP_PER_SLIDE_MS });
+  publishToAll('prep-start', { index: currentMusicIndex, total: slideCount });
   log('prep-start publicado');
 }
+/* Envia a imagem do slide atual para todos os naipes */
 function publishSlide() {
   if (!hasActiveMusic) { publishInterval(); return; }
+  var pageIdx = currentSlide;
+  var musicIdx = currentMusicIndex;
   for (var i = 0; i < activeVoices.length; i++) {
-    var v = activeVoices[i];
-    var st = voiceState[v];
-    if (!st || !st.channel) continue;
-    var pdfId = pdfIdForVoiceAt(v, currentMusicIndex);
-    try {
-      st.channel.publish('slide', { pdfId: pdfId, index: currentSlide, total: slideCount, music: currentMusicIndex });
-      sentCount++;
-    } catch(e) {
-      log('ERRO slide em ' + v + ': ' + e.message);
-    }
+    (function(voice){
+      var pdfId = pdfIdForVoiceAt(voice, musicIdx);
+      if (!pdfId) return;
+      openPdfDoc(pdfId, function(doc){
+        if (!doc) return;
+        if (pageIdx >= doc.numPages) return;
+        renderPageToJpeg(doc, pageIdx + 1, function(base64){
+          if (!base64) return;
+          sendSlideImage(voice, base64, pageIdx, slideCount, musicIdx);
+        });
+      });
+    })(activeVoices[i]);
   }
   log('slide publicado: ' + (currentSlide + 1) + '/' + slideCount);
   updateDiag();
+}
+/* Envia a imagem em chunks para um naipe */
+function sendSlideImage(voice, base64, index, total, music) {
+  var st = voiceState[voice];
+  if (!st || !st.channel) return;
+  var chunks = Math.ceil(base64.length / SLIDE_CHUNK_SIZE);
+  var sendId = 's' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
+  try {
+    st.channel.publish('slide-meta', {
+      sendId: sendId,
+      total: chunks,
+      index: index,
+      slideTotal: total,
+      music: music,
+      size: base64.length
+    });
+    sentCount++;
+  } catch(e) { log('ERRO slide-meta ' + voice + ': ' + e.message); return; }
+  var seq = 0;
+  function sendNext() {
+    if (seq >= chunks) {
+      log('slide enviado para ' + voice + ' (' + Math.round(base64.length/1024) + 'KB)');
+      return;
+    }
+    var start = seq * SLIDE_CHUNK_SIZE;
+    var chunk = base64.slice(start, start + SLIDE_CHUNK_SIZE);
+    try {
+      st.channel.publish('slide-chunk', { sendId: sendId, seq: seq, data: chunk });
+      sentCount++;
+    } catch(e) { log('ERRO slide-chunk ' + voice + ': ' + e.message); }
+    seq++;
+    setTimeout(sendNext, SLIDE_CHUNK_DELAY);
+  }
+  sendNext();
 }
 function publishCurrentState() {
   if (!sessionStarted) { publishOpening(); return; }
@@ -2002,7 +1813,7 @@ function publishCurrentState() {
   publishSlide();
 }
 /* =========================================================
-   RESSINCRONIZACAO (coralista que volta)
+   RESSINCRONIZACAO (coralista que entra no meio)
    ========================================================= */
 function publishVoiceCatalog(voice) {
   var st = voiceState[voice];
@@ -2010,9 +1821,8 @@ function publishVoiceCatalog(voice) {
   var list = voicePdfs[voice] || [];
   var catalog = [];
   for (var i = 0; i < list.length; i++) {
-    catalog.push({ id: list[i].id, nome: list[i].nome, original: list[i].original });
+    catalog.push({ id: list[i].id, nome: list[i].nome });
   }
-  var currentPdf = (currentMusicIndex >= 0) ? pdfIdForVoiceAt(voice, currentMusicIndex) : null;
   try {
     st.channel.publish('catalog', {
       voice: voice,
@@ -2023,8 +1833,7 @@ function publishVoiceCatalog(voice) {
       active: hasActiveMusic,
       interval: showingInterval,
       started: sessionStarted,
-      stateImage: currentStateImage,
-      pdfId: currentPdf
+      stateImage: currentStateImage
     });
     sentCount++;
     log('catalog enviado para ' + voice + ' (' + catalog.length + ' musicas)');
@@ -2036,57 +1845,26 @@ function handleCatalogRequest(voice) {
   if (role !== 'presenter') return;
   log('catalog-request recebido de ' + voice);
   publishVoiceCatalog(voice);
-  var list = voicePdfs[voice] || [];
-  for (var i = 0; i < list.length; i++) {
-    sendPdfToVoice(voice, list[i]);
-  }
   setTimeout(function(){
     publishCurrentState();
   }, 400);
-  log('Reenvio de PDFs para ' + voice + ': ' + list.length);
 }
 function handleCatalog(msg) {
   var d = msg.data || {};
-  if (!d.items) return;
   catalogReceived = true;
   stopCatalogRetry();
-  if (!voicePdfs[myVoice]) voicePdfs[myVoice] = [];
-  var existing = {};
-  for (var e = 0; e < voicePdfs[myVoice].length; e++) {
-    existing[voicePdfs[myVoice][e].id] = true;
-  }
-  for (var i = 0; i < d.items.length; i++) {
-    var it = d.items[i];
-    if (!existing[it.id]) {
-      voicePdfs[myVoice].push({
-        id: it.id,
-        nome: it.nome,
-        original: it.original || it.nome,
-        base64: null,
-        bytes: null,
-        paginas: 1,
-        doc: null,
-        loading: null,
-        pending: true
-      });
-    }
-  }
-  voicePdfs[myVoice] = sortPdfs(voicePdfs[myVoice]);
-  buildMusicNames();
   lastKnownMusic = (typeof d.music === 'number') ? d.music : -1;
   lastKnownSlide = (typeof d.slide === 'number') ? d.slide : 0;
   lastKnownTotal = (typeof d.total === 'number') ? d.total : 0;
-  lastKnownPdfId = d.pdfId || null;
   if (d.stateImage === 'interval') {
     showingInterval = true;
     hasActiveMusic = false;
     sessionStarted = true;
-    currentPdfId = null;
     showIntervalImage('viewer');
     showScreen('viewer');
     log('catalog: estado = modo espera');
   }
-  log('catalog recebido: ' + d.items.length + ' musicas');
+  log('catalog recebido');
   updateDiag();
   scheduleResync();
 }
@@ -2098,7 +1876,7 @@ function scheduleResync() {
     if (role !== 'viewer') return;
     awaitingResync = false;
     applyResyncState();
-  }, RESYNC_DELAY_MS);
+  }, 1200);
 }
 function applyResyncState() {
   if (role !== 'viewer') return;
@@ -2116,18 +1894,13 @@ function applyResyncState() {
   currentMusicIndex = lastKnownMusic;
   currentSlide = lastKnownSlide;
   slideCount = lastKnownTotal || 1;
-  if (lastKnownPdfId) currentPdfId = lastKnownPdfId;
   showScreen('viewer');
   setPresenterOnline(true);
-  scheduleLayoutAwareRedraw();
   log('ressincronizado: musica ' + (currentMusicIndex + 1) + ' slide ' + (currentSlide + 1));
 }
 function requestCatalog() {
   if (!myChannel || role !== 'viewer') return;
-  if (!channelReady) {
-    log('catalog-request adiado: canal nao anexado');
-    return;
-  }
+  if (!channelReady) return;
   try {
     myChannel.publish('catalog-request', { from: myClientId, voice: myVoice });
     sentCount++;
@@ -2143,10 +1916,10 @@ function startCatalogRetry() {
   var tick = function() {
     if (role !== 'viewer') { stopCatalogRetry(); return; }
     if (catalogReceived) { stopCatalogRetry(); return; }
-    if (catalogRetryCount >= CATALOG_RETRY_MAX) { stopCatalogRetry(); return; }
+    if (catalogRetryCount >= 14) { stopCatalogRetry(); return; }
     catalogRetryCount++;
     requestCatalog();
-    catalogRetryTimer = setTimeout(tick, CATALOG_RETRY_MS);
+    catalogRetryTimer = setTimeout(tick, 2500);
   };
   catalogRetryTimer = setTimeout(tick, 400);
 }
@@ -2157,7 +1930,6 @@ function stopCatalogRetry() {
    NAVEGACAO
    ========================================================= */
 function nextSlide() {
-  if (isPreparing) return;
   if (!hasActiveMusic) {
     if (lastMusicIndex >= 0 && musicNames.length > 0) {
       activateMusic(lastMusicIndex);
@@ -2176,7 +1948,6 @@ function nextSlide() {
   }
 }
 function prevSlide() {
-  if (isPreparing) return;
   if (!hasActiveMusic) {
     if (lastMusicIndex >= 0 && musicNames.length > 0) {
       activateMusic(lastMusicIndex);
@@ -2195,10 +1966,9 @@ function prevSlide() {
   }
 }
 /* =========================================================
-   PAINEL DE PDF (JANELA FLUTUANTE)
+   PAINEL DE PDF
    ========================================================= */
 function openPdfPanel() {
-  if (pendingUploads > 0) return;
   if (!showingInterval) {
     selectEmptyMusic();
     log('Modo espera ativado ao abrir painel de PDF');
@@ -2292,7 +2062,6 @@ function handlePdfPicked(ev) {
         if (base64) {
           results.push({
             nome: cleanMusicName(file.name),
-            original: file.name,
             base64: base64,
             bytes: base64ToBytes(base64),
             paginas: 1,
@@ -2315,8 +2084,7 @@ function handlePdfPicked(ev) {
 }
 function finishPick(voice, results) {
   if (!pdfPanelDraft[voice]) pdfPanelDraft[voice] = [];
-  var merged = pdfPanelDraft[voice].concat(results);
-  pdfPanelDraft[voice] = sortPdfs(merged);
+  pdfPanelDraft[voice] = pdfPanelDraft[voice].concat(results);
   renderPdfPanel();
   log('PDFs adicionados em ' + voice + ': ' + results.length);
   setPdfMsg('', false);
@@ -2421,61 +2189,12 @@ function savePdfPanel() {
   slideCount = 0;
   showingInterval = true;
   sessionStarted = true;
-  currentPdfId = null;
   setNavEnabled(true);
   updateCounter();
   showIntervalImage('presenter');
   publishInterval();
-  sendAllPdfs();
   enterFullscreen();
   log('Letras salvas - modo espera mantido');
-}
-function sendAllPdfs() {
-  pendingUploads = 0;
-  for (var i = 0; i < activeVoices.length; i++) {
-    var v = activeVoices[i];
-    var list = voicePdfs[v] || [];
-    for (var j = 0; j < list.length; j++) {
-      pendingUploads++;
-      sendPdfToVoice(v, list[j]);
-    }
-  }
-  log('Enviando ' + pendingUploads + ' PDFs aos naipes');
-}
-function sendPdfToVoice(voice, pdfObj) {
-  var st = voiceState[voice];
-  if (!st || !st.channel) { pendingUploads--; return; }
-  if (!pdfObj.base64) { pendingUploads--; return; }
-  var base64 = pdfObj.base64;
-  var total = Math.ceil(base64.length / PDF_CHUNK_SIZE);
-  var sent = 0;
-  var sendId = 'p' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
-  try {
-    st.channel.publish('pdf-meta', {
-      pdfId: pdfObj.id,
-      nome: pdfObj.nome,
-      total: total,
-      sendId: sendId,
-      size: base64.length
-    });
-    sentCount++;
-  } catch(e) { log('ERRO meta ' + voice + ': ' + e.message); }
-  function sendNext() {
-    if (sent >= total) {
-      pendingUploads--;
-      if (pendingUploads <= 0) { pendingUploads = 0; log('Todos os PDFs enviados'); }
-      return;
-    }
-    var start = sent * PDF_CHUNK_SIZE;
-    var chunk = base64.slice(start, start + PDF_CHUNK_SIZE);
-    try {
-      st.channel.publish('pdf-chunk', { pdfId: pdfObj.id, sendId: sendId, seq: sent, data: chunk });
-      sentCount++;
-    } catch(e) { log('ERRO chunk ' + voice + ': ' + e.message); }
-    sent++;
-    setTimeout(sendNext, PDF_CHUNK_DELAY);
-  }
-  sendNext();
 }
 function base64ToBytes(base64) {
   var bin = atob(base64);
@@ -2485,99 +2204,82 @@ function base64ToBytes(base64) {
   return bytes;
 }
 /* =========================================================
-   RECEBIMENTO DE PDF (CORALISTA)
+   RECEBIMENTO DE IMAGEM (CORALISTA)
    ========================================================= */
-function handlePdfMeta(msg) {
+function handleSlideMeta(msg) {
   var d = msg.data || {};
-  if (!d.pdfId || !d.nome) return;
-  var existing = voicePdfsById(d.pdfId);
-  if (existing && existing.bytes) { log('PDF ja recebido: ' + d.nome); return; }
-  if (existing && existing.pending) {
-    existing.base64 = '';
-    existing.pending = false;
+  if (!d.sendId) return;
+  var pending = { sendId: d.sendId, total: d.total || 0, parts: {}, received: 0,
+                  index: d.index || 0, slideTotal: d.slideTotal || 1, music: d.music };
+  if (slideOrphans[d.sendId]) {
+    pending.parts = slideOrphans[d.sendId].parts;
+    pending.received = slideOrphans[d.sendId].received;
+    delete slideOrphans[d.sendId];
   }
-  var pending = { pdfId: d.pdfId, nome: d.nome, total: d.total || 0, parts: {}, received: 0 };
-  if (orphanChunks[d.sendId]) {
-    pending.parts = orphanChunks[d.sendId].parts;
-    pending.received = orphanChunks[d.sendId].received;
-    delete orphanChunks[d.sendId];
-  }
-  pendingPdfChunks[d.sendId] = pending;
-  log('pdf-meta recebido: ' + d.nome + ' (' + d.total + ' partes)');
-  if (pending.total > 0 && pending.received >= pending.total) finalizePdf(d.sendId);
+  slidePending[d.sendId] = pending;
+  log('slide-meta recebido (' + d.total + ' partes)');
+  if (pending.total > 0 && pending.received >= pending.total) finalizeSlide(d.sendId);
 }
-function handlePdfChunk(msg) {
+function handleSlideChunk(msg) {
   var d = msg.data || {};
   var sendId = d.sendId;
   if (!sendId || typeof d.seq !== 'number') return;
-  var pending = pendingPdfChunks[sendId];
+  var pending = slidePending[sendId];
   if (!pending) {
-    if (!orphanChunks[sendId]) orphanChunks[sendId] = { parts: {}, received: 0 };
-    if (orphanChunks[sendId].parts[d.seq] === undefined) {
-      orphanChunks[sendId].parts[d.seq] = d.data;
-      orphanChunks[sendId].received++;
+    if (!slideOrphans[sendId]) slideOrphans[sendId] = { parts: {}, received: 0 };
+    if (slideOrphans[sendId].parts[d.seq] === undefined) {
+      slideOrphans[sendId].parts[d.seq] = d.data;
+      slideOrphans[sendId].received++;
     }
     return;
   }
   if (pending.parts[d.seq] !== undefined) return;
   pending.parts[d.seq] = d.data;
   pending.received++;
-  if (pending.total > 0 && pending.received >= pending.total) finalizePdf(sendId);
+  if (pending.total > 0 && pending.received >= pending.total) finalizeSlide(sendId);
 }
-function finalizePdf(sendId) {
-  var pending = pendingPdfChunks[sendId];
+function finalizeSlide(sendId) {
+  var pending = slidePending[sendId];
   if (!pending) return;
   var full = '';
   for (var i = 0; i < pending.total; i++) full += pending.parts[i] || '';
-  delete pendingPdfChunks[sendId];
-  var bytes = base64ToBytes(full);
-  if (!voicePdfs[myVoice]) voicePdfs[myVoice] = [];
-  var target = null;
-  for (var j = 0; j < voicePdfs[myVoice].length; j++) {
-    if (voicePdfs[myVoice][j].id === pending.pdfId) { target = voicePdfs[myVoice][j]; break; }
-  }
-  if (target) {
-    target.base64 = full;
-    target.bytes = bytes;
-    target.pending = false;
-    target.doc = null;
-    target.loading = null;
-  } else {
-    voicePdfs[myVoice].push({
-      id: pending.pdfId,
-      nome: pending.nome,
-      original: pending.nome,
-      base64: full,
-      bytes: bytes,
-      paginas: 1,
-      doc: null,
-      loading: null
-    });
-  }
-  voicePdfs[myVoice] = sortPdfs(voicePdfs[myVoice]);
-  buildMusicNames();
-  log('PDF completo recebido: ' + pending.nome);
-  openPdfDoc(pending.pdfId, function(doc){
-    if (doc) log('PDF renderizavel: ' + pending.nome + ' - ' + doc.numPages + ' paginas');
-    updateDiag();
-    runPendingPdfAction();
-    if (awaitingResync) {
-      applyResyncState();
-    } else if (role === 'viewer' && hasActiveMusic) {
-      if (currentPdfId === pending.pdfId) {
-        clearStateImage();
-        renderViewerSlideById(currentPdfId, currentSlide);
-      }
-    }
-  });
+  delete slidePending[sendId];
+  var dataUrl = 'data:image/jpeg;base64,' + full;
+  currentSlideImage = dataUrl;
+  currentSlide = pending.index;
+  slideCount = pending.slideTotal;
+  if (typeof pending.music === 'number' && pending.music >= 0) currentMusicIndex = pending.music;
+  showingInterval = false;
+  hasActiveMusic = true;
+  sessionStarted = true;
+  showSlideImage(dataUrl);
+  showScreen('viewer');
+  setPresenterOnline(true);
+  gotAnyContent = true;
+  stopStuckTimer();
+  closeStuckOverlay();
+  log('slide recebido: ' + (pending.index + 1) + '/' + pending.slideTotal +
+      ' (' + Math.round(full.length/1024) + 'KB)');
+  updateDiag();
 }
-function runPendingPdfAction() {
-  if (!pendingPdfAction) return;
-  var act = pendingPdfAction;
-  pendingPdfAction = null;
-  log('Executando acao pendente: ' + act.type);
-  if (act.type === 'prep') applyPrepStart(act.index, act.total);
-  else if (act.type === 'slide') applySlide(act.pdfId, act.index, act.total);
+/* Exibe a imagem do slide no coralista */
+function showSlideImage(dataUrl) {
+  var el = document.getElementById('viewerSlide');
+  if (!el) return;
+  hideStateImage('viewer');
+  var img = document.getElementById('viewerSlideImg');
+  if (!img || !el.contains(img)) {
+    el.innerHTML = '';
+    img = document.createElement('img');
+    img.id = 'viewerSlideImg';
+    img.className = 'slide-canvas';
+    img.style.maxWidth = '100%';
+    img.style.maxHeight = '100%';
+    img.style.objectFit = 'contain';
+    img.style.display = 'block';
+    el.appendChild(img);
+  }
+  img.src = dataUrl;
 }
 /* =========================================================
    APRESENTADOR
@@ -2613,10 +2315,6 @@ function enterPresenterMode() {
         ch.subscribe('catalog-request', function(msg){
           log('catalog-request de ' + voice);
           handleCatalogRequest(voice);
-        });
-        ch.subscribe('viewer-ready', function(){
-          publishCurrentState();
-          updateViewerCount();
         });
         ch.subscribe('heartbeat', function(msg){
           if (msg.clientId && msg.clientId !== myClientId) {
@@ -2662,7 +2360,6 @@ function enterPresenterMode() {
     startPresencePoll();
     startMemberCleanup();
     requestWakeLock();
-    setupResizeObserver('presenter');
     updateDiag();
   } catch(e) {
     showError('Erro ao iniciar apresentacao: ' + e.message);
@@ -2815,7 +2512,6 @@ function endPresentation() {
   stopMemberCleanup();
   stopHeartbeat();
   releaseWakeLock();
-  teardownResizeObservers();
   for (var i = 0; i < activeVoices.length; i++) {
     var st = voiceState[activeVoices[i]];
     if (st && st.channel) {
@@ -2840,34 +2536,28 @@ function resetAllState() {
   sessionStarted = false;
   showingInterval = false;
   currentStateImage = 'opening';
-  currentPdfId = null;
+  currentSlideImage = null;
   recvCount = 0;
   sentCount = 0;
   viewerCount = 0;
   memberMap = {};
-  pendingPdfChunks = {};
-  orphanChunks = {};
-  pendingPdfAction = null;
+  slidePending = {};
+  slideOrphans = {};
   pdfPanelDraft = {};
   pdfPanelVoice = null;
-  pendingUploads = 0;
   fsPickerGuard = false;
-  renderTasks = {};
   resyncTimer = null;
   awaitingResync = false;
   lastKnownMusic = -1;
   lastKnownSlide = 0;
   lastKnownTotal = 0;
-  lastKnownPdfId = null;
   catalogRetryTimer = null;
   catalogRetryCount = 0;
   catalogReceived = false;
   channelReady = false;
   gotAnyContent = false;
-  if (layoutRetryTimer) { clearTimeout(layoutRetryTimer); layoutRetryTimer = null; }
   stopStuckTimer();
   closeStuckOverlay();
-  teardownResizeObservers();
   hideGridOverlay();
   setPresenterOnline(null);
   resetTimer();
@@ -2901,16 +2591,14 @@ function joinSession() {
     sessionStarted = false;
     showingInterval = false;
     currentStateImage = 'opening';
-    currentPdfId = null;
-    pendingPdfChunks = {};
-    orphanChunks = {};
-    pendingPdfAction = null;
+    currentSlideImage = null;
+    slidePending = {};
+    slideOrphans = {};
     resyncTimer = null;
     awaitingResync = false;
     lastKnownMusic = -1;
     lastKnownSlide = 0;
     lastKnownTotal = 0;
-    lastKnownPdfId = null;
     catalogRetryCount = 0;
     catalogReceived = false;
     channelReady = false;
@@ -2924,26 +2612,8 @@ function joinSession() {
       }
     } catch(e) { log('release falhou: ' + e.message); }
     myChannel = ably.channels.get(channelName);
-    myChannel.subscribe('slide', function(msg){
-      recvCount++;
-      if (msg.data && typeof msg.data.index === 'number') {
-        var pid = msg.data.pdfId;
-        var tot = msg.data.total || 1;
-        var mus = (typeof msg.data.music === 'number') ? msg.data.music : -1;
-        lastKnownMusic = mus;
-        lastKnownSlide = msg.data.index;
-        lastKnownTotal = tot;
-        lastKnownPdfId = pid || null;
-        if (!pid || !voicePdfsById(pid)) {
-          pendingPdfAction = { type: 'slide', pdfId: pid, index: msg.data.index, total: tot };
-          log('slide aguardando PDF: ' + pid);
-          updateDiag();
-          return;
-        }
-        applySlide(pid, msg.data.index, tot, mus);
-      }
-      updateDiag();
-    });
+    myChannel.subscribe('slide-meta', function(msg){ recvCount++; handleSlideMeta(msg); });
+    myChannel.subscribe('slide-chunk', function(msg){ recvCount++; handleSlideChunk(msg); });
     myChannel.subscribe('prep-start', function(msg){
       recvCount++;
       var idx = (msg.data && typeof msg.data.index === 'number') ? msg.data.index : 0;
@@ -2953,13 +2623,10 @@ function joinSession() {
     myChannel.subscribe('opening', function(){ recvCount++; applyOpening(); updateDiag(); });
     myChannel.subscribe('interval', function(){ recvCount++; applyInterval(); updateDiag(); });
     myChannel.subscribe('catalog', function(msg){ recvCount++; handleCatalog(msg); });
-    myChannel.subscribe('pdf-meta', function(msg){ recvCount++; handlePdfMeta(msg); updateDiag(); });
-    myChannel.subscribe('pdf-chunk', function(msg){ recvCount++; handlePdfChunk(msg); });
     myChannel.subscribe('session-end', function(msg){
       var ms = (msg.data && typeof msg.data.elapsedMs === 'number') ? msg.data.elapsedMs : 0;
       log('apresentacao encerrada - tempo ' + formatTime(ms));
       exitFullscreen();
-      cancelPreparation();
       clearAutoInterval();
       stopHeartbeat();
       stopStateRequests();
@@ -3001,7 +2668,6 @@ function joinSession() {
     startHeartbeat();
     startStuckTimer();
     requestWakeLock();
-    setupResizeObserver('viewer');
     preloadAllGifs(function(){
       log('GIFs pre-carregados no coralista');
       applyCurrentGifState();
@@ -3013,14 +2679,13 @@ function joinSession() {
   }
 }
 function applyOpening() {
-  cancelPreparation();
   clearAutoInterval();
   hasActiveMusic = false;
   showingInterval = false;
   currentMusicIndex = -1;
   currentSlide = 0;
   slideCount = 0;
-  currentPdfId = null;
+  currentSlideImage = null;
   stopStateRequests();
   setPresenterOnline(true);
   showOpeningImage('viewer');
@@ -3028,7 +2693,6 @@ function applyOpening() {
   log('opening recebido');
 }
 function applyPrepStart(index, total) {
-  cancelPreparation();
   clearAutoInterval();
   showingInterval = false;
   sessionStarted = true;
@@ -3040,44 +2704,10 @@ function applyPrepStart(index, total) {
   setPresenterOnline(true);
   stopStateRequests();
   showIntervalImage('viewer');
-  startPreparation(function(){
-    log('Preparacao concluida no receptor');
-    var pdfId = currentPdfId || pdfIdForVoiceAt(myVoice, currentMusicIndex);
-    var pdf = pdfId ? voicePdfsById(pdfId) : null;
-    if (pdf && pdf.bytes) {
-      clearStateImage();
-      renderViewerSlideById(pdfId, currentSlide);
-    } else {
-      log('preparacao concluida, PDF ainda nao chegou - mantendo modo espera');
-    }
-  });
+  log('prep-start recebido - modo espera ate o slide chegar');
   updateDiag();
 }
-function applySlide(pdfId, index, total, music) {
-  if (isPreparing) return;
-  showingInterval = false;
-  sessionStarted = true;
-  hasActiveMusic = true;
-  if (typeof music === 'number' && music >= 0) currentMusicIndex = music;
-  currentSlide = index;
-  slideCount = total || 1;
-  if (pdfId) currentPdfId = pdfId;
-  showScreen('viewer');
-  stopStateRequests();
-  setPresenterOnline(true);
-  var pdf = pdfId ? voicePdfsById(pdfId) : null;
-  if (pdf && pdf.bytes) {
-    clearStateImage();
-    renderViewerSlideById(pdfId, index);
-  } else {
-    if (pdfId) pendingPdfAction = { type: 'slide', pdfId: pdfId, index: index, total: total };
-    showIntervalImage('viewer');
-    log('slide aguardando PDF, mantendo modo espera: ' + pdfId);
-  }
-  log('slide aplicado: ' + (currentSlide + 1));
-}
 function applyInterval() {
-  cancelPreparation();
   clearAutoInterval();
   sessionStarted = true;
   hasActiveMusic = false;
@@ -3085,7 +2715,7 @@ function applyInterval() {
   currentMusicIndex = -1;
   currentSlide = 0;
   slideCount = 0;
-  currentPdfId = null;
+  currentSlideImage = null;
   stopStateRequests();
   setPresenterOnline(true);
   showIntervalImage('viewer');
@@ -3139,7 +2769,6 @@ function stopStateRequests() {
   if (stateRequestTimer) { clearInterval(stateRequestTimer); stateRequestTimer = null; }
 }
 function leaveSession() {
-  cancelPreparation();
   clearAutoInterval();
   stopStateRequests();
   stopPresencePoll();
@@ -3148,11 +2777,9 @@ function leaveSession() {
   stopTimer();
   releaseWakeLock();
   if (resyncTimer) { clearTimeout(resyncTimer); resyncTimer = null; }
-  if (layoutRetryTimer) { clearTimeout(layoutRetryTimer); layoutRetryTimer = null; }
   stopCatalogRetry();
   stopStuckTimer();
   closeStuckOverlay();
-  teardownResizeObservers();
   awaitingResync = false;
   channelReady = false;
   gotAnyContent = false;
@@ -3345,7 +2972,7 @@ window.addEventListener('resize', function(){
   redrawCurrentState();
 });
 window.addEventListener('orientationchange', function(){
-  setTimeout(function(){ scheduleLayoutAwareRedraw(); }, 250);
+  setTimeout(function(){ redrawCurrentState(); }, 250);
 });
 </script>
 </body>
