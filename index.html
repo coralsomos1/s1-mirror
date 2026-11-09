@@ -79,7 +79,6 @@
     max-width:none; max-height:none; object-fit:contain; object-position:center;
     display:block; z-index:2; pointer-events:none;
   }
-  /* WRAPPER DA GRADE + OVERLAY UNICO */
   .grid-wrap {
     flex:1; position:relative; min-width:0; min-height:0;
     display:flex; background:#000;
@@ -108,7 +107,6 @@
   .voice-cell-label.hidden { display:none; }
   .voice-cell-empty { color:#3a3a48; font-size:12px; font-style:italic; text-align:center; padding:14px; }
 
-  /* OVERLAY QUE COBRE A GRADE INTEIRA (nao cobre a coluna lateral) */
   .grid-overlay {
     position:absolute; inset:0; z-index:40;
     display:none; align-items:center; justify-content:center;
@@ -697,8 +695,9 @@ var PREP_PER_SLIDE_MS = 250;
 var PREP_HOLD_FIRST_MS = 900;
 var PDF_CHUNK_SIZE = 24576;
 var PDF_CHUNK_DELAY = 100;
-var GIF_CHUNK_SIZE = 12000;
-var GIF_CHUNK_DELAY = 60;
+var GIF_CHUNK_SIZE = 14000;
+var GIF_CHUNK_DELAY = 90;
+var GIF_TIMEOUT_MS = 30000;
 var CODE_TTL_MS = 60 * 60 * 1000;
 var HEARTBEAT_INTERVAL = 4000;
 var MEMBER_TIMEOUT = 10000;
@@ -795,8 +794,9 @@ var gotAnyContent = false;
 var gifCache = {};
 var gifPending = {};
 var gifOrphans = {};
-var gifSeq = 0;
 var gifSending = false;
+var gifSendQueue = [];
+var gifTimeoutTimers = {};
 /* =========================================================
    PDF.JS
    ========================================================= */
@@ -863,7 +863,7 @@ function isSingleMode() {
   return activeVoices.length === 1;
 }
 /* =========================================================
-   GIF: carregamento, cache e transmissao
+   GIF: carregamento, cache e transmissao SERIAL
    ========================================================= */
 function gifKeyFor(kind) {
   if (kind === 'opening') return 'opening';
@@ -914,46 +914,77 @@ function preloadAllGifs(callback) {
     })(kinds[i]);
   }
 }
-function sendGifToAll(kind) {
+/* Enfileira GIFs para envio SERIAL (um por vez) */
+function queueGifSend(kind) {
   var key = gifKeyFor(kind);
   if (!key) return;
+  for (var i = 0; i < gifSendQueue.length; i++) {
+    if (gifSendQueue[i] === kind) return;
+  }
+  gifSendQueue.push(kind);
+  processGifQueue();
+}
+function processGifQueue() {
+  if (gifSending) return;
+  if (gifSendQueue.length === 0) return;
+  var kind = gifSendQueue.shift();
+  gifSending = true;
+  sendGifSerial(kind, function(){
+    gifSending = false;
+    setTimeout(processGifQueue, 300);
+  });
+}
+function sendGifSerial(kind, onDone) {
+  var key = gifKeyFor(kind);
+  if (!key) { onDone(); return; }
   var dataUrl = gifCache[key];
   if (!dataUrl) {
-    log('gif ' + kind + ' ainda nao carregado, enviando quando pronto');
     loadGifFromServer(kind, function(d){
-      if (d) sendGifToAll(kind);
+      if (d) sendGifSerial(kind, onDone);
+      else onDone();
     });
     return;
   }
   var base64 = String(dataUrl).split(',')[1] || '';
-  if (!base64) return;
+  if (!base64) { onDone(); return; }
   var total = Math.ceil(base64.length / GIF_CHUNK_SIZE);
   var sendId = 'g' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
+  var voices = [];
   for (var i = 0; i < activeVoices.length; i++) {
     var v = activeVoices[i];
     var st = voiceState[v];
-    if (!st || !st.channel) continue;
-    (function(voice, ch){
-      try {
-        ch.publish('gif-meta', { kind: kind, total: total, sendId: sendId, size: base64.length });
-        sentCount++;
-      } catch(e) { log('ERRO gif-meta ' + voice + ': ' + e.message); return; }
-      var seq = 0;
-      function sendNext() {
-        if (seq >= total) return;
-        var start = seq * GIF_CHUNK_SIZE;
-        var chunk = base64.slice(start, start + GIF_CHUNK_SIZE);
-        try {
-          ch.publish('gif-chunk', { kind: kind, sendId: sendId, seq: seq, data: chunk });
-          sentCount++;
-        } catch(e) { log('ERRO gif-chunk ' + voice + ': ' + e.message); }
-        seq++;
-        setTimeout(sendNext, GIF_CHUNK_DELAY);
-      }
-      sendNext();
-    })(v, st.channel);
+    if (st && st.channel) voices.push({ voice: v, ch: st.channel });
   }
-  log('gif enviado: ' + kind + ' (' + total + ' partes)');
+  if (voices.length === 0) { onDone(); return; }
+  for (var j = 0; j < voices.length; j++) {
+    try {
+      voices[j].ch.publish('gif-meta', { kind: kind, total: total, sendId: sendId, size: base64.length });
+      sentCount++;
+    } catch(e) { log('ERRO gif-meta ' + voices[j].voice + ': ' + e.message); }
+  }
+  log('gif enviando: ' + kind + ' (' + total + ' partes, ' + voices.length + ' naipe(s))');
+  var seq = 0;
+  function sendNext() {
+    if (seq >= total) {
+      log('gif enviado: ' + kind + ' completo');
+      onDone();
+      return;
+    }
+    var start = seq * GIF_CHUNK_SIZE;
+    var chunk = base64.slice(start, start + GIF_CHUNK_SIZE);
+    for (var k = 0; k < voices.length; k++) {
+      try {
+        voices[k].ch.publish('gif-chunk', { kind: kind, sendId: sendId, seq: seq, data: chunk });
+        sentCount++;
+      } catch(e) { log('ERRO gif-chunk ' + voices[k].voice + ': ' + e.message); }
+    }
+    seq++;
+    setTimeout(sendNext, GIF_CHUNK_DELAY);
+  }
+  sendNext();
+}
+function sendGifToAll(kind) {
+  queueGifSend(kind);
 }
 function handleGifMeta(msg) {
   var d = msg.data || {};
@@ -1149,6 +1180,7 @@ function scheduleLayoutAwareRedraw() {
       if (showingInterval) return;
       if (hasActiveMusic) renderViewerSlide();
       else if (currentStateImage === 'interval') showIntervalImage('viewer');
+      else if (currentStateImage === 'loading') showLoadingImage('viewer');
       else if (currentStateImage === 'opening') showOpeningImage('viewer');
     } else {
       if (showingInterval) return;
@@ -1642,7 +1674,7 @@ function preloadAllPdfs(callback) {
   }
 }
 /* =========================================================
-   IMAGENS DE ESTADO (apresentador: overlay unico na grade)
+   IMAGENS DE ESTADO
    ========================================================= */
 function showGridOverlay(kind) {
   var ov = document.getElementById('gridOverlay');
@@ -1691,7 +1723,7 @@ function showStateImage(which, imgPath) {
     el.style.pointerEvents = 'none';
     el.src = imgPath;
   } catch(e) {}
-  log('showStateImage(' + which + ') src=' + imgPath);
+  log('showStateImage(' + which + ') src=' + imgPath.substring(0, 60));
 }
 function hideStateImage(which) {
   var imgId = which === 'presenter' ? 'presenterOpening' : 'viewerOpening';
@@ -2019,7 +2051,6 @@ function activateMusic(index) {
   setNavEnabled(true);
   updateCounter();
   renderMusicMenu();
-  /* Mostra o GIF de carregamento cobrindo a grade inteira */
   showLoadingImage('presenter');
   publishLoading();
   preloadAllPdfs(function(){
@@ -2151,10 +2182,9 @@ function handleCatalogRequest(voice) {
   for (var i = 0; i < list.length; i++) {
     sendPdfToVoice(voice, list[i]);
   }
-  /* Reenvia os GIFs para o coralista que acabou de entrar */
-  sendGifToAll('opening');
-  sendGifToAll('interval');
-  sendGifToAll('loading');
+  queueGifSend('opening');
+  queueGifSend('interval');
+  queueGifSend('loading');
   log('Reenvio de PDFs para ' + voice + ': ' + list.length);
 }
 function handleCatalog(msg) {
@@ -2299,7 +2329,6 @@ function prevSlide() {
    ========================================================= */
 function openPdfPanel() {
   if (pendingUploads > 0) return;
-  /* ITEM 3: ativa modo espera ao abrir o painel */
   if (!showingInterval) {
     selectEmptyMusic();
     log('Modo espera ativado ao abrir painel de PDF');
@@ -2717,15 +2746,13 @@ function enterPresenterMode() {
     renderBarCodes();
     showScreen('presenter');
     clearPresenterArea();
-    /* ITEM 1: abertura cobre a grade inteira */
     showOpeningImage('presenter');
     publishOpening();
-    /* Pre-carrega os GIFs e envia aos coralistas */
     preloadAllGifs(function(){
       log('GIFs pre-carregados no apresentador');
-      sendGifToAll('opening');
-      sendGifToAll('interval');
-      sendGifToAll('loading');
+      queueGifSend('opening');
+      queueGifSend('interval');
+      queueGifSend('loading');
     });
     renderMembers();
     renderMusicMenu();
@@ -2939,6 +2966,8 @@ function resetAllState() {
   gotAnyContent = false;
   gifPending = {};
   gifOrphans = {};
+  gifSendQueue = [];
+  gifSending = false;
   if (layoutRetryTimer) { clearTimeout(layoutRetryTimer); layoutRetryTimer = null; }
   stopStuckTimer();
   closeStuckOverlay();
