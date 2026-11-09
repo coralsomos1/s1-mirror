@@ -77,7 +77,7 @@
   .opening-img {
     position:absolute; inset:0; width:100%; height:100%;
     max-width:none; max-height:none; object-fit:contain; object-position:center;
-    display:block; z-index:2;
+    display:block; z-index:2; pointer-events:none;
   }
   .voices-grid {
     flex:1; display:grid; gap:clamp(6px,1vw,12px);
@@ -106,6 +106,7 @@
     width:clamp(220px,24vw,320px); flex-shrink:0;
     background:#0d0d14; border-left:1px solid #1e1e28;
     display:flex; flex-direction:column; padding:14px; gap:11px; overflow-y:auto;
+    position:relative; z-index:10;
   }
   .mirror-label { font-size:10px; color:#6a6a7a; text-transform:uppercase; letter-spacing:1.5px; font-weight:600; }
   .music-block { background:#15151d; border:1px solid #2a2a36; border-radius:12px; padding:11px 12px; display:flex; flex-direction:column; gap:7px; }
@@ -180,6 +181,7 @@
   .presenter-bar {
     display:flex; align-items:center; gap:8px; flex-wrap:wrap;
     padding:9px 12px; background:#0f0f16; border-bottom:1px solid #1e1e28; flex-shrink:0;
+    position:relative; z-index:20;
   }
   .bar-codes { display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
   .bar-code { display:flex; align-items:center; gap:6px; background:#15151d; border:1px solid #2a2a36; border-radius:9px; padding:5px 10px; }
@@ -211,6 +213,7 @@
     display:flex; align-items:center; justify-content:center; gap:14px;
     padding:12px 18px calc(12px + env(safe-area-inset-bottom));
     background:#0f0f16; border-top:1px solid #1e1e28; flex-shrink:0;
+    position:relative; z-index:20;
   }
   .ctrl-btn {
     background:#1c1c26; border:1px solid #2a2a36; color:#f2f2f5;
@@ -391,7 +394,6 @@
 <body>
 <div class="error-banner" id="errorBanner"></div>
 <button class="finish-float" id="finishFloat" onclick="openEndPanel()">FINALIZAR</button>
-
 <div class="screen active" id="home">
   <div class="logo">S1 <span>Mirror</span></div>
   <div class="tagline">Somos Um</div>
@@ -407,7 +409,6 @@
     <span id="homeStatus">Inicializando...</span>
   </div>
 </div>
-
 <div class="screen" id="mode-screen">
   <div class="logo" style="font-size:clamp(26px,5vw,36px)">S1 <span>Mirror</span></div>
   <div class="label" style="margin-bottom:6px">Escolha o modo</div>
@@ -416,7 +417,6 @@
   <button class="btn btn-primary" onclick="chooseMode(4)">Modo 4 naipes</button>
   <button class="btn btn-ghost" onclick="showScreen('home')">Voltar</button>
 </div>
-
 <div class="screen" id="code-screen">
   <div class="label">Códigos da sessão</div>
   <div class="code-list" id="codeList"></div>
@@ -424,7 +424,6 @@
   <button class="btn btn-primary" style="max-width:340px" onclick="enterPresenterMode()">Iniciar apresentação</button>
   <button class="btn btn-ghost" style="max-width:340px" onclick="cancelPresenterSetup()">Voltar</button>
 </div>
-
 <div class="screen" id="join">
   <div class="field-group">
     <div class="field-label">Seu nome</div>
@@ -442,13 +441,11 @@
   <button class="btn btn-primary" style="max-width:300px" onclick="joinSession()">Entrar</button>
   <button class="btn btn-ghost" style="max-width:300px" onclick="showScreen('home')">Voltar</button>
 </div>
-
 <div class="screen" id="waiting">
   <div class="waiting-msg" id="waitingText">Aguardando apresentação...</div>
   <div class="waiting-code" id="waitingCode"></div>
   <button class="btn btn-ghost" style="max-width:300px" onclick="leaveSession()">Sair</button>
 </div>
-
 <div class="screen" id="presenter">
   <div class="presenter-bar" id="presenterBar">
     <div class="bar-codes" id="barCodes"></div>
@@ -498,7 +495,6 @@
     <button class="ctrl-btn" id="btnNext" onclick="nextSlide()">Próximo ▶</button>
   </div>
 </div>
-
 <div class="screen" id="viewer">
   <div class="offline-banner" id="offlineBanner">Apresentação encerrada</div>
   <div class="viewer-bar" id="viewerBar">
@@ -518,7 +514,6 @@
     </div>
   </div>
 </div>
-
 <div class="screen" id="ended">
   <div class="ended-icon">✓</div>
   <div class="ended-title">Apresentação encerrada</div>
@@ -528,7 +523,6 @@
   </div>
   <button class="btn btn-ghost" style="max-width:300px;margin-top:8px" onclick="leaveSession()">Voltar ao início</button>
 </div>
-
 <div class="end-overlay" id="endOverlay">
   <div class="end-card">
     <div class="end-title">Finalizar apresentação</div>
@@ -543,7 +537,6 @@
     </div>
   </div>
 </div>
-
 <div class="pdf-overlay" id="pdfOverlay">
   <div class="pdf-panel">
     <div class="pdf-panel-head">
@@ -561,9 +554,7 @@
     </div>
   </div>
 </div>
-
 <input type="file" id="pdfPicker" accept="application/pdf,.pdf" multiple style="display:none">
-
 <div id="diag">
   <div class="diag-head">
     <div class="diag-title">Diagnóstico</div>
@@ -612,7 +603,6 @@
     </div>
   </div>
 </div>
-
 <script>
 /* =========================================================
    CONFIGURACAO
@@ -1262,6 +1252,7 @@ function showStateImage(which, imgPath) {
     el.style.maxHeight = 'none';
     el.style.objectFit = 'contain';
     el.style.objectPosition = 'center';
+    el.style.pointerEvents = 'none';
     el.src = BASE_URL + imgPath + '?t=' + Date.now();
   } catch(e) {}
   log('showStateImage(' + which + ') src=' + imgPath);
@@ -1396,8 +1387,16 @@ function renderAllVoices() {
 function renderVoiceCell(voice, myGen, slideIndex) {
   var cell = document.getElementById('cell-' + voice);
   if (!cell) return;
-  var idx = (typeof slideIndex === 'number') ? slideIndex : currentSlide;
-  var pdfId = pdfIdForVoiceAt(voice, idx);
+  var pageIdx = (typeof slideIndex === 'number') ? slideIndex : currentSlide;
+  var musicIdx = currentMusicIndex;
+  if (musicIdx < 0) {
+    cancelRenderTask('cell-' + voice);
+    var lbl0 = cell.querySelector('.voice-cell-label');
+    var keep0 = lbl0 ? lbl0.outerHTML : '';
+    cell.innerHTML = keep0 + '<div class="voice-cell-empty">Sem letra</div>';
+    return;
+  }
+  var pdfId = pdfIdForVoiceAt(voice, musicIdx);
   if (!pdfId) {
     cancelRenderTask('cell-' + voice);
     var label = cell.querySelector('.voice-cell-label');
@@ -1409,10 +1408,17 @@ function renderVoiceCell(voice, myGen, slideIndex) {
     if (showingInterval) return;
     if (myGen !== undefined && myGen !== null && myGen !== renderGeneration) return;
     if (!doc) return;
-    var label = cell.querySelector('.voice-cell-label');
-    var keep = label ? label.outerHTML : '';
-    cell.innerHTML = keep;
-    var pageNum = Math.min(idx + 1, doc.numPages);
+    if (pageIdx >= doc.numPages) {
+      cancelRenderTask('cell-' + voice);
+      var lbl2 = cell.querySelector('.voice-cell-label');
+      var keep2 = lbl2 ? lbl2.outerHTML : '';
+      cell.innerHTML = keep2 + '<div class="voice-cell-empty">Sem letra</div>';
+      return;
+    }
+    var label2 = cell.querySelector('.voice-cell-label');
+    var keep3 = label2 ? label2.outerHTML : '';
+    cell.innerHTML = keep3;
+    var pageNum = pageIdx + 1;
     renderPageTo(doc, pageNum, cell, 'cell-' + voice, myGen);
   });
 }
@@ -1421,9 +1427,15 @@ function renderViewerSlide() {
   if (!el) return;
   if (showingInterval) return;
   var myGen = ++renderGeneration;
-  var idx = currentSlide;
+  var pageIdx = currentSlide;
+  var musicIdx = currentMusicIndex;
   hideStateImage('viewer');
-  var pdfId = pdfIdForVoiceAt(myVoice, idx);
+  if (musicIdx < 0) {
+    cancelRenderTask('viewer');
+    el.innerHTML = '<div class="slide-placeholder">Aguardando...</div>';
+    return;
+  }
+  var pdfId = pdfIdForVoiceAt(myVoice, musicIdx);
   if (!pdfId) {
     cancelRenderTask('viewer');
     el.innerHTML = '<div class="slide-placeholder">Aguardando...</div>';
@@ -1436,7 +1448,11 @@ function renderViewerSlide() {
       el.innerHTML = '<div class="slide-placeholder">Aguardando...</div>';
       return;
     }
-    var pageNum = Math.min(idx + 1, doc.numPages);
+    if (pageIdx >= doc.numPages) {
+      el.innerHTML = '<div class="slide-placeholder">Sem letra</div>';
+      return;
+    }
+    var pageNum = pageIdx + 1;
     renderPageTo(doc, pageNum, el, 'viewer', myGen);
   });
 }
@@ -1589,9 +1605,9 @@ function publishSlide() {
     var v = activeVoices[i];
     var st = voiceState[v];
     if (!st || !st.channel) continue;
-    var pdfId = pdfIdForVoiceAt(v, currentSlide);
+    var pdfId = pdfIdForVoiceAt(v, currentMusicIndex);
     try {
-      st.channel.publish('slide', { pdfId: pdfId, index: currentSlide, total: slideCount });
+      st.channel.publish('slide', { pdfId: pdfId, index: currentSlide, total: slideCount, music: currentMusicIndex });
       sentCount++;
     } catch(e) {
       log('ERRO slide em ' + v + ': ' + e.message);
@@ -1800,6 +1816,19 @@ function savePdfPanel() {
     setPdfMsg('Adicione pelo menos uma música em algum naipe.', true);
     return;
   }
+  for (var m = 0; m < activeVoices.length; m++) {
+    var vm = activeVoices[m];
+    var list = pdfPanelDraft[vm] || [];
+    var seen = {};
+    for (var n = 0; n < list.length; n++) {
+      var key = String(list[n].nome).toLowerCase();
+      if (seen[key]) {
+        setPdfMsg('Música repetida em ' + VOICE_LABEL[vm] + ': "' + list[n].nome + '". Exclua uma delas.', true);
+        return;
+      }
+      seen[key] = true;
+    }
+  }
   var missing = [];
   for (var j = 0; j < activeVoices.length; j++) {
     var vv = activeVoices[j];
@@ -1814,19 +1843,6 @@ function savePdfPanel() {
     setPdfMsg('Letras faltando em ' + missing.join(', ') + '. (' + parts.join(' | ') + ')', true);
     return;
   }
-  for (var m = 0; m < activeVoices.length; m++) {
-    var vm = activeVoices[m];
-    var list = pdfPanelDraft[vm] || [];
-    var seen = {};
-    for (var n = 0; n < list.length; n++) {
-      var key = String(list[n].nome).toLowerCase();
-      if (seen[key]) {
-        setPdfMsg('Música repetida em ' + VOICE_LABEL[vm] + ': "' + list[n].nome + '". Exclua uma delas.', true);
-        return;
-      }
-      seen[key] = true;
-    }
-  }
   voicePdfs = {};
   for (var q = 0; q < activeVoices.length; q++) {
     var vq = activeVoices[q];
@@ -1835,7 +1851,6 @@ function savePdfPanel() {
   buildMusicNames();
   renderMusicMenu();
   closePdfPanel();
-  restoreFullscreenAfterPicker();
   log('Letras salvas - ' + musicNames.length + ' musicas');
   sendAllPdfs();
   publishOpening();
@@ -1848,6 +1863,8 @@ function savePdfPanel() {
   setNavEnabled(true);
   updateCounter();
   clearPresenterArea();
+  enterFullscreen();
+  log('Tela cheia solicitada apos salvar PDFs');
 }
 function sendAllPdfs() {
   pendingUploads = 0;
@@ -2282,13 +2299,14 @@ function joinSession() {
       if (msg.data && typeof msg.data.index === 'number') {
         var pid = msg.data.pdfId;
         var tot = msg.data.total || 1;
+        var mus = (typeof msg.data.music === 'number') ? msg.data.music : -1;
         if (!pid || !voicePdfsById(pid)) {
           pendingPdfAction = { type: 'slide', pdfId: pid, index: msg.data.index, total: tot };
           log('slide aguardando PDF: ' + pid);
           updateDiag();
           return;
         }
-        applySlide(pid, msg.data.index, tot);
+        applySlide(pid, msg.data.index, tot, mus);
       }
       updateDiag();
     });
@@ -2366,11 +2384,12 @@ function applyPrepStart(index, total) {
   startPreparation(function(){ log('Preparacao concluida no receptor'); });
   updateDiag();
 }
-function applySlide(pdfId, index, total) {
+function applySlide(pdfId, index, total, music) {
   if (isPreparing) return;
   showingInterval = false;
   sessionStarted = true;
   hasActiveMusic = true;
+  if (typeof music === 'number' && music >= 0) currentMusicIndex = music;
   currentSlide = index;
   slideCount = total || 1;
   renderViewerSlide();
