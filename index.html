@@ -988,19 +988,89 @@ function closeStuckOverlay() {
 }
 function retryConnection() {
   closeStuckOverlay();
+  connRecoveryCount = 0;
   log('Tentativa manual de reconexao');
+  if (role === 'presenter') {
+    try { if (ably) ably.close(); } catch(e) {}
+    ably = null;
+    if (!initAbly()) return;
+    recoverPresenter();
+    return;
+  }
   var code = myChannelName ? myChannelName.replace(/^s1-/, '') : '';
   if (!code) { leaveSession(); return; }
-  retryingConnection = true;
   leaveSession();
   setTimeout(function(){
-    retryingConnection = false;
     var nameInput = document.getElementById('nameInput');
     var input = document.getElementById('joinInput');
     if (nameInput) nameInput.value = myName || getSavedName();
     if (input) input.value = code;
     joinSession();
   }, 350);
+}
+var connRecoveryCount = 0;
+function recoverConnection() {
+  if (connRecoveryCount >= 3) {
+    log('recuperacao interrompida apos 3 tentativas');
+    showStuckOverlay();
+    return;
+  }
+  connRecoveryCount++;
+  log('recuperacao de conexao (tentativa ' + connRecoveryCount + ')');
+  try { if (ably) ably.close(); } catch(e) {}
+  ably = null;
+  if (!initAbly()) return;
+  if (role === 'presenter') {
+    recoverPresenter();
+  } else if (role === 'viewer') {
+    retryConnection();
+  }
+  updateDiag();
+}
+function recoverPresenter() {
+  for (var i = 0; i < activeVoices.length; i++) {
+    var v = activeVoices[i];
+    var st = voiceState[v];
+    if (!st) continue;
+    var code = st.code || voiceCodes[v];
+    if (!code) continue;
+    var ch = ably.channels.get('s1-' + code);
+    voiceState[v].channel = ch;
+    (function(voice, chan){
+      chan.subscribe('state-request', function(){
+        publishCurrentState();
+        updateViewerCount();
+      });
+      chan.subscribe('catalog-request', function(){
+        handleCatalogRequest(voice);
+      });
+      chan.subscribe('heartbeat', function(msg){
+        if (msg.clientId && msg.clientId !== myClientId) {
+          var nm = (msg.data && msg.data.name) ? String(msg.data.name).toUpperCase() : '';
+          memberMap[msg.clientId] = { name: nm, voice: voice, ts: Date.now() };
+          renderMembers();
+        }
+      });
+      try {
+        chan.presence.enter();
+        chan.presence.subscribe('enter', function(m){
+          if (m.clientId !== myClientId) publishCurrentState();
+          updateViewerCount();
+        });
+        chan.presence.subscribe('leave', function(m){
+          delete memberMap[m.clientId];
+          renderMembers();
+          updateViewerCount();
+        });
+      } catch(pe) { log('presence falhou em ' + voice + ': ' + pe.message); }
+      log('Canal religado: ' + voice);
+    })(v, ch);
+  }
+  setTimeout(function(){
+    publishCurrentState();
+    updateViewerCount();
+  }, 800);
+  log('Apresentador recuperado apos queda de conexao');
 }
 /* =========================================================
    NOMES DE MUSICA
@@ -1086,7 +1156,16 @@ function initAbly() {
     log('ERRO: biblioteca Ably ausente');
     return false;
   }
-  if (ably) return true;
+  if (ably) {
+    var stNow = ably.connection.state;
+    if (stNow === 'failed' || stNow === 'closed' || stNow === 'closing') {
+      log('cliente antigo em estado ' + stNow + ' - descartado');
+      try { ably.close(); } catch(e) {}
+      ably = null;
+    } else {
+      return true;
+    }
+  }
   myClientId = 's1-' + Math.random().toString(36).slice(2, 10);
   try {
     ably = new Ably.Realtime({
@@ -1101,7 +1180,12 @@ function initAbly() {
     log('ERRO ao criar cliente: ' + e.message);
     return false;
   }
-  ably.connection.on('connected', function(){ log('Conexao: connected'); setDot('green','Conectado'); updateDiag(); });
+  ably.connection.on('connected', function(){
+    connRecoveryCount = 0;
+    log('Conexao: connected');
+    setDot('green','Conectado');
+    updateDiag();
+  });
   ably.connection.on('connecting', function(){ log('Conexao: connecting'); setDot('yellow','Conectando...'); });
   ably.connection.on('disconnected', function(){ log('Conexao: disconnected'); setDot('yellow','Desconectado'); });
   ably.connection.on('suspended', function(){ log('Conexao: suspended'); setDot('yellow','Suspenso'); });
@@ -1109,7 +1193,8 @@ function initAbly() {
     var r = (s && s.reason && s.reason.message) ? s.reason.message : 'motivo desconhecido';
     log('Conexao: FAILED - ' + r);
     setDot('red','Falhou');
-    showError('Falha na conexao com o Ably: ' + r);
+    showError('Conexao perdida. Tentando reconectar automaticamente...');
+    setTimeout(recoverConnection, 2000);
   });
   log('Cliente Ably criado - clientId ' + myClientId);
   return true;
@@ -2717,7 +2802,12 @@ function joinSession() {
         if (m.clientId !== myClientId) { log('apresentador saiu'); setPresenterOnline(false); }
       });
       myChannel.presence.subscribe('enter', function(m){
-        if (m.clientId !== myClientId) { log('apresentador presente'); setPresenterOnline(true); }
+        if (m.clientId !== myClientId) {
+          log('apresentador presente');
+          var wasOffline = (presenterOnline === false);
+          setPresenterOnline(true);
+          if (wasOffline) startCatalogRetry();
+        }
       });
     } catch(pe) { log('presence falhou: ' + pe.message); }
     document.getElementById('viewerBarCode').textContent = code;
