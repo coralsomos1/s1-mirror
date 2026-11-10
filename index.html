@@ -185,6 +185,8 @@
   }
   .member-item .dot { width:6px; height:6px; flex-shrink:0; }
   .members-empty { font-size:11px; color:#4a4a5a; font-style:italic; padding:8px 2px; }
+  .clock-block { background:#15151d; border:1px solid #2a2a36; border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:6px; }
+  .clock-block-value { font-size:clamp(34px,4vw,52px); font-weight:700; color:#e8b44a; font-variant-numeric:tabular-nums; letter-spacing:4px; text-align:center; line-height:1; }
   .presenter-bar {
     display:flex; align-items:center; gap:8px; flex-wrap:wrap;
     padding:9px 12px; background:#0f0f16; border-bottom:1px solid #1e1e28; flex-shrink:0;
@@ -451,6 +453,7 @@
     .voices-grid.mode-3 { grid-template-columns:1fr; grid-template-rows:repeat(3,1fr); }
     .voices-grid.mode-4 { grid-template-columns:1fr; grid-template-rows:repeat(4,1fr); }
     .voice-cell-label { font-size:9px; padding:2px 6px; }
+   .clock-block { display:none; }
   }
 </style>
 </head>
@@ -557,6 +560,10 @@
         <div class="members-list" id="membersList">
           <div class="members-empty">Ninguém conectado ainda</div>
         </div>
+      </div>
+        <div class="clock-block">
+        <div class="mirror-label">Hora</div>
+        <div class="clock-block-value" id="panelClock">00:00</div>
       </div>
     </div>
   </div>
@@ -845,7 +852,7 @@ function showScreen(name) {
   }
   var cf = document.getElementById('clockFloat');
   if (cf) {
-    if ((name === 'presenter' || name === 'viewer') && isFullscreen()) cf.classList.add('show');
+        if (name === 'viewer' && isFullscreen()) cf.classList.add('show');
     else cf.classList.remove('show');
   }
   updateEmergencyButton();
@@ -865,6 +872,8 @@ function updateClock() {
   if (bar) bar.textContent = txt;
   var fl = document.getElementById('clockFloat');
   if (fl) fl.textContent = txt;
+  var pc = document.getElementById('panelClock');
+  if (pc) pc.textContent = txt;
 }
 function startClock() {
   if (clockInterval) return;
@@ -1171,7 +1180,7 @@ function onFullscreenChange() {
   }
   var cf = document.getElementById('clockFloat');
   if (cf) {
-    if (fs && (currentScreen === 'presenter' || currentScreen === 'viewer')) cf.classList.add('show');
+       if (fs && currentScreen === 'viewer') cf.classList.add('show');
     else cf.classList.remove('show');
   }
   updateEmergencyButton();
@@ -1667,6 +1676,8 @@ function renderVoiceCell(voice, slideIndex) {
   if (!cell) return;
   var pageIdx = (typeof slideIndex === 'number') ? slideIndex : currentSlide;
   var musicIdx = currentMusicIndex;
+  var myToken = musicIdx + ':' + pageIdx;
+  cell.dataset.renderToken = myToken;
   if (musicIdx < 0) {
     var lbl0 = cell.querySelector('.voice-cell-label');
     var keep0 = lbl0 ? lbl0.outerHTML : '';
@@ -1681,6 +1692,10 @@ function renderVoiceCell(voice, slideIndex) {
     return;
   }
   openPdfDoc(pdfId, function(doc){
+    if (cell.dataset.renderToken !== myToken) {
+      log('render antigo descartado em ' + voice + ' (musica mudou)');
+      return;
+    }
     if (showingInterval) return;
     if (!doc) return;
     if (pageIdx >= doc.numPages) {
@@ -2599,6 +2614,7 @@ function resetAllState() {
   catalogReceived = false;
   channelReady = false;
   gotAnyContent = false;
+  autoFsRequested = false;
   stopStuckTimer();
   closeStuckOverlay();
   hideGridOverlay();
