@@ -1767,9 +1767,7 @@ function renderVoiceCell(voice, slideIndex) {
   if (!pdfId) {
     var label = cell.querySelector('.voice-cell-label');
     var keep = label ? label.outerHTML : '';
-    cell.innerHTML = keep + 'Sem letra
-
-';
+        cell.innerHTML = keep + '<div class="voice-cell-empty">Sem letra</div>';
     return;
   }
   var cached = slideCacheGet(pdfId, pageIdx);
@@ -1803,9 +1801,7 @@ function renderVoiceCell(voice, slideIndex) {
     if (pageIdx >= doc.numPages) {
       var lbl2 = cell.querySelector('.voice-cell-label');
       var keep2 = lbl2 ? lbl2.outerHTML : '';
-      cell.innerHTML = keep2 + 'Sem letra
-
-';
+           cell.innerHTML = keep2 + '<div class="voice-cell-empty">Sem letra</div>';
       return;
     }
     var label2 = cell.querySelector('.voice-cell-label');
