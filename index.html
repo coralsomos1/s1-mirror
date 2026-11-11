@@ -700,10 +700,10 @@ var PDFJS_DIR = 'pdfjs/';
 var OPENING_IMG = 'imagens/apresentacao/imagem-de-abertura.gif';
 var INTERVAL_IMG = 'imagens/intervalo/aguardando-letra.gif';
 var LOADING_IMG = 'imagens/apresentacao/carregando-arquivo-pdf.gif';
-var SLIDE_MAX_WIDTH = 1600;
-var SLIDE_JPEG_QUALITY = 0.82;
-var SLIDE_CHUNK_SIZE = 14000;
-var SLIDE_CHUNK_DELAY = 60;
+var SLIDE_MAX_WIDTH = 1440;
+var SLIDE_JPEG_QUALITY = 0.80;
+var SLIDE_CHUNK_SIZE = 60000;
+var SLIDE_CHUNK_DELAY = 20;
 var PREP_HOLD_FIRST_MS = 1000;
 var CODE_TTL_MS = 60 * 60 * 1000;
 var HEARTBEAT_INTERVAL = 4000;
@@ -1760,14 +1760,39 @@ function renderVoiceCell(voice, slideIndex) {
   if (musicIdx < 0) {
     var lbl0 = cell.querySelector('.voice-cell-label');
     var keep0 = lbl0 ? lbl0.outerHTML : '';
-    cell.innerHTML = keep0 + '<div class="voice-cell-empty">Sem letra</div>';
+    cell.innerHTML = keep0 + 'Sem letra
+
+';
     return;
   }
   var pdfId = pdfIdForVoiceAt(voice, musicIdx);
   if (!pdfId) {
     var label = cell.querySelector('.voice-cell-label');
     var keep = label ? label.outerHTML : '';
-    cell.innerHTML = keep + '<div class="voice-cell-empty">Sem letra</div>';
+    cell.innerHTML = keep + 'Sem letra
+
+';
+    return;
+  }
+  var cached = slideCacheGet(pdfId, pageIdx);
+  if (cached) {
+    if (showingInterval) return;
+    var lblC = cell.querySelector('.voice-cell-label');
+    var keepC = lblC ? lblC.outerHTML : '';
+    cell.innerHTML = keepC;
+    var imgC = document.createElement('img');
+    imgC.className = 'slide-canvas';
+    imgC.style.maxWidth = '100%';
+    imgC.style.maxHeight = '100%';
+    imgC.style.objectFit = 'contain';
+    imgC.style.display = 'block';
+    imgC.onload = function(){
+      if (cell.dataset.renderToken !== myToken) {
+        log('render antigo descartado em ' + voice + ' (prateleira)');
+      }
+    };
+    imgC.src = 'data:image/jpeg;base64,' + cached;
+    cell.appendChild(imgC);
     return;
   }
   openPdfDoc(pdfId, function(doc){
@@ -1780,7 +1805,9 @@ function renderVoiceCell(voice, slideIndex) {
     if (pageIdx >= doc.numPages) {
       var lbl2 = cell.querySelector('.voice-cell-label');
       var keep2 = lbl2 ? lbl2.outerHTML : '';
-      cell.innerHTML = keep2 + '<div class="voice-cell-empty">Sem letra</div>';
+      cell.innerHTML = keep2 + 'Sem letra
+
+';
       return;
     }
     var label2 = cell.querySelector('.voice-cell-label');
