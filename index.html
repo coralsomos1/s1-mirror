@@ -1760,9 +1760,7 @@ function renderVoiceCell(voice, slideIndex) {
   if (musicIdx < 0) {
     var lbl0 = cell.querySelector('.voice-cell-label');
     var keep0 = lbl0 ? lbl0.outerHTML : '';
-    cell.innerHTML = keep0 + 'Sem letra
-
-';
+        cell.innerHTML = keep0 + '<div class="voice-cell-empty">Sem letra</div>';
     return;
   }
   var pdfId = pdfIdForVoiceAt(voice, musicIdx);
