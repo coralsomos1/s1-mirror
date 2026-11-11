@@ -1078,15 +1078,9 @@ function recoverPresenter() {
 function cleanMusicName(raw) {
   var s = String(raw || '');
   s = s.replace(/\.[Pp][Dd][Ff]$/, '');
-  s = s.replace(/^\s*\d+\s*[-._)\]]*\s*/, '');
-  s = s.replace(/\b(sopranos?|contraltos?|tenores?|bar[ií]tonos?)\b/gi, ' ');
-  s = s.replace(/\s+/g, ' ').trim();
-  s = s.replace(/^[-._\s]+/, '').replace(/[-._\s]+$/, '');
+  s = s.trim();
   if (!s) return 'Sem nome';
-  return s.split(' ').map(function(w){
-    if (!w) return w;
-    return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
-  }).join(' ');
+  return s;
 }
 function buildMusicNames() {
   var base = null;
@@ -2038,6 +2032,46 @@ function publishSlide() {
   log('slide publicado: ' + (currentSlide + 1) + '/' + slideCount);
   schedulePrerender();
   updateDiag();
+}
+ function sendSlideImage(voice, base64, index, total, music) {
+  var st = voiceState[voice];
+  if (!st || !st.channel) return;
+  var chunks = Math.ceil(base64.length / SLIDE_CHUNK_SIZE);
+  var sendId = 's' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
+  try {
+    st.channel.publish('slide-meta', {
+      sendId: sendId,
+      total: chunks,
+      index: index,
+      slideTotal: total,
+      music: music,
+      size: base64.length
+    });
+    sentCount++;
+  } catch(e) { log('ERRO slide-meta ' + voice + ': ' + e.message); return; }
+  var seq = 0;
+  function sendNext() {
+    if (seq >= chunks) {
+      log('slide enviado para ' + voice + ' (' + Math.round(base64.length/1024) + 'KB)');
+      return;
+    }
+    var start = seq * SLIDE_CHUNK_SIZE;
+    var chunk = base64.slice(start, start + SLIDE_CHUNK_SIZE);
+    try {
+      st.channel.publish('slide-chunk', { sendId: sendId, seq: seq, data: chunk });
+      sentCount++;
+    } catch(e) { log('ERRO slide-chunk ' + voice + ': ' + e.message); }
+    seq++;
+    setTimeout(sendNext, SLIDE_CHUNK_DELAY);
+  }
+  sendNext();
+}
+function publishCurrentState() {
+  if (!sessionStarted) { publishOpening(); return; }
+  if (loadingState) { publishPrepStart(); return; }
+  if (showingInterval) { publishInterval(); return; }
+  if (!hasActiveMusic) { publishInterval(); return; }
+  publishSlide();
 }
  /* =========================================================
    RESSINCRONIZACAO (coralista que entra no meio)
