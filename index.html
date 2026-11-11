@@ -596,7 +596,7 @@
     <div class="ended-time-label">Tempo de apresentação</div>
     <div class="ended-time-value" id="endedTimeValue">00:00</div>
   </div>
-  <button class="btn btn-ghost" style="max-width:300px;margin-top:8px" onclick="leaveSession()">Voltar ao início</button>
+ <button class="btn btn-ghost" style="max-width:300px;margin-top:8px" onclick="leaveSession(); setTimeout(function(){ location.reload(); }, 200);">Voltar ao início</button>
 </div>
 <div class="end-overlay" id="endOverlay">
   <div class="end-card">
