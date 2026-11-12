@@ -702,6 +702,7 @@ var INTERVAL_IMG = 'imagens/intervalo/aguardando-letra.gif';
 var LOADING_IMG = 'imagens/apresentacao/carregando-arquivo-pdf.gif';
 var SLIDE_MAX_WIDTH = 1600;
 var SLIDE_JPEG_QUALITY = 0.82;
+var SLIDE_ZOOM = 1.08;
 var SLIDE_CHUNK_SIZE = 60000;
 var SLIDE_CHUNK_DELAY = 20;
 var PREP_HOLD_FIRST_MS = 2000;
@@ -1503,16 +1504,28 @@ function preloadAllPdfs(callback) {
 function renderPageToCanvas(doc, pageNum, maxWidth, callback) {
   doc.getPage(pageNum).then(function(page){
     var viewport = page.getViewport({ scale: 1 });
-    var scale = Math.min(1, maxWidth / viewport.width);
+    var baseScale = Math.min(1, maxWidth / viewport.width);
+    var scale = baseScale * SLIDE_ZOOM;
     var scaled = page.getViewport({ scale: scale });
-    var canvas = document.createElement('canvas');
-    canvas.width = Math.floor(scaled.width);
-    canvas.height = Math.floor(scaled.height);
-    var ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    var task = page.render({ canvasContext: ctx, viewport: scaled });
+    var zoomed = document.createElement('canvas');
+    zoomed.width = Math.floor(scaled.width);
+    zoomed.height = Math.floor(scaled.height);
+    var zctx = zoomed.getContext('2d');
+    zctx.fillStyle = '#ffffff';
+    zctx.fillRect(0, 0, zoomed.width, zoomed.height);
+    var task = page.render({ canvasContext: zctx, viewport: scaled });
     task.promise.then(function(){
+      var outW = Math.floor(scaled.width / SLIDE_ZOOM);
+      var outH = Math.floor(scaled.height / SLIDE_ZOOM);
+      var canvas = document.createElement('canvas');
+      canvas.width = outW;
+      canvas.height = outH;
+      var ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, outW, outH);
+      var offX = (zoomed.width - outW) / 2;
+      var offY = (zoomed.height - outH) / 2;
+      ctx.drawImage(zoomed, -offX, -offY);
       callback(canvas);
     }).catch(function(e){
       log('ERRO ao renderizar pagina: ' + (e && e.message ? e.message : e));
@@ -2506,9 +2519,14 @@ function showSlideImage(dataUrl) {
     img = document.createElement('img');
     img.id = 'viewerSlideImg';
     img.className = 'slide-canvas';
-    img.style.maxWidth = '100%';
-    img.style.maxHeight = '100%';
+    img.style.position = 'absolute';
+    img.style.inset = '0';
+    img.style.width = '100%';
+    img.style.height = '100%';
+    img.style.maxWidth = 'none';
+    img.style.maxHeight = 'none';
     img.style.objectFit = 'contain';
+    img.style.objectPosition = 'center';
     img.style.display = 'block';
     el.appendChild(img);
   }
