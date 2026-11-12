@@ -700,8 +700,8 @@ var PDFJS_DIR = 'pdfjs/';
 var OPENING_IMG = 'imagens/apresentacao/imagem-de-abertura.gif';
 var INTERVAL_IMG = 'imagens/intervalo/aguardando-letra.gif';
 var LOADING_IMG = 'imagens/apresentacao/carregando-arquivo-pdf.gif';
-var SLIDE_MAX_WIDTH = 1440;
-var SLIDE_JPEG_QUALITY = 0.80;
+var SLIDE_MAX_WIDTH = 1200;
+var SLIDE_JPEG_QUALITY = 0.75;
 var SLIDE_CHUNK_SIZE = 60000;
 var SLIDE_CHUNK_DELAY = 20;
 var PREP_HOLD_FIRST_MS = 1000;
@@ -2062,6 +2062,7 @@ function publishSlide() {
   try {
     st.channel.publish('slide-meta', {
       sendId: sendId,
+      sentAt: Date.now(),
       total: chunks,
       index: index,
       slideTotal: total,
@@ -2440,7 +2441,7 @@ function handleSlideMeta(msg) {
   var d = msg.data || {};
   if (!d.sendId) return;
   var pending = { sendId: d.sendId, total: d.total || 0, parts: {}, received: 0,
-                  index: d.index || 0, slideTotal: d.slideTotal || 1, music: d.music };
+                  index: d.index || 0, slideTotal: d.slideTotal || 1, music: d.music, sentAt: d.sentAt || 0 };
   if (slideOrphans[d.sendId]) {
     pending.parts = slideOrphans[d.sendId].parts;
     pending.received = slideOrphans[d.sendId].received;
@@ -2489,6 +2490,7 @@ function finalizeSlide(sendId) {
   gotAnyContent = true;
   stopStuckTimer();
   closeStuckOverlay();
+  if (pending.sentAt) log('viagem ate o coralista: ' + Math.max(0, Date.now() - pending.sentAt) + 'ms');
   log('slide recebido: ' + (pending.index + 1) + '/' + pending.slideTotal +
       ' (' + Math.round(full.length/1024) + 'KB)');
   updateDiag();
