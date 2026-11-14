@@ -653,6 +653,7 @@
     <button class="btn btn-ghost" style="max-width:none" onclick="leaveSession()">Sair</button>
   </div>
 </div>
+ <div id="voiceBadge" style="display:none;position:fixed;top:10px;left:10px;z-index:110;background:rgba(21,21,29,.92);border:1px solid #2a2a36;color:#e8b44a;font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:6px 10px;border-radius:9px;"></div>
 <input type="file" id="pdfPicker" accept="application/pdf,.pdf" multiple style="display:none">
 <div id="diag">
   <div class="diag-head">
@@ -2856,11 +2857,25 @@ function resetAllState() {
    CORALISTA
    ========================================================= */
 var selectedVoice = null;
+ function updateVoiceBadge() {
+  var badge = document.getElementById('voiceBadge');
+  if (!badge) return;
+  if (role === 'viewer' && myVoice && activeVoicesOnChannel()) {
+    badge.textContent = VOICE_LABEL[myVoice] || myVoice;
+    badge.style.display = 'block';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+function activeVoicesOnChannel() {
+  return myChannelName === 's1-SOMOS1000';
+}
 function pickVoice(v) {
   selectedVoice = v;
   myVoice = v;
   var ov = document.getElementById('voiceOverlay');
   if (ov) ov.style.display = 'none';
+  updateVoiceBadge();
   if (typeof requestCatalog === 'function') requestCatalog();
   var btns = document.querySelectorAll('#voiceOverlay button');
   for (var i = 0; i < btns.length; i++) btns[i].classList.remove('btn-primary');
@@ -2913,6 +2928,7 @@ function joinSession() {
         var channelName = 's1-' + code;
     if (code === 'SOMOS1000') { code = 'SOMOS1000'; }
     myChannelName = channelName;
+    updateVoiceBadge();
     try {
       if (ably && typeof ably.channels.release === 'function') {
         ably.channels.release(channelName);
@@ -3121,6 +3137,7 @@ function leaveSession() {
    var vo = document.getElementById('voiceOverlay');
   if (vo) vo.style.display = 'none';
   myVoice = null;
+  updateVoiceBadge();
   myChannel = null;
   myChannelName = '';
   myName = '';
