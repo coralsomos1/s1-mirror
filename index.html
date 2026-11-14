@@ -1118,7 +1118,7 @@ function chooseMode(n) {
   else activeVoices = ['SOPRANO', 'CONTRALTO', 'TENOR', 'BARITONO'];
   voiceCodes = {};
   for (var i = 0; i < activeVoices.length; i++) {
-    voiceCodes[activeVoices[i]] = (activeVoices.length > 1) ? 'SOMOS1000' : genCode();
+    voiceCodes[activeVoices[i]] = 'SOMOS1000';
   }
   renderCodeList();
   showScreen('code-screen');
@@ -1141,9 +1141,9 @@ function renderCodeList() {
   }
   list.innerHTML = html;
   var hint = document.getElementById('codeHint');
-  if (hint) {
+   if (hint) {
     hint.textContent = isSingleMode()
-      ? 'Compartilhe este código com o coral'
+      ? 'Compartilhe o código SOMOS1000 com o coral'
       : 'Compartilhe o código SOMOS1000 com o coral. Cada coralista escolhe o próprio naipe.';
   }
 }
@@ -2171,9 +2171,14 @@ function handleCatalogRequest(voice) {
 function handleCatalog(msg) {
   var d = msg.data || {};
   catalogReceived = true;
-    var voiceOverlay = document.getElementById('voiceOverlay');
-  if (voiceOverlay) voiceOverlay.style.display = (d.multi && !myVoice) ? 'flex' : 'none';
-  if (d.voice && myChannelName !== 's1-SOMOS1000') myVoice = d.voice;
+  sessionMulti = !!d.multi;
+  if (!sessionMulti) {
+    myVoice = d.voice || 'SOPRANO';
+    selectedVoice = myVoice;
+  }
+  var voiceOverlay = document.getElementById('voiceOverlay');
+  if (voiceOverlay) voiceOverlay.style.display = (sessionMulti && !myVoice) ? 'flex' : 'none';
+  updateVoiceBadge();
   stopCatalogRetry();
   lastKnownMusic = (typeof d.music === 'number') ? d.music : -1;
   lastKnownSlide = (typeof d.slide === 'number') ? d.slide : 0;
@@ -2478,7 +2483,7 @@ function base64ToBytes(base64) {
 function handleSlideMeta(msg) {
   var d = msg.data || {};
   if (!d.sendId) return;
-   if (myChannelName === 's1-SOMOS1000' && d.voice && d.voice !== myVoice) return;
+   if (myChannelName === 's1-SOMOS1000' && (!myVoice || d.voice !== myVoice)) return;
   var pending = { sendId: d.sendId, total: d.total || 0, parts: {}, received: 0,
                   index: d.index || 0, slideTotal: d.slideTotal || 1, music: d.music, sentAt: d.sentAt || 0 };
   if (slideOrphans[d.sendId]) {
@@ -2857,8 +2862,9 @@ function resetAllState() {
    CORALISTA
    ========================================================= */
 var selectedVoice = null;
+ var sessionMulti = false;
  function updateVoiceBadge() {
-  var badge = document.getElementById('voiceBadge');
+    var badge = document.getElementById('voiceBadge');
   if (!badge) return;
   if (role === 'viewer' && myVoice && activeVoicesOnChannel()) {
     badge.textContent = VOICE_LABEL[myVoice] || myVoice;
@@ -2868,7 +2874,7 @@ var selectedVoice = null;
   }
 }
 function activeVoicesOnChannel() {
-  return myChannelName === 's1-SOMOS1000';
+  return sessionMulti;
 }
 function pickVoice(v) {
   selectedVoice = v;
@@ -2923,6 +2929,7 @@ function joinSession() {
     lastKnownTotal = 0;
     catalogRetryCount = 0;
     catalogReceived = false;
+    sessionMulti = false;
     channelReady = false;
     gotAnyContent = false;
         var channelName = 's1-' + code;
@@ -2985,7 +2992,7 @@ function joinSession() {
           log('apresentador presente');
           var wasOffline = (presenterOnline === false);
           setPresenterOnline(true);
-          if (wasOffline) startCatalogRetry();
+          if (wasOffline || !catalogReceived) startCatalogRetry();
         }
       });
     } catch(pe) { log('presence falhou: ' + pe.message); }
@@ -3137,6 +3144,7 @@ function leaveSession() {
    var vo = document.getElementById('voiceOverlay');
   if (vo) vo.style.display = 'none';
   myVoice = null;
+  sessionMulti = false;
   updateVoiceBadge();
   myChannel = null;
   myChannelName = '';
