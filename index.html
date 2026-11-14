@@ -499,10 +499,9 @@
   </div>
   <div class="field-group">
     <div class="field-label">Código da sessão</div>
-    <input class="code-input" id="joinInput" maxlength="5" autocomplete="off" autocapitalize="characters" inputmode="text" placeholder="-----">
+<input class="code-input" id="joinInput" maxlength="9" autocomplete="off" autocapitalize="characters" inputmode="text" placeholder="---------" style="width:100%;min-width:260px;box-sizing:border-box;">
   </div>
-   <div class="field-group" id="voiceGroup" style="display:none">
-    <div class="field-label">Seu naipe</div>
+       <div class="field-label">Seu naipe</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%">
       <button class="btn btn-ghost" style="max-width:none;min-height:50px" onclick="pickVoice('SOPRANO')">Soprano</button>
       <button class="btn btn-ghost" style="max-width:none;min-height:50px" onclick="pickVoice('CONTRALTO')">Contralto</button>
@@ -521,6 +520,7 @@
 <div class="screen" id="waiting">
   <div class="waiting-msg" id="waitingText">Aguardando apresentação...</div>
   <div class="waiting-code" id="waitingCode"></div>
+ <div class="field-group" id="voiceGroup" style="display:none">
   <button class="btn btn-ghost" style="max-width:300px" onclick="leaveSession()">Sair</button>
 </div>
 <div class="screen" id="presenter">
@@ -2147,7 +2147,8 @@ function publishVoiceCatalog(voice) {
       active: hasActiveMusic,
       interval: showingInterval,
       started: sessionStarted,
-      stateImage: currentStateImage
+      stateImage: currentStateImage,
+      multi: activeVoices.length > 1
     });
     sentCount++;
     log('catalog enviado para ' + voice + ' (' + catalog.length + ' musicas)');
@@ -2166,6 +2167,8 @@ function handleCatalogRequest(voice) {
 function handleCatalog(msg) {
   var d = msg.data || {};
   catalogReceived = true;
+   var voiceGroup = document.getElementById('voiceGroup');
+  if (voiceGroup) voiceGroup.style.display = (d.multi && !myVoice) ? 'block' : 'none';
   if (d.voice && myChannelName !== 's1-SOMOS1000') myVoice = d.voice;
   stopCatalogRetry();
   lastKnownMusic = (typeof d.music === 'number') ? d.music : -1;
@@ -2852,6 +2855,10 @@ function resetAllState() {
 var selectedVoice = null;
 function pickVoice(v) {
   selectedVoice = v;
+   myVoice = v;
+   var wg = document.getElementById('voiceGroup');
+  if (wg) wg.style.display = 'none';
+  if (typeof requestCatalog === 'function') requestCatalog();
   var btns = document.querySelectorAll('#voiceGroup button');
   for (var i = 0; i < btns.length; i++) btns[i].classList.remove('btn-primary');
   var ids = ['SOPRANO','CONTRALTO','TENOR','BARITONO'];
@@ -2865,9 +2872,9 @@ function joinSession() {
     var input = document.getElementById('joinInput');
     var name = (nameInput.value || '').trim().toUpperCase();
         var code = (input.value || '').trim().toUpperCase();
-    if (code === 'SOMOS1000') {
-      if (!selectedVoice) { showError('Escolha o seu naipe.'); return; }
-      myVoice = selectedVoice;
+     if (code === 'SOMOS1000') {
+      myVoice = null;
+      selectedVoice = null;
     }
     if (name.length < 2) { showError('Digite seu nome para entrar.'); nameInput.focus(); return; }
     if (code !== 'SOMOS1000' && code.length !== CODE_LENGTH) { showError('Digite o codigo de ' + CODE_LENGTH + ' letras.'); input.focus(); return; }
@@ -3354,7 +3361,6 @@ window.addEventListener('load', function(){
   }
   updateDiag();
 });
- document.addEventListener('DOMContentLoaded', function(){
   var joinInput = document.getElementById('joinInput');
   if (!joinInput) return;
   joinInput.addEventListener('input', function(){
