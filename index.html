@@ -2882,6 +2882,9 @@ function pickVoice(v) {
   var ov = document.getElementById('voiceOverlay');
   if (ov) ov.style.display = 'none';
   updateVoiceBadge();
+ function activeVoicesOnChannel() {
+  return sessionMulti;
+}
   if (typeof requestCatalog === 'function') requestCatalog();
   var btns = document.querySelectorAll('#voiceOverlay button');
   for (var i = 0; i < btns.length; i++) btns[i].classList.remove('btn-primary');
