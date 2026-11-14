@@ -512,15 +512,6 @@
 <div class="screen" id="waiting">
   <div class="waiting-msg" id="waitingText">Aguardando apresentação...</div>
   <div class="waiting-code" id="waitingCode"></div>
-  <div class="field-group" id="voiceGroup" style="display:none">
-    <div class="field-label">Seu naipe</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%">
-      <button class="btn btn-ghost" style="max-width:none;min-height:50px" onclick="pickVoice('SOPRANO')">Soprano</button>
-      <button class="btn btn-ghost" style="max-width:none;min-height:50px" onclick="pickVoice('CONTRALTO')">Contralto</button>
-      <button class="btn btn-ghost" style="max-width:none;min-height:50px" onclick="pickVoice('TENOR')">Tenor</button>
-      <button class="btn btn-ghost" style="max-width:none;min-height:50px" onclick="pickVoice('BARITONO')">Barítono</button>
-    </div>
-  </div>
   <button class="btn btn-ghost" style="max-width:300px" onclick="leaveSession()">Sair</button>
 </div>
 <div class="screen" id="presenter">
@@ -648,6 +639,18 @@
       <button class="stuck-btn stuck-btn-ghost" onclick="openEmergency()">VER DIAGNÓSTICO</button>
       <button class="stuck-btn stuck-btn-ghost" onclick="leaveSession()">SAIR</button>
     </div>
+  </div>
+</div>
+ <div id="voiceOverlay" style="display:none;position:fixed;inset:0;z-index:300;background:rgba(6,6,10,.96);align-items:center;justify-content:center;padding:24px;">
+  <div style="width:100%;max-width:340px;display:flex;flex-direction:column;gap:14px;text-align:center;">
+    <div class="field-label">Escolha o seu naipe</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%">
+      <button class="btn btn-ghost" style="max-width:none;min-height:56px" onclick="pickVoice('SOPRANO')">Soprano</button>
+      <button class="btn btn-ghost" style="max-width:none;min-height:56px" onclick="pickVoice('CONTRALTO')">Contralto</button>
+      <button class="btn btn-ghost" style="max-width:none;min-height:56px" onclick="pickVoice('TENOR')">Tenor</button>
+      <button class="btn btn-ghost" style="max-width:none;min-height:56px" onclick="pickVoice('BARITONO')">Barítono</button>
+    </div>
+    <button class="btn btn-ghost" style="max-width:none" onclick="leaveSession()">Sair</button>
   </div>
 </div>
 <input type="file" id="pdfPicker" accept="application/pdf,.pdf" multiple style="display:none">
@@ -2167,8 +2170,8 @@ function handleCatalogRequest(voice) {
 function handleCatalog(msg) {
   var d = msg.data || {};
   catalogReceived = true;
-   var voiceGroup = document.getElementById('voiceGroup');
-  if (voiceGroup) voiceGroup.style.display = (d.multi && !myVoice) ? 'block' : 'none';
+    var voiceOverlay = document.getElementById('voiceOverlay');
+  if (voiceOverlay) voiceOverlay.style.display = (d.multi && !myVoice) ? 'flex' : 'none';
   if (d.voice && myChannelName !== 's1-SOMOS1000') myVoice = d.voice;
   stopCatalogRetry();
   lastKnownMusic = (typeof d.music === 'number') ? d.music : -1;
@@ -2855,11 +2858,11 @@ function resetAllState() {
 var selectedVoice = null;
 function pickVoice(v) {
   selectedVoice = v;
-   myVoice = v;
-   var wg = document.getElementById('voiceGroup');
-  if (wg) wg.style.display = 'none';
+  myVoice = v;
+  var ov = document.getElementById('voiceOverlay');
+  if (ov) ov.style.display = 'none';
   if (typeof requestCatalog === 'function') requestCatalog();
-  var btns = document.querySelectorAll('#voiceGroup button');
+  var btns = document.querySelectorAll('#voiceOverlay button');
   for (var i = 0; i < btns.length; i++) btns[i].classList.remove('btn-primary');
   var ids = ['SOPRANO','CONTRALTO','TENOR','BARITONO'];
   var idx = ids.indexOf(v);
@@ -3115,6 +3118,8 @@ function leaveSession() {
     clearLastCode();
   }
   role = null;
+   var vo = document.getElementById('voiceOverlay');
+  if (vo) vo.style.display = 'none';
   myVoice = null;
   myChannel = null;
   myChannelName = '';
