@@ -501,6 +501,15 @@
     <div class="field-label">Código da sessão</div>
     <input class="code-input" id="joinInput" maxlength="5" autocomplete="off" autocapitalize="characters" inputmode="text" placeholder="-----">
   </div>
+   <div class="field-group" id="voiceGroup" style="display:none">
+    <div class="field-label">Seu naipe</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%">
+      <button class="btn btn-ghost" style="max-width:none;min-height:50px" onclick="pickVoice('SOPRANO')">Soprano</button>
+      <button class="btn btn-ghost" style="max-width:none;min-height:50px" onclick="pickVoice('CONTRALTO')">Contralto</button>
+      <button class="btn btn-ghost" style="max-width:none;min-height:50px" onclick="pickVoice('TENOR')">Tenor</button>
+      <button class="btn btn-ghost" style="max-width:none;min-height:50px" onclick="pickVoice('BARITONO')">Barítono</button>
+    </div>
+  </div>
   <button class="join-last-btn" id="joinLastBtn" onclick="useLastCode()">
     <span class="jl-label">Último código usado</span>
     <span class="jl-code" id="joinLastCode">-----</span>
@@ -1105,7 +1114,7 @@ function chooseMode(n) {
   else activeVoices = ['SOPRANO', 'CONTRALTO', 'TENOR', 'BARITONO'];
   voiceCodes = {};
   for (var i = 0; i < activeVoices.length; i++) {
-    voiceCodes[activeVoices[i]] = genCode();
+    voiceCodes[activeVoices[i]] = (activeVoices.length > 1) ? 'SOMOS1000' : genCode();
   }
   renderCodeList();
   showScreen('code-screen');
@@ -1115,11 +1124,15 @@ function renderCodeList() {
   var list = document.getElementById('codeList');
   if (!list) return;
   var html = '';
-  for (var i = 0; i < activeVoices.length; i++) {
-    var v = activeVoices[i];
-    html += '<div class="code-row">' +
-      '<span class="code-row-name' + (isSingleMode() ? ' hidden' : '') + '">' + VOICE_LABEL[v] + '</span>' +
-      '<span class="code-row-value">' + voiceCodes[v] + '</span>' +
+  if (activeVoices.length > 1) {
+    html = '<div class="code-row">' +
+      '<span class="code-row-name hidden">Código único</span>' +
+      '<span class="code-row-value">SOMOS1000</span>' +
+      '</div>';
+  } else {
+    html = '<div class="code-row">' +
+      '<span class="code-row-name hidden">' + VOICE_LABEL[activeVoices[0]] + '</span>' +
+      '<span class="code-row-value">' + voiceCodes[activeVoices[0]] + '</span>' +
       '</div>';
   }
   list.innerHTML = html;
@@ -1127,7 +1140,7 @@ function renderCodeList() {
   if (hint) {
     hint.textContent = isSingleMode()
       ? 'Compartilhe este código com o coral'
-      : 'Compartilhe cada código com o naipe correspondente';
+      : 'Compartilhe o código SOMOS1000 com o coral. Cada coralista escolhe o próprio naipe.';
   }
 }
 function cancelPresenterSetup() {
@@ -2015,10 +2028,14 @@ function prerenderNextSlide() {
    PUBLICACAO
    ========================================================= */
 function publishToAll(eventName, data) {
+  var seen = {};
   for (var i = 0; i < activeVoices.length; i++) {
     var v = activeVoices[i];
     var st = voiceState[v];
     if (!st || !st.channel) continue;
+    var key = st.code || v;
+    if (seen[key]) continue;
+    seen[key] = true;
     try {
       st.channel.publish(eventName, data);
       sentCount++;
@@ -2080,7 +2097,8 @@ function publishSlide() {
       index: index,
       slideTotal: total,
       music: music,
-      size: base64.length
+      size: base64.length,
+           voice: voice
     });
     sentCount++;
   } catch(e) { log('ERRO slide-meta ' + voice + ': ' + e.message); return; }
@@ -2093,7 +2111,7 @@ function publishSlide() {
     var start = seq * SLIDE_CHUNK_SIZE;
     var chunk = base64.slice(start, start + SLIDE_CHUNK_SIZE);
     try {
-      st.channel.publish('slide-chunk', { sendId: sendId, seq: seq, data: chunk });
+        st.channel.publish('slide-chunk', { sendId: sendId, seq: seq, data: chunk, voice: voice });
       sentCount++;
     } catch(e) { log('ERRO slide-chunk ' + voice + ': ' + e.message); }
     seq++;
@@ -2148,7 +2166,7 @@ function handleCatalogRequest(voice) {
 function handleCatalog(msg) {
   var d = msg.data || {};
   catalogReceived = true;
-  if (d.voice) myVoice = d.voice;
+  if (d.voice && myChannelName !== 's1-SOMOS1000') myVoice = d.voice;
   stopCatalogRetry();
   lastKnownMusic = (typeof d.music === 'number') ? d.music : -1;
   lastKnownSlide = (typeof d.slide === 'number') ? d.slide : 0;
@@ -2453,6 +2471,7 @@ function base64ToBytes(base64) {
 function handleSlideMeta(msg) {
   var d = msg.data || {};
   if (!d.sendId) return;
+   if (myChannelName === 's1-SOMOS1000' && d.voice && d.voice !== myVoice) return;
   var pending = { sendId: d.sendId, total: d.total || 0, parts: {}, received: 0,
                   index: d.index || 0, slideTotal: d.slideTotal || 1, music: d.music, sentAt: d.sentAt || 0 };
   if (slideOrphans[d.sendId]) {
@@ -2468,6 +2487,7 @@ function handleSlideChunk(msg) {
   var d = msg.data || {};
   var sendId = d.sendId;
   if (!sendId || typeof d.seq !== 'number') return;
+   if (myChannelName === 's1-SOMOS1000' && d.voice && d.voice !== myVoice) return;
   var pending = slidePending[sendId];
   if (!pending) {
     if (!slideOrphans[sendId]) slideOrphans[sendId] = { parts: {}, received: 0 };
@@ -2551,10 +2571,17 @@ function enterPresenterMode() {
     currentSlide = 0;
     slideCount = 0;
     voicePdfs = {};
+    var seenChannels = {};
     for (var i = 0; i < activeVoices.length; i++) {
       var v = activeVoices[i];
       voicePdfs[v] = [];
       voiceState[v] = { code: voiceCodes[v], channel: null, viewers: 0 };
+       var chKey = 's1-' + voiceCodes[v];
+      if (seenChannels[chKey]) {
+        voiceState[v].channel = ably.channels.get(chKey);
+        continue;
+      }
+      seenChannels[chKey] = true;
       (function(voice){
         var chName = 's1-' + voiceCodes[voice];
         var ch = ably.channels.get(chName);
@@ -2822,20 +2849,32 @@ function resetAllState() {
  /* =========================================================
    CORALISTA
    ========================================================= */
+var selectedVoice = null;
+function pickVoice(v) {
+  selectedVoice = v;
+  var btns = document.querySelectorAll('#voiceGroup button');
+  for (var i = 0; i < btns.length; i++) btns[i].classList.remove('btn-primary');
+  var ids = ['SOPRANO','CONTRALTO','TENOR','BARITONO'];
+  var idx = ids.indexOf(v);
+  if (idx >= 0 && btns[idx]) btns[idx].classList.add('btn-primary');
+}
 function joinSession() {
   try {
     requestAutoFullscreen();
     var nameInput = document.getElementById('nameInput');
     var input = document.getElementById('joinInput');
     var name = (nameInput.value || '').trim().toUpperCase();
-    var code = (input.value || '').trim().toUpperCase();
+        var code = (input.value || '').trim().toUpperCase();
+    if (code === 'SOMOS1000') {
+      if (!selectedVoice) { showError('Escolha o seu naipe.'); return; }
+      myVoice = selectedVoice;
+    }
     if (name.length < 2) { showError('Digite seu nome para entrar.'); nameInput.focus(); return; }
-    if (code.length !== CODE_LENGTH) { showError('Digite o codigo de ' + CODE_LENGTH + ' letras.'); input.focus(); return; }
+    if (code !== 'SOMOS1000' && code.length !== CODE_LENGTH) { showError('Digite o codigo de ' + CODE_LENGTH + ' letras.'); input.focus(); return; }
     if (!initAbly()) return;
     myName = name;
     role = 'viewer';
-    myVoice = 'SOPRANO';
-    saveLastCode(code);
+    if (code !== 'SOMOS1000') myVoice = 'SOPRANO';    saveLastCode(code);
     saveName(name);
     memberMap = {};
     voicePdfs = {};
@@ -2861,7 +2900,8 @@ function joinSession() {
     catalogReceived = false;
     channelReady = false;
     gotAnyContent = false;
-    var channelName = 's1-' + code;
+        var channelName = 's1-' + code;
+    if (code === 'SOMOS1000') { code = 'SOMOS1000'; }
     myChannelName = channelName;
     try {
       if (ably && typeof ably.channels.release === 'function') {
@@ -3313,6 +3353,14 @@ window.addEventListener('load', function(){
     log('App inicializado');
   }
   updateDiag();
+});
+ document.addEventListener('DOMContentLoaded', function(){
+  var joinInput = document.getElementById('joinInput');
+  if (!joinInput) return;
+  joinInput.addEventListener('input', function(){
+    var g = document.getElementById('voiceGroup');
+    if (g) g.style.display = ((joinInput.value || '').trim().toUpperCase() === 'SOMOS1000') ? 'block' : 'none';
+  });
 });
 </script>
 </body>
