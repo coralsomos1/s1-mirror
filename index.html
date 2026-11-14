@@ -499,15 +499,7 @@
   </div>
   <div class="field-group">
     <div class="field-label">Código da sessão</div>
-<input class="code-input" id="joinInput" maxlength="9" autocomplete="off" autocapitalize="characters" inputmode="text" placeholder="---------" style="width:100%;min-width:260px;box-sizing:border-box;">
-  </div>
-       <div class="field-label">Seu naipe</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%">
-      <button class="btn btn-ghost" style="max-width:none;min-height:50px" onclick="pickVoice('SOPRANO')">Soprano</button>
-      <button class="btn btn-ghost" style="max-width:none;min-height:50px" onclick="pickVoice('CONTRALTO')">Contralto</button>
-      <button class="btn btn-ghost" style="max-width:none;min-height:50px" onclick="pickVoice('TENOR')">Tenor</button>
-      <button class="btn btn-ghost" style="max-width:none;min-height:50px" onclick="pickVoice('BARITONO')">Barítono</button>
-    </div>
+    <input class="code-input" id="joinInput" maxlength="9" autocomplete="off" autocapitalize="characters" inputmode="text" placeholder="---------" style="width:100%;min-width:260px;box-sizing:border-box;">
   </div>
   <button class="join-last-btn" id="joinLastBtn" onclick="useLastCode()">
     <span class="jl-label">Último código usado</span>
@@ -520,7 +512,15 @@
 <div class="screen" id="waiting">
   <div class="waiting-msg" id="waitingText">Aguardando apresentação...</div>
   <div class="waiting-code" id="waitingCode"></div>
- <div class="field-group" id="voiceGroup" style="display:none">
+  <div class="field-group" id="voiceGroup" style="display:none">
+    <div class="field-label">Seu naipe</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%">
+      <button class="btn btn-ghost" style="max-width:none;min-height:50px" onclick="pickVoice('SOPRANO')">Soprano</button>
+      <button class="btn btn-ghost" style="max-width:none;min-height:50px" onclick="pickVoice('CONTRALTO')">Contralto</button>
+      <button class="btn btn-ghost" style="max-width:none;min-height:50px" onclick="pickVoice('TENOR')">Tenor</button>
+      <button class="btn btn-ghost" style="max-width:none;min-height:50px" onclick="pickVoice('BARITONO')">Barítono</button>
+    </div>
+  </div>
   <button class="btn btn-ghost" style="max-width:300px" onclick="leaveSession()">Sair</button>
 </div>
 <div class="screen" id="presenter">
@@ -3361,13 +3361,6 @@ window.addEventListener('load', function(){
   }
   updateDiag();
 });
-  var joinInput = document.getElementById('joinInput');
-  if (!joinInput) return;
-  joinInput.addEventListener('input', function(){
-    var g = document.getElementById('voiceGroup');
-    if (g) g.style.display = ((joinInput.value || '').trim().toUpperCase() === 'SOMOS1000') ? 'block' : 'none';
-  });
-});
-</script>
+  </script>
 </body>
 </html>
